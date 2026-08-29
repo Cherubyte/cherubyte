@@ -90,8 +90,16 @@ async def test_public_ip_is_none_when_nothing_answers_or_the_body_is_junk(monkey
     _use_client(monkeypatch, {
         "https://one.one.one.one/cdn-cgi/trace": "ip=not-an-ip\n",
         "https://api.ipify.org": "<html>error</html>",
-        "https://ifconfig.co/ip": None,
+        "https://ipv4.icanhazip.com": None,
     })
     assert await wan.public_ip() is None
+
+
+async def test_public_ip_rejects_an_ipv6_answer_and_falls_through(monkeypatch):
+    _use_client(monkeypatch, {
+        "https://one.one.one.one/cdn-cgi/trace": "ip=2001:db8::1\n",
+        "https://api.ipify.org": "198.51.100.23",
+    })
+    assert await wan.public_ip() == "198.51.100.23"
 
 

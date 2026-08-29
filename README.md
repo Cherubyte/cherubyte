@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo-wordmark.svg" alt="NetScan" width="340">
+  <img src="docs/logo-wordmark.png" alt="NetScan" width="340">
 </p>
 
 <p align="center">
