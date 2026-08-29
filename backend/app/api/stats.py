@@ -39,6 +39,9 @@ async def summary(session: AsyncSession = Depends(get_session)):
         .where(
             Device.user_id.is_not(None),
             Device.is_online.is_(True),
+            # an always-on device (a desktop that never leaves) keeps a person
+            # off the presence count — same rule as User.is_present everywhere else
+            Device.counts_for_presence.is_(True),
             User.is_guest.is_(False),
         )
     )
