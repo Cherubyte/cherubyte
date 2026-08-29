@@ -1,0 +1,69 @@
+# NetScan runs as two services, and the split is the point: the agent is the
+# only half that needs to see a network, so it is the only half that needs host
+# networking and raw sockets. The panel holds the data and the UI and needs
+# neither — which is what lets it be hosted somewhere the LAN is not.
+#
+# One agent per network. Add a second service block, with its own enrolment
+# token, for each additional site.
+
+services:
+  panel:
+    build:
+      context: .
+      dockerfile: Dockerfile.panel
+    image: netscan-panel:latest
+    container_name: netscan-panel
+    restart: unless-stopped
+
+    # An ordinary bridge network with a published port. The panel scans
+    # nothing, so it gets no capabilities and no host networking.
+    ports:
+      - "1001:1001"
+
+    environment:
+      # Containers start in UTC and the presence grid is drawn in local time.
+      TZ: ${TZ:-Europe/Lisbon}
+
+    volumes:
+      # SQLite database and uploaded images. Losing this loses your history.
+      - panel-data:/app/backend/data
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    image: netscan-agent:latest
+    container_name: netscan-agent
+    restart: unless-stopped
+    depends_on:
+      - panel
+
+    # Discovery is a layer-2 job: the ARP sweep is broadcast, mDNS and SSDP are
+    # multicast, and the neighbour table is read from the kernel. On Docker's
+    # default bridge this container would scan 172.17.0.0/16 and find nothing
+    # of yours.
+    network_mode: host
+
+    cap_add:
+      - NET_RAW      # ARP sweep, DHCP sniffer, TTL probe
+      - NET_ADMIN    # promiscuous mode for the DHCP sniffer
+
+    environment:
+      TZ: ${TZ:-Europe/Lisbon}
+      # With host networking the agent shares the host's stack, so the panel is
+      # reachable on the published port above rather than by service name.
+      NETSCAN_AGENT_PANEL_URL: ${PANEL_URL:-http://127.0.0.1:1001}
+      # Mint one in the panel (Agents → new token) and put it here. It is spent
+      # on first start for a long-lived key, which is kept in the volume below.
+      NETSCAN_AGENT_ENROL_TOKEN: ${AGENT_ENROL_TOKEN:-}
+      NETSCAN_AGENT_NAME: ${AGENT_NAME:-casa}
+      # NETSCAN_AGENT_SUBNET: "192.168.1.0/24"   # empty = auto-detect
+
+    volumes:
+      # The issued key. Without this the agent re-enrols on every restart, and
+      # enrolment tokens are single-use — so it would fail on the second start.
+      - agent-state:/var/lib/netscan-agent
+
+volumes:
+  panel-data:
+  agent-state:

@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+# tests import the app package, so the backend dir has to be on sys.path
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# pin the future default now so behaviour does not shift under us
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["ignore::DeprecationWarning"]

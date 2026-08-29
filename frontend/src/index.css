@@ -1,0 +1,282 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════ STATION ════════════════════════════════════
+   NetScan as the operations board of an infrastructure station.
+   Dark-first. One signal colour (safety orange) = alive / now / selection.
+   One alert colour (red). Everything else is greyscale. Structure over
+   ornament: solid blocks, heavy rules, giant readouts, data as texture.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── faces ────────────────────────────────────────────────────────────── */
+/* Space Grotesk — display: headings, host names, the big readouts. Variable
+   woff2, one file per subset; weight axis 300–700. OFL — see OFL-SpaceGrotesk.txt */
+@font-face { font-family:"Space Grotesk"; src:url("/fonts/SpaceGrotesk-latin.woff2")     format("woff2"); font-weight:300 500; font-display:swap; unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family:"Space Grotesk"; src:url("/fonts/SpaceGrotesk-latin-ext.woff2") format("woff2"); font-weight:300 500; font-display:swap; unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+/* Geist — UI / body */
+@font-face { font-family:"Geist"; src:url("/fonts/Geist-Regular.woff2")  format("woff2"); font-weight:400; font-display:swap; }
+@font-face { font-family:"Geist"; src:url("/fonts/Geist-Medium.woff2")   format("woff2"); font-weight:500; font-display:swap; }
+@font-face { font-family:"Geist"; src:url("/fonts/Geist-SemiBold.woff2") format("woff2"); font-weight:600; font-display:swap; }
+@font-face { font-family:"Geist"; src:url("/fonts/Geist-Bold.woff2")     format("woff2"); font-weight:700; font-display:swap; }
+/* Geist Mono — the data layer: addresses, timestamps, counts */
+@font-face { font-family:"Geist Mono"; src:url("/fonts/GeistMono-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
+@font-face { font-family:"Geist Mono"; src:url("/fonts/GeistMono-Medium.woff2")  format("woff2"); font-weight:500; font-display:swap; }
+
+/* ═══════════════════════════ tokens ═══════════════════════════════════ */
+/* :root = DARK (the reference design). .light opts into the recolour. */
+:root {
+  color-scheme: dark;
+
+  --bg: 8 9 11;              /* the room */
+  --surface: 24 27 32;       /* a panel · a row band */
+  --surface-2: 34 38 45;     /* input · hover · sunken */
+  --surface-3: 45 50 58;     /* deep sunken · skeleton */
+
+  --fg: 240 242 245;
+  --fg-2: 165 171 181;
+  --fg-3: 122 129 139;       /* mono labels · ticks · coordinates */
+
+  --edge: 46 51 59;          /* quiet divider */
+  --edge-2: 70 76 86;        /* structural rule · control border */
+
+  --signal: 255 90 31;       /* ALIVE only: online · scanning · now · selection */
+  --signal-fill-bg: 255 90 31;
+  --signal-fill-fg: 14 10 6;
+  --signal-wash: 255 90 31;  /* used at low alpha for flashes / trails */
+
+  --alert: 240 68 58;        /* NEEDS ACTION: alerts · leave · unreviewed · destructive */
+  --alert-fg: 14 10 6;
+
+  --ease: cubic-bezier(.2, 0, 0, 1);
+}
+
+:root.light {
+  color-scheme: light;
+
+  --bg: 226 227 231;
+  --surface: 255 255 255;
+  --surface-2: 240 241 244;
+  --surface-3: 231 232 236;
+
+  --fg: 16 18 22;
+  --fg-2: 80 85 94;
+  --fg-3: 122 128 137;
+
+  --edge: 208 210 216;
+  --edge-2: 180 184 192;
+
+  --signal: 224 74 20;        /* darkened so it holds on white for text/marks */
+  --signal-fill-bg: 22 24 28;  /* "alive" reads as a solid near-black block … */
+  --signal-fill-fg: 255 255 255;
+  --signal-wash: 224 74 20;
+
+  --alert: 206 28 44;
+  --alert-fg: 255 255 255;
+}
+
+/* ═══════════════════════════ base ════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection { background: rgb(var(--signal) / .28); }
+
+h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
+
+.font-display {
+  font-family: "Space Grotesk", "Geist", sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.font-display-lt { font-family: "Space Grotesk", "Geist", sans-serif; font-weight: 400; letter-spacing: -0.02em; }
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+.mono {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+/* fast, flat theme flip */
+.theme-anim, .theme-anim *, .theme-anim *::before, .theme-anim *::after {
+  transition: background-color .12s linear, border-color .12s linear, color .12s linear, fill .12s linear !important;
+}
+
+/* ═══════════════════════════ components ══════════════════════════════ */
+@layer components {
+  /* ── the two text-label registers ──────────────────────────────────── */
+  /* .label — quiet caption, Title-case friendly (no forced upper) */
+  .label {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    color: rgb(var(--fg-3));
+  }
+  /* .key — the signage register: status-strip keys, column headers */
+  .key {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: rgb(var(--fg-3));
+  }
+  .data {
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── panel — the grouping primitive: a solid slab with a quiet edge ── */
+  .panel { background: rgb(var(--surface)); border: 1px solid rgb(var(--edge)); }
+  .panel-ruled { border-top: 2px solid rgb(var(--edge-2)); }
+  .sunken { background: rgb(var(--surface-2)); }
+  .inset { background: rgb(var(--surface-2)); }
+
+  /* ── rules ─────────────────────────────────────────────────────────── */
+  .rule   { border-top: 1px solid rgb(var(--edge)); }
+  .rule-2 { border-top: 2px solid rgb(var(--edge-2)); }
+
+  /* ── buttons ── Geist medium, sentence case, hard 3px ───────────────── */
+  .btn {
+    --h: 34px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    height: var(--h); padding: 0 14px;
+    font-family: "Geist", sans-serif;
+    font-size: 12px; font-weight: 500; line-height: 1;
+    letter-spacing: 0; white-space: nowrap; cursor: pointer;
+    border: 1px solid transparent; border-radius: 3px;
+    transition: background-color .12s linear, border-color .12s linear, color .12s linear;
+    user-select: none;
+  }
+  .btn:disabled { opacity: .4; pointer-events: none; }
+  .btn:focus-visible { outline: 2px solid rgb(var(--signal)); outline-offset: 2px; }
+
+  .btn-primary        { background: rgb(var(--signal-fill-bg)); color: rgb(var(--signal-fill-fg)); }
+  .btn-primary:hover  { background: rgb(var(--signal-fill-bg) / .86); }
+  :root.light .btn-primary       { background: rgb(var(--signal)); color: #fff; }
+  :root.light .btn-primary:hover { background: rgb(var(--signal) / .88); }
+
+  .btn-secondary       { background: transparent; color: rgb(var(--fg)); border-color: rgb(var(--edge-2)); }
+  .btn-secondary:hover { border-color: rgb(var(--fg)); background: rgb(var(--fg) / .04); }
+
+  .btn-ghost       { background: transparent; color: rgb(var(--fg-2)); padding: 0 9px; }
+  .btn-ghost:hover { color: rgb(var(--fg)); background: rgb(var(--fg) / .06); }
+
+  .btn-danger       { background: transparent; color: rgb(var(--alert)); border-color: rgb(var(--alert) / .5); }
+  .btn-danger:hover { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); border-color: rgb(var(--alert)); }
+
+  .btn-sm   { --h: 28px; padding: 0 10px; font-size: 11px; }
+  .btn-lg   { --h: 40px; padding: 0 20px; font-size: 13px; }
+  .btn-icon { padding: 0; width: var(--h); gap: 0; }
+
+  /* ── inputs ── sunken, 3px, signal focus ───────────────────────────── */
+  .input {
+    display: block; width: 100%; height: 36px; padding: 0 11px;
+    background: rgb(var(--surface-2)); color: rgb(var(--fg));
+    font-family: inherit; font-size: 13px;
+    border: 1px solid rgb(var(--edge-2)); border-radius: 3px;
+    transition: border-color .12s var(--ease), box-shadow .12s var(--ease);
+  }
+  .input::placeholder { color: rgb(var(--fg-3)); }
+  .input:focus { outline: none; border-color: rgb(var(--signal)); box-shadow: inset 0 0 0 1px rgb(var(--signal)); }
+  .input.mono { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12.5px; }
+  textarea.input { height: auto; min-height: 76px; padding: 9px 11px; line-height: 1.55; resize: vertical; }
+  select.input {
+    appearance: none; padding-right: 30px;
+    background-image:
+      linear-gradient(45deg, transparent 50%, rgb(var(--fg-3)) 50%),
+      linear-gradient(135deg, rgb(var(--fg-3)) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px;
+    background-size: 5px 5px; background-repeat: no-repeat;
+  }
+
+  /* ── tag ── a hard status chip ─────────────────────────────────────── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 19px; padding: 0 7px; border-radius: 3px;
+    font-family: "Geist Mono", ui-monospace, monospace;
+    font-size: 10px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .tag-signal  { background: rgb(var(--signal-fill-bg)); color: rgb(var(--signal-fill-fg)); }
+  :root.light .tag-signal { background: rgb(var(--signal)); color: #fff; }
+  .tag-alert   { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); }
+  .tag-neutral { border: 1px solid rgb(var(--edge-2)); color: rgb(var(--fg-2)); }
+  .tag-ink     { border: 1px solid rgb(var(--fg-2)); color: rgb(var(--fg-2)); }
+}
+
+/* ═══════════════════════════ motion ══════════════════════════════════
+   Minimal and clean. No pop-in, no bounce, no scale. Opacity + the one
+   deliberate scan sweep only. */
+
+/* scan sweep — an orange bar dragged once down the board while scanning */
+@keyframes sweep-down {
+  0%   { transform: translateY(0); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { transform: translateY(1400px); opacity: 0; }
+}
+.sweep-line {
+  position: absolute; left: 0; right: 0; top: 0; height: 1px; z-index: 20;
+  background: rgb(var(--signal));
+  box-shadow: 0 0 16px 1px rgb(var(--signal) / .4);
+  animation: sweep-down 1.6s linear infinite;
+  pointer-events: none;
+}
+
+.mark-breathe { /* kept as a no-op hook — online marks are static now */ }
+
+/* row state change — a single quiet wash that settles, no flash */
+@keyframes row-flash {
+  0%   { background-color: rgb(var(--signal-wash) / .12); }
+  100% { background-color: transparent; }
+}
+.row-flash { animation: row-flash 1s var(--ease) 1; }
+
+/* skeleton — a slow, low-contrast sweep */
+@keyframes skel-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.skeleton { position: relative; overflow: hidden; background: rgb(var(--surface-3)); border-radius: 3px; }
+.skeleton::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(var(--fg) / .04), transparent);
+  animation: skel-sweep 1.8s linear infinite;
+}
+
+/* no page-enter animation — the fastest, cleanest transition is none */
+.view-in { }
+
+@keyframes toast-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ═══════════════════════════ scrollbars ══════════════════════════════ */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--edge-2)); border: 3px solid rgb(var(--bg)); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--fg-3)); }

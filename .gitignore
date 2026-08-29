@@ -1,0 +1,27 @@
+# Python
+*.egg-info/
+build/
+dist/
+backend/.venv/
+__pycache__/
+*.pyc
+
+# Data / runtime
+backend/data/
+backend/.env
+agent/.env
+agent/.venv/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+
+# Editors / OS / tooling
+.DS_Store
+.vscode/
+.idea/
+.claude/
+
+# Cloudflare
+.wrangler/
+.dev.vars

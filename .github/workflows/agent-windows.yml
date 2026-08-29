@@ -1,0 +1,109 @@
+name: Agent (Windows)
+
+# Builds the single-file Windows agent and then actually installs it as a
+# service on the runner. The packaging and the service registration are the two
+# things most likely to be wrong and neither can be exercised on Linux, so this
+# workflow is the only place they are ever proven.
+
+on:
+  push:
+    branches: [main]
+    paths: ["agent/**", "protocol/**", ".github/workflows/agent-windows.yml"]
+  pull_request:
+    paths: ["agent/**", "protocol/**", ".github/workflows/agent-windows.yml"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install ./protocol
+          pip install -r agent/requirements.txt
+          pip install pyinstaller==6.11.1 pywin32==308
+
+      - name: Build the executable
+        working-directory: agent/windows
+        run: pyinstaller --clean --noconfirm netscan-agent.spec
+
+      - name: The executable runs and carries the service framework
+        working-directory: agent/windows/dist
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          # An unrecognised option makes pywin32 print its usage and exit 1, so
+          # seeing that text proves the bundle loaded every module and reached
+          # HandleCommandLine — which is the packaging failure worth catching
+          # here, before the service does it in front of a user.
+          $out = (.\netscan-agent.exe --netscan-smoke-check 2>&1 | Out-String)
+          Write-Host $out
+          if ($out -notmatch 'install\|update\|remove') {
+            throw "the executable did not reach the service framework"
+          }
+          # pywin32 exits non-zero for an unknown option and PowerShell would
+          # carry that into the step's own exit code.
+          exit 0
+
+      - name: Install, start and health-check the service
+        working-directory: agent/windows/dist
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # No panel to talk to here, so it will fail to enrol — that is fine.
+          # What is being proven is that the SCM can start and stop it, which is
+          # exactly what a console exe registered with sc.exe cannot do.
+          [Environment]::SetEnvironmentVariable('NETSCAN_AGENT_PANEL_URL','http://127.0.0.1:9','Machine')
+          [Environment]::SetEnvironmentVariable('NETSCAN_AGENT_STATE_FILE',"$env:TEMP\agent.json",'Machine')
+
+          .\netscan-agent.exe --startup manual install
+          if ($LASTEXITCODE -ne 0) { throw "install failed ($LASTEXITCODE)" }
+
+          Start-Service NetScanAgent
+          $svc = Get-Service NetScanAgent
+          Write-Host "service status: $($svc.Status)"
+          if ($svc.Status -ne 'Running') { throw "service did not reach Running: $($svc.Status)" }
+
+          # The health endpoint reports degraded (no panel), which is a 503 —
+          # so assert we got an answer at all, not that it was happy.
+          # Print what happened. A step whose only evidence is the absence of a
+          # thrown error reads identically to a step that skipped its checks.
+          $ok = $false
+          foreach ($i in 1..15) {
+            try {
+              $r = Invoke-WebRequest -Uri http://127.0.0.1:1002/health -UseBasicParsing -TimeoutSec 3
+              Write-Host "health answered $($r.StatusCode) after $i attempt(s)"
+              $ok = $true; break
+            } catch [System.Net.WebException] {
+              if ($_.Exception.Response) {
+                Write-Host "health answered $([int]$_.Exception.Response.StatusCode) (degraded, no panel) after $i attempt(s)"
+                $ok = $true; break
+              }
+              Start-Sleep -Seconds 2
+            } catch { Start-Sleep -Seconds 2 }
+          }
+          if (-not $ok) { throw 'the service never answered its health endpoint' }
+
+          Stop-Service NetScanAgent
+          .\netscan-agent.exe remove
+          Write-Host 'Service installed, started, answered, stopped and removed.'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: netscan-agent-windows
+          path: agent/windows/dist/netscan-agent.exe
+          if-no-files-found: error
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: agent/windows/dist/netscan-agent.exe

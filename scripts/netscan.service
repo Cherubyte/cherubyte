@@ -1,0 +1,24 @@
+[Unit]
+Description=NetScan — monitorização de dispositivos em rede
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# __NETSCAN_USER__ / __NETSCAN_ROOT__ are filled in by scripts/setup.sh and
+# scripts/install-service.sh (they sed in the invoking user and the repo path).
+User=__NETSCAN_USER__
+WorkingDirectory=__NETSCAN_ROOT__/backend
+ExecStart=__NETSCAN_ROOT__/backend/.venv/bin/python run.py
+Restart=on-failure
+RestartSec=3
+
+# Corre como o utilizador mas com as capabilities necessárias:
+#   CAP_NET_RAW / CAP_NET_ADMIN  -> scan ARP (scapy)
+#   CAP_NET_BIND_SERVICE         -> bind na porta 1001 (privilegiada)
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

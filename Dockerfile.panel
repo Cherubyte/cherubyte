@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1
+#
+# The NetScan panel: database, UI, notifications, integrations.
+#
+# It never touches a network it is monitoring — agents do that and report in.
+# So unlike the agent it needs no raw sockets, no host networking and no extra
+# capabilities: a normal bridge network and a published port are enough.
+
+# ---------------------------------------------------------------- frontend ---
+FROM node:20-slim AS frontend
+
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY frontend/ ./
+# also runs `tsc --noEmit`, so a type error fails the image build
+RUN npm run build
+
+# ----------------------------------------------------------------- runtime ---
+FROM python:3.11-slim AS runtime
+
+# tzdata: the presence grid is drawn in local time, and a container is UTC
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY protocol/ protocol/
+COPY backend/requirements.txt backend/requirements.txt
+RUN pip install --no-cache-dir ./protocol \
+    && pip install --no-cache-dir -r backend/requirements.txt
+
+COPY backend/ backend/
+# config.py resolves paths relative to the backend package, so the built SPA
+# has to land at /app/frontend/dist for settings.frontend_dist to find it
+COPY --from=frontend /build/dist frontend/dist
+
+VOLUME ["/app/backend/data"]
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    NETSCAN_HOST=0.0.0.0 \
+    NETSCAN_PORT=1001
+
+EXPOSE 1001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+    CMD python -c "import os,sys,urllib.request; \
+p=os.getenv('NETSCAN_PORT','1001'); \
+sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{p}/api/health',timeout=4).status==200 else 1)"
+
+WORKDIR /app/backend
+CMD ["python", "run.py"]

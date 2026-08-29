@@ -1,0 +1,11 @@
+<svg width="440" height="120" viewBox="0 0 440 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NetScan">
+  <rect x="0" y="0" width="440" height="120" rx="20" fill="#0a0b0d"/>
+  <rect x="24" y="24" width="32" height="32" rx="3" fill="#ff5a1f"/>
+  <rect x="64" y="24" width="32" height="32" rx="3" fill="#303640"/>
+  <rect x="24" y="64" width="32" height="32" rx="3" fill="#303640"/>
+  <rect x="64" y="64" width="32" height="32" rx="3" fill="#303640"/>
+  <text x="128" y="75" font-family="'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif"
+        font-size="50" font-weight="600" letter-spacing="-1.5" fill="#f4f4f5">
+    Net<tspan fill="#ff5a1f">Scan</tspan>
+  </text>
+</svg>
