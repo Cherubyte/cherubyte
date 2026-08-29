@@ -70,11 +70,18 @@ export function coord(i: number): { alpha: string; index: string } {
   return { alpha, index: String(i + 1).padStart(3, "0") };
 }
 
-export const DEVICE_TYPES: DeviceType[] = [
-  "unknown", "router", "access_point", "pc", "laptop", "phone", "tablet", "tv",
-  "media", "console", "printer", "nas", "iot", "camera", "speaker", "wearable",
-  "server", "car",
+/** Device types grouped for the picker — the order here is also the order the
+ *  flat list and the stats page use. */
+export const DEVICE_TYPE_GROUPS: { key: MessageKey; types: DeviceType[] }[] = [
+  { key: "type.group.computers", types: ["pc", "laptop", "server"] },
+  { key: "type.group.mobile", types: ["phone", "voip", "tablet", "ereader", "wearable"] },
+  { key: "type.group.entertainment", types: ["tv", "projector", "media", "display", "console", "speaker"] },
+  { key: "type.group.network", types: ["router", "access_point", "hub"] },
+  { key: "type.group.smarthome", types: ["camera", "doorbell", "thermostat", "appliance", "vacuum", "iot"] },
+  { key: "type.group.other", types: ["printer", "nas", "car", "unknown"] },
 ];
+
+export const DEVICE_TYPES: DeviceType[] = DEVICE_TYPE_GROUPS.flatMap((g) => g.types);
 
 /** Localised label for a device type. Unknown values pass through unchanged. */
 export function deviceTypeLabel(type: string | null | undefined): string {
@@ -89,20 +96,29 @@ export const TYPE_CODE: Record<DeviceType, string> = {
   unknown: "??",
   router: "RT",
   access_point: "AP",
+  hub: "HB",
   pc: "PC",
   laptop: "LT",
+  server: "SV",
   phone: "PH",
+  voip: "VP",
   tablet: "TB",
+  ereader: "ER",
+  wearable: "WR",
   tv: "TV",
+  projector: "PJ",
   media: "MD",
+  display: "DP",
   console: "CN",
+  speaker: "SP",
   printer: "PR",
   nas: "NS",
   iot: "IO",
+  thermostat: "TH",
+  appliance: "AL",
+  vacuum: "VC",
   camera: "CM",
-  speaker: "SP",
-  wearable: "WR",
-  server: "SV",
+  doorbell: "DB",
   car: "CR",
 };
 
