@@ -20,11 +20,12 @@ _RTT = re.compile(rb"time[=<]\s*([\d.]+)\s*ms")
 
 # Asked in order until one answers. Cloudflare first — it is already the default
 # ping target, so it adds no new party to trust; the others are fallbacks for
-# networks that block it.
+# networks that block it. All are reached over IPv4 only (see public_ip), so the
+# address they reflect is the IPv4 egress even on a dual-stack link.
 _PUBLIC_IP_SOURCES: tuple[tuple[str, str | None], ...] = (
     ("https://one.one.one.one/cdn-cgi/trace", "ip"),
     ("https://api.ipify.org", None),
-    ("https://ifconfig.co/ip", None),
+    ("https://ipv4.icanhazip.com", None),
 )
 
 _TRACE_IP = re.compile(r"^ip=(.+)$", re.MULTILINE)
@@ -58,16 +59,21 @@ async def probe(target: str, timeout: float = 3.0) -> tuple[bool, float | None]:
     return True, parse_rtt(out or b"")
 
 
-def _valid_ip(text: str) -> str | None:
+def _valid_ipv4(text: str) -> str | None:
     text = text.strip()
     try:
-        return str(ipaddress.ip_address(text))
+        addr = ipaddress.ip_address(text)
     except ValueError:
         return None
+    return str(addr) if addr.version == 4 else None
 
 
 async def public_ip(timeout: float = 4.0) -> str | None:
-    """The network's egress address as the internet sees it, or None.
+    """The network's IPv4 egress address as the internet sees it, or None.
+
+    Reached over IPv4 only — `local_address="0.0.0.0"` binds the socket to an
+    IPv4 source, so a dual-stack link reports its v4 address, not its v6 one —
+    and any non-v4 answer is discarded anyway.
 
     Every failure — no network, a blocked host, a garbled body — falls through
     to the next source and finally to None: this is a nice-to-have on a loop
@@ -75,7 +81,10 @@ async def public_ip(timeout: float = 4.0) -> str | None:
     """
     try:
         async with httpx.AsyncClient(
-            timeout=timeout, follow_redirects=True, headers={"user-agent": "netscan-agent"}
+            timeout=timeout,
+            follow_redirects=True,
+            headers={"user-agent": "netscan-agent"},
+            transport=httpx.AsyncHTTPTransport(local_address="0.0.0.0"),
         ) as client:
             for url, key in _PUBLIC_IP_SOURCES:
                 try:
@@ -90,10 +99,10 @@ async def public_ip(timeout: float = 4.0) -> str | None:
                     candidate = match.group(1) if match else ""
                 else:
                     candidate = body
-                ip = _valid_ip(candidate)
+                ip = _valid_ipv4(candidate)
                 if ip:
                     return ip
-                logger.debug("public IP source %s gave no address", url)
+                logger.debug("public IP source %s gave no IPv4 address", url)
     except Exception as exc:  # noqa: BLE001
         logger.debug("public IP lookup failed: %s", exc)
     return None
