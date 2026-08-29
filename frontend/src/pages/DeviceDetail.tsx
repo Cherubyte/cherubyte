@@ -5,6 +5,7 @@ import { api, type DevicePatch } from "../api/client";
 import type { DeviceType } from "../api/types";
 import { TypeCode, useBrandLogos, useOsLogos } from "../components/TypeCode";
 import { MergeDialog } from "../components/MergeDialog";
+import { DeviceTypePicker } from "../components/DeviceTypePicker";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { useNow } from "../hooks/useNow";
 import {
@@ -19,11 +20,9 @@ import {
 } from "../components/ui";
 import { ArrowLeft, ArrowUpRight, Check, Close, Image, Merge, Plus, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
-import { DEVICE_TYPES, deviceTypeLabel, dateTime, timeAgo } from "../lib/format";
+import { deviceTypeLabel, dateTime, timeAgo } from "../lib/format";
 import { useT } from "../i18n";
 import { copyText, downloadRdp, portAction } from "../lib/ports";
-
-const TYPES = DEVICE_TYPES;
 const OS_OPTIONS = [
   "Windows", "macOS", "iOS", "iPadOS", "Android", "Linux", "ChromeOS",
   "tvOS", "watchOS", "Tizen", "webOS", "Roku OS", "PlayStation OS",
@@ -139,13 +138,10 @@ export function DeviceDetail() {
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("device.field.type")}>
-            <select
-              className="input"
-              value={val("device_type") as string}
-              onChange={(e) => setDraft((s) => ({ ...s, device_type: e.target.value as DeviceType }))}
-            >
-              {TYPES.map((ty) => <option key={ty} value={ty}>{deviceTypeLabel(ty)}</option>)}
-            </select>
+            <DeviceTypePicker
+              value={val("device_type") as DeviceType}
+              onChange={(ty) => setDraft((s) => ({ ...s, device_type: ty }))}
+            />
           </Field>
           <Field label={t("device.field.owner")}>
             <select

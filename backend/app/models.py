@@ -31,23 +31,44 @@ class ApprovalStatus(str, enum.Enum):
 
 class DeviceType(str, enum.Enum):
     unknown = "unknown"
-    router = "router"
+
+    # computers
     pc = "pc"
     laptop = "laptop"
+    server = "server"
+
+    # phones, tablets, things you carry
     phone = "phone"
+    voip = "voip"
     tablet = "tablet"
+    ereader = "ereader"
+    wearable = "wearable"
+
+    # entertainment
     tv = "tv"
+    projector = "projector"
     media = "media"
+    display = "display"
     console = "console"
+    speaker = "speaker"
+
+    # network
+    router = "router"
+    ap = "access_point"
+    hub = "hub"
+
+    # smart home
+    iot = "iot"
+    thermostat = "thermostat"
+    appliance = "appliance"
+    vacuum = "vacuum"
+    camera = "camera"
+    doorbell = "doorbell"
+
+    # other
     printer = "printer"
     nas = "nas"
-    iot = "iot"
-    camera = "camera"
-    speaker = "speaker"
-    wearable = "wearable"
-    server = "server"
     car = "car"
-    ap = "access_point"
 
 
 class EventLevel(str, enum.Enum):

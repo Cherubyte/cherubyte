@@ -58,3 +58,53 @@ def test_ssh_plus_web_is_a_server():
 
 def test_unknown_when_nothing_matches():
     assert classify(None, None, {}) == DeviceType.unknown
+
+
+# --- the newer device types -------------------------------------------------
+
+def test_ereader_by_hostname():
+    assert classify("Amazon Technologies", "kindle-abc", {}) == DeviceType.ereader
+    assert classify(None, "Kobo-Clara", {}) == DeviceType.ereader
+
+
+def test_voip_phone_by_sip_port_and_vendor():
+    assert classify(None, None, {5060: "sip"}) == DeviceType.voip
+    assert classify("Yealink(XIAMEN) Network", "desk-phone", {80: "http"}) == DeviceType.voip
+
+
+def test_robot_vacuum_by_vendor_and_name():
+    assert classify("Roborock", None, {}) == DeviceType.vacuum
+    assert classify(None, "roomba-97f2", {}) == DeviceType.vacuum
+    # a vacuum in the Xiaomi cloud still resolves past the generic _miio -> iot
+    assert classify("Xiaomi", "roborock-s7", {}, mdns_services=["_miio"]) == DeviceType.vacuum
+
+
+def test_projector_beats_the_epson_printer_rule():
+    assert classify("Seiko Epson", "epson-eb-projector", {}) == DeviceType.projector
+
+
+def test_smart_display_is_not_plain_media():
+    assert (
+        classify("Google", "Nest-Hub-Kitchen", {}, mdns_services=["_googlecast"])
+        == DeviceType.display
+    )
+
+
+def test_hue_bridge_is_a_hub_not_iot():
+    assert classify("Signify", "Philips-hue", {}, mdns_services=["_hue"]) == DeviceType.hub
+
+
+def test_thermostat_by_vendor():
+    assert classify("ecobee inc.", "downstairs", {}) == DeviceType.thermostat
+
+
+def test_smart_appliance_by_vendor_and_name():
+    assert classify("BSH Hausgeraete GmbH", None, {}) == DeviceType.appliance
+    assert classify(None, "kitchen-dishwasher", {}) == DeviceType.appliance
+
+
+def test_video_doorbell_is_its_own_type_not_camera():
+    assert classify(None, "front-doorbell", {}) == DeviceType.doorbell
+    assert classify(None, "nest-hello-abc", {}) == DeviceType.doorbell
+    # a plain camera is unaffected
+    assert classify(None, "garden-cam", {}) == DeviceType.camera
