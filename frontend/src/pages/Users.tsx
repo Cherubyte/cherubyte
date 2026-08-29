@@ -46,12 +46,12 @@ export function Users() {
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stringHsl(u.name) }} />
         <Avatar name={u.name} size={26} />
         <Link to={`/users/${u.id}`} className="group flex min-w-0 flex-1 items-center gap-3">
-          <span className="font-display text-[15px] tracking-tight text-fg group-hover:text-signal">
+          <span className="truncate font-display text-[15px] tracking-tight text-fg group-hover:text-signal">
             {u.name}
           </span>
           <StatusPill online={u.is_present} />
-          <span className="mono text-[10px] text-fg-3">{t("users.devicesShort", { n: u.device_count })}</span>
-          <ArrowRight size={12} className="ml-auto text-fg-3" />
+          <span className="mono shrink-0 text-[10px] text-fg-3">{t("users.devicesShort", { n: u.device_count })}</span>
+          <ArrowRight size={12} className="ml-auto shrink-0 text-fg-3" />
         </Link>
         <button
           onClick={() => setGuest.mutate({ id: u.id, on: !u.is_guest })}
@@ -117,7 +117,9 @@ export function Users() {
         />
       )}
 
-      {main.length > 0 && <div className="space-y-2">{main.map(row)}</div>}
+      {main.length > 0 && (
+        <div className="grid gap-2 lg:grid-cols-2 lg:items-start">{main.map(row)}</div>
+      )}
 
       {guests.length > 0 && (
         <div className="space-y-2">
@@ -125,7 +127,7 @@ export function Users() {
             <span className="label">{t("users.guests")}</span>
             <Badge tone="neutral">{guests.length}</Badge>
           </div>
-          {guests.map(row)}
+          <div className="grid gap-2 lg:grid-cols-2 lg:items-start">{guests.map(row)}</div>
         </div>
       )}
     </div>
