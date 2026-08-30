@@ -216,6 +216,8 @@ export function Settings() {
     wan_enabled: true,
     wan_target: "1.1.1.1",
     wan_interval_seconds: 60,
+    metrics_enabled: true,
+    metrics_token: "",
     weekly_summary_enabled: false,
     weekly_summary_weekday: 0,
     weekly_summary_hour: 9,
@@ -265,6 +267,7 @@ export function Settings() {
         wan_enabled: settings.data.wan_enabled,
         wan_target: settings.data.wan_target,
         wan_interval_seconds: settings.data.wan_interval_seconds,
+        metrics_enabled: settings.data.metrics_enabled,
         weekly_summary_enabled: settings.data.weekly_summary_enabled,
         weekly_summary_weekday: settings.data.weekly_summary_weekday,
         weekly_summary_hour: settings.data.weekly_summary_hour,
@@ -304,6 +307,8 @@ export function Settings() {
         wan_enabled: form.wan_enabled,
         wan_target: form.wan_target,
         wan_interval_seconds: form.wan_interval_seconds,
+        metrics_enabled: form.metrics_enabled,
+        ...(form.metrics_token ? { metrics_token: form.metrics_token } : {}),
         weekly_summary_enabled: form.weekly_summary_enabled,
         weekly_summary_weekday: form.weekly_summary_weekday,
         weekly_summary_hour: form.weekly_summary_hour,
@@ -378,6 +383,7 @@ export function Settings() {
     },
   });
   const d = settings.data;
+  const panelOrigin = typeof window === "undefined" ? "" : window.location.origin;
 
   return (
     <div className="grid max-w-5xl gap-4 lg:grid-cols-[206px_1fr] lg:items-start">
@@ -921,6 +927,52 @@ export function Settings() {
       </section>
       </div>
 
+      {/* ── Prometheus metrics ────────────────────────────────────── */}
+      <div hidden={cat !== "integrations"}>
+      <section className="panel mb-3 p-4">
+        <SectionHeader
+          title={t("settings.section.metrics")}
+          actions={
+            <Toggle
+              label={t("settings.metrics.enable")}
+              checked={form.metrics_enabled}
+              onChange={(v) => set("metrics_enabled", v)}
+            />
+          }
+        />
+        {form.metrics_enabled && (
+          <div className="space-y-3">
+            <Field label={t("settings.metrics.url")} hint={t("settings.metrics.urlHint")}>
+              <div className="flex gap-2">
+                <input
+                  className="input mono"
+                  readOnly
+                  value={`${panelOrigin}${d?.metrics_path ?? "/api/metrics"}`}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => copyText(`${panelOrigin}${d?.metrics_path ?? "/api/metrics"}`)}
+                >
+                  {t("agents.token.copy")}
+                </Button>
+              </div>
+            </Field>
+            <Field label={t("settings.metrics.token")} hint={t("settings.metrics.tokenHint")}>
+              <input
+                className="input mono"
+                type="password"
+                autoComplete="new-password"
+                placeholder={d?.metrics_token_set ? t("settings.telegram.saved") : t("settings.metrics.tokenPlaceholder")}
+                value={form.metrics_token}
+                onChange={(e) => set("metrics_token", e.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+      </section>
+      </div>
+
       {canWrite && FORM_CATS.has(cat) && (
         <div className="sticky bottom-0 mt-3 pt-1">
           <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
@@ -1017,7 +1069,7 @@ function AgentsSection() {
   -v netscan-agent:/var/lib/netscan-agent \\
   -e NETSCAN_AGENT_PANEL_URL=${panelUrl} \\
   -e NETSCAN_AGENT_ENROL_TOKEN=${token} \\
-  netscan-agent:latest`}
+  ghcr.io/nobrega8/netscan-agent:latest`}
               </pre>
             </div>
             <div>

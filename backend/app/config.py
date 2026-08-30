@@ -91,6 +91,12 @@ class Settings(BaseSettings):
     mqtt_base_topic: str = "netscan"
     mqtt_discovery_prefix: str = "homeassistant"
 
+    # Prometheus metrics at /api/metrics. When metrics_token is set it must be
+    # sent as a bearer header or ?token=; empty leaves the endpoint open on the
+    # LAN like the rest of the API.
+    metrics_enabled: bool = True
+    metrics_token: str = ""
+
     # Internet (WAN) monitoring
     wan_enabled: bool = True
     wan_target: str = "1.1.1.1"

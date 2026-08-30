@@ -172,6 +172,7 @@ export const api = {
     ntfy_password?: string;
     mqtt_password?: string;
     fingerbank_api_key?: string;
+    metrics_token?: string;
     alert_policy?: Record<string, AlertRule>;
   }) => req<AppSettings>("/settings", { method: "PATCH", body: JSON.stringify(data) }),
   testTelegram: () => req<{ ok: boolean }>("/settings/telegram/test", { method: "POST" }),

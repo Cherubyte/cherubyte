@@ -7,6 +7,7 @@ from . import (
     brands,
     devices,
     events,
+    metrics,
     os_logos,
     scan,
     settings,
@@ -19,12 +20,14 @@ from .deps import enforce_access
 
 api_router = APIRouter(prefix="/api")
 
-# Open: the auth flow itself, the notification-button endpoints, and the agent
-# enrol/report routes — those last two carry their own token rather than a
-# browser session. (Agent *management* routes guard themselves, see agents.py.)
+# Open: the auth flow itself, the notification-button endpoints, the agent
+# enrol/report routes, and the Prometheus scrape — the last three carry their
+# own token (or none) rather than a browser session. (Agent *management* routes
+# guard themselves, see agents.py.)
 api_router.include_router(auth.router)
 api_router.include_router(actions.router)
 api_router.include_router(agents.router)
+api_router.include_router(metrics.router)
 
 # Everything else requires a login; writes require at least an `editor`.
 _protected = APIRouter(dependencies=[Depends(enforce_access)])

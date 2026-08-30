@@ -43,6 +43,7 @@ _BOOL_KEYS = (
     "mqtt_enabled",
     "wan_enabled",
     "weekly_summary_enabled",
+    "metrics_enabled",
 )
 
 _PERSISTED = (
@@ -68,6 +69,7 @@ _PERSISTED = (
     "mqtt_base_topic",
     "mqtt_discovery_prefix",
     "wan_target",
+    "metrics_token",
 )
 
 
@@ -170,6 +172,9 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         wan_enabled=cfg.wan_enabled,
         wan_target=cfg.wan_target or "1.1.1.1",
         wan_interval_seconds=cfg.wan_interval_seconds,
+        metrics_enabled=cfg.metrics_enabled,
+        metrics_token_set=bool(cfg.metrics_token),
+        metrics_path="/api/metrics",
         weekly_summary_enabled=cfg.weekly_summary_enabled,
         weekly_summary_weekday=cfg.weekly_summary_weekday,
         weekly_summary_hour=cfg.weekly_summary_hour,
@@ -291,6 +296,13 @@ async def update_settings(
         secs = max(30, int(data["wan_interval_seconds"]))
         cfg.wan_interval_seconds = secs
         await _set(session, "wan_interval_seconds", str(secs))
+
+    if "metrics_enabled" in data and data["metrics_enabled"] is not None:
+        cfg.metrics_enabled = bool(data["metrics_enabled"])
+        await _set(session, "metrics_enabled", "true" if cfg.metrics_enabled else "false")
+    if "metrics_token" in data:
+        cfg.metrics_token = (data["metrics_token"] or "").strip()
+        await _set(session, "metrics_token", cfg.metrics_token)
 
     digest_touched = False
     if "weekly_summary_enabled" in data and data["weekly_summary_enabled"] is not None:

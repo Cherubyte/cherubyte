@@ -227,6 +227,10 @@ class SettingsOut(BaseModel):
     wan_enabled: bool = True
     wan_target: str = "1.1.1.1"
     wan_interval_seconds: int = 60
+    # metrics
+    metrics_enabled: bool = True
+    metrics_token_set: bool = False
+    metrics_path: str = "/api/metrics"
     # weekly digest
     weekly_summary_enabled: bool = False
     weekly_summary_weekday: int = 0
@@ -265,6 +269,8 @@ class SettingsIn(BaseModel):
     wan_enabled: bool | None = None
     wan_target: str | None = None
     wan_interval_seconds: int | None = None
+    metrics_enabled: bool | None = None
+    metrics_token: str | None = None
     weekly_summary_enabled: bool | None = None
     weekly_summary_weekday: int | None = None
     weekly_summary_hour: int | None = None
