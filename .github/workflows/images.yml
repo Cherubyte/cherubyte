@@ -1,0 +1,98 @@
+name: Images
+
+# Builds the two images, and publishes them on a release.
+#
+# Until they are published, every install instruction in the README quietly
+# assumes a local `docker build` — so a reader following it gets "image not
+# found" at the last step. This is what makes the one-line install true.
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile.*"
+      - "agent/**"
+      - "backend/**"
+      - "frontend/**"
+      - "protocol/**"
+      - ".github/workflows/images.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: netscan-agent
+            dockerfile: Dockerfile.agent
+          - image: netscan-panel
+            dockerfile: Dockerfile.panel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        # arm64 is the point: the target machine is usually a Raspberry Pi.
+        if: github.event_name == 'release'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the registry
+        if: github.event_name == 'release'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+
+      - name: Build${{ github.event_name == 'release' && ' and publish' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          # On a pull request this only builds, for one architecture: the point
+          # there is to catch a Dockerfile that no longer builds, and emulating
+          # arm64 to learn that costs about twenty minutes.
+          platforms: ${{ github.event_name == 'release' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          push: ${{ github.event_name == 'release' }}
+          load: ${{ github.event_name != 'release' }}
+          tags: ${{ steps.meta.outputs.tags || 'netscan-ci:test' }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+      - name: The image actually starts
+        # A build that succeeds and an image that runs are different claims, and
+        # only the panel can be checked without a network to scan.
+        if: github.event_name != 'release' && matrix.image == 'netscan-panel'
+        run: |
+          docker run -d --name check -p 1001:1001 netscan-ci:test
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:1001/api/health >/dev/null; then
+              echo "panel answered its health check"
+              docker rm -f check >/dev/null
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "panel never answered; logs follow" >&2
+          docker logs check >&2
+          exit 1
