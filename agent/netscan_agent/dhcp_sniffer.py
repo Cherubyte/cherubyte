@@ -1,13 +1,16 @@
-"""Passive DHCP fingerprinting.
+"""Passive DHCP sniffing.
 
-Runs a background sniffer for the life of the service, capturing DHCP
-DISCOVER/REQUEST packets (broadcast, so no promiscuous mode needed) and keeping
-the latest fingerprint per MAC:
+Runs a background sniffer for the life of the service. Two things come out of it:
 
-  * option 55  -> Parameter Request List  (the actual "DHCP fingerprint")
-  * option 60  -> Vendor Class Identifier
-  * option 12  -> hostname the client asked for
+  * per client MAC, a fingerprint from its DISCOVER/REQUEST:
+      option 55 -> Parameter Request List (the "DHCP fingerprint")
+      option 60 -> Vendor Class Identifier
+      option 12 -> hostname the client asked for
+  * per server IP, the fact that something answered with an OFFER/ACK — so the
+    panel can notice a DHCP server that is not the one it expects (a second
+    router handed out on the LAN by mistake, or not by mistake).
 
+Both directions are UDP 67/68 broadcast, so no promiscuous mode is needed.
 Needs CAP_NET_RAW (same as the ARP scan).
 """
 
@@ -30,7 +33,20 @@ class DhcpFingerprint:
     last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+@dataclass
+class DhcpServer:
+    ip: str
+    mac: str | None = None
+    last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+_MSG_TYPES = {
+    "discover": 1, "offer": 2, "request": 3, "decline": 4,
+    "ack": 5, "nak": 6, "release": 7, "inform": 8,
+}
+
 _prints: dict[str, DhcpFingerprint] = {}
+_servers: dict[str, DhcpServer] = {}
 _sniffer = None
 _lock = threading.Lock()
 
@@ -41,6 +57,10 @@ def get(mac: str) -> DhcpFingerprint | None:
 
 def all_fingerprints() -> dict[str, DhcpFingerprint]:
     return dict(_prints)
+
+
+def all_servers() -> dict[str, DhcpServer]:
+    return dict(_servers)
 
 
 def _handle(pkt) -> None:
@@ -56,6 +76,27 @@ def _handle(pkt) -> None:
                 opts[opt[0]] = opt[1]
 
         msg_type = opts.get("message-type")
+        if isinstance(msg_type, str):  # scapy sometimes hands back the name
+            msg_type = _MSG_TYPES.get(msg_type)
+
+        # OFFER (2) / ACK (5) come *from* a DHCP server. Record which one.
+        if msg_type in (2, 5):
+            server_ip = opts.get("server_id")
+            if isinstance(server_ip, bytes):
+                server_ip = server_ip.decode("utf-8", "ignore")
+            if not server_ip:
+                try:
+                    from scapy.all import IP
+
+                    server_ip = pkt[IP].src if IP in pkt else None
+                except Exception:  # noqa: BLE001
+                    server_ip = None
+            if server_ip:
+                with _lock:
+                    _servers[server_ip] = DhcpServer(ip=server_ip, mac=mac)
+                logger.debug("DHCP server %s (%s) answered", server_ip, mac)
+            return
+
         if msg_type not in (1, 3):  # DISCOVER / REQUEST
             return
 

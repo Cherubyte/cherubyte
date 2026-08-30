@@ -253,6 +253,7 @@ export interface AppSettings {
   quiet_hours_start: string;
   quiet_hours_end: string;
   public_base_url: string;
+  dhcp_allowlist: string;
   notification_actions_ready: boolean;
   mqtt_enabled: boolean;
   mqtt_host: string;

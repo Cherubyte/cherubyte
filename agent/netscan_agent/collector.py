@@ -9,7 +9,12 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from netscan_protocol import AgentReport, HostObservation, WanObservation
+from netscan_protocol import (
+    AgentReport,
+    DhcpServerObservation,
+    HostObservation,
+    WanObservation,
+)
 
 from . import dhcp_sniffer, wan
 from .config import settings
@@ -81,6 +86,10 @@ async def collect() -> AgentReport:
         subnets=local_subnets(),
         hosts=[to_observation(h) for h in hosts],
         wan=wan_samples,
+        dhcp_servers=[
+            DhcpServerObservation(ip=s.ip, mac=s.mac, last_seen=s.last_seen)
+            for s in dhcp_sniffer.all_servers().values()
+        ],
         dhcp_fingerprints=len(dhcp_sniffer.all_fingerprints()),
         healthy=healthy,
         health_port=settings.health_port,

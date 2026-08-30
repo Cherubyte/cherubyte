@@ -35,6 +35,7 @@ KINDS: tuple[AlertKind, ...] = (
     AlertKind("device_offline", "Dispositivo conhecido saiu", default_on=False),
     AlertKind("port_change", "Portas de um dispositivo mudaram"),
     AlertKind("arp_anomaly", "Anomalia na camada ARP", urgent=True),
+    AlertKind("rogue_dhcp", "Servidor DHCP não autorizado", urgent=True),
     AlertKind("wan_down", "Internet em baixo", urgent=True),
     AlertKind("wan_up", "Internet recuperou"),
     AlertKind("scan_degraded", "Scan não encontrou nada", urgent=True),

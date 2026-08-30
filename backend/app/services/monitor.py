@@ -608,11 +608,60 @@ def _approval_actions(device_id: int) -> list[dict]:
 _gateway_macs: dict[str, str] = {}
 # Last state pushed to MQTT, so a cycle only publishes what actually changed.
 _mqtt_last: dict[str, str] = {}
+# DHCP servers already reported, so an unexpected one alerts once, not per cycle.
+_known_dhcp: set[str] = set()
 
 
 def reset_watch_state() -> None:
     _gateway_macs.clear()
     _mqtt_last.clear()
+    _known_dhcp.clear()
+
+
+def _dhcp_allowlist() -> set[str]:
+    raw = (settings.dhcp_allowlist or "").replace(";", ",").replace(" ", ",")
+    return {p.strip().lower() for p in raw.split(",") if p.strip()}
+
+
+async def _check_dhcp_servers(servers, gateways: set[str]) -> None:
+    """Flag a DHCP server that is neither the gateway nor on the allowlist.
+
+    A second DHCP server on a LAN hands out its own gateway and DNS to whichever
+    client races to it first — a misconfigured spare router, or an attacker. The
+    passive sniffer sees the OFFER/ACK; the panel decides it is unexpected.
+    """
+    allow = _dhcp_allowlist()
+    for s in servers:
+        ip = (s.ip or "").strip()
+        if not ip or ip in _known_dhcp:
+            continue
+        _known_dhcp.add(ip)
+        mac = (s.mac or "").lower()
+        if ip in gateways or ip.lower() in allow or (mac and mac in allow):
+            continue
+        logger.warning("unexpected DHCP server %s (%s)", ip, mac or "?")
+        await log_event_standalone(
+            f"Servidor DHCP não autorizado a responder na rede: {ip}"
+            + (f" ({mac})" if mac else ""),
+            level=EventLevel.alert,
+            category="security",
+        )
+        _publish("rogue_dhcp", {"ip": ip, "mac": mac or None})
+        await notify.broadcast(
+            "rogue_dhcp",
+            "Servidor DHCP não autorizado",
+            [
+                f"IP: {ip}",
+                f"MAC: {mac or '—'}",
+                "",
+                "Não é o gateway conhecido nem está na lista de permitidos.",
+                "Um segundo servidor DHCP entrega configuração de rede a quem "
+                "responder primeiro — pode ser um router a mais ou um ataque.",
+            ],
+            emoji="🛑",
+            tags=["rotating_light"],
+            prio=5,
+        )
 
 
 async def _check_gateway_mac(
@@ -743,6 +792,7 @@ async def ingest_report(report: AgentReport, agent_name: str = "agent") -> dict:
     }
 
     await _check_gateway_mac(report.hosts, gateways)
+    await _check_dhcp_servers(report.dhcp_servers, gateways)
 
     # Buffer the SSE events raised during reconciliation and let them out only
     # once the block exits — i.e. after the commit below — so a client that

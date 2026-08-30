@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
+    # Comma-separated IPs and/or MACs of DHCP servers that are meant to be on
+    # the LAN. The gateway is always allowed; anything else answering DHCP that
+    # is not listed here raises a `rogue_dhcp` alert.
+    dhcp_allowlist: str = ""
+
     # Alert policy (which events notify, on which channel) as JSON; empty means
     # the defaults in services/alerts.py. Quiet hours are local, HH:MM; equal
     # values disable them. Alerts marked urgent ignore quiet hours.
