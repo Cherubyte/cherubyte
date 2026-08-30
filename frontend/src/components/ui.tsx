@@ -93,9 +93,9 @@ export function Readout({
   const color =
     tone === "signal" ? "text-signal" : tone === "alert" ? "text-alert" : "text-fg";
   return (
-    <div className={clsx("flex flex-col gap-1", className)}>
+    <div className={clsx("flex flex-col gap-1.5", className)}>
       <div className="flex items-baseline gap-2">
-        <span className={clsx("font-display-lt leading-[0.9] tnum", px, color)}>{value}</span>
+        <span className={clsx("font-display-lt leading-[0.8] tnum", px, color)}>{value}</span>
         {unit && <span className="mono text-[12px] text-fg-3">{unit}</span>}
       </div>
       {caption != null && <span className="key">{caption}</span>}
@@ -383,11 +383,15 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-edge-2 bg-surface px-6 py-14 text-center">
-      {icon && <span className="text-fg-3">{icon}</span>}
+    <div className="flex flex-col items-center justify-center gap-2.5 border border-edge bg-surface-2 px-6 py-16 text-center">
+      {icon ? (
+        <span className="text-fg-3">{icon}</span>
+      ) : (
+        <span className="mb-0.5 h-2.5 w-2.5 shrink-0 border border-edge-2" />
+      )}
       <p className="font-display text-[15px] tracking-tight text-fg">{title}</p>
       {description && (
-        <p className="max-w-xs text-xs leading-relaxed text-fg-3">{description}</p>
+        <p className="mono max-w-sm text-[11px] leading-relaxed text-fg-2">{description}</p>
       )}
       {action && <div className="mt-1">{action}</div>}
     </div>
