@@ -212,6 +212,7 @@ class SettingsOut(BaseModel):
     alert_policy: dict[str, dict] = {}
     quiet_hours_start: str = ""
     quiet_hours_end: str = ""
+    dhcp_allowlist: str = ""
     alert_kinds: list[dict] = []
     public_base_url: str = ""
     notification_actions_ready: bool = False
@@ -259,6 +260,7 @@ class SettingsIn(BaseModel):
     quiet_hours_start: str | None = None
     quiet_hours_end: str | None = None
     public_base_url: str | None = None
+    dhcp_allowlist: str | None = None
     mqtt_enabled: bool | None = None
     mqtt_host: str | None = None
     mqtt_port: int | None = None

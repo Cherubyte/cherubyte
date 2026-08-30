@@ -73,6 +73,7 @@ _PERSISTED = (
     "quiet_hours_start",
     "quiet_hours_end",
     "public_base_url",
+    "dhcp_allowlist",
     "action_secret",
     "mqtt_host",
     "mqtt_username",
@@ -168,6 +169,7 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         alert_policy=alerts.effective_policy(),
         quiet_hours_start=cfg.quiet_hours_start or "",
         quiet_hours_end=cfg.quiet_hours_end or "",
+        dhcp_allowlist=cfg.dhcp_allowlist or "",
         alert_kinds=[
             {"key": k.key, "label": k.label, "urgent": k.urgent} for k in alerts.KINDS
         ],
@@ -266,7 +268,12 @@ async def update_settings(
 
         cfg.alert_policy = _json.dumps(data["alert_policy"])
         await _set(session, "alert_policy", cfg.alert_policy)
-    for key in ("quiet_hours_start", "quiet_hours_end", "public_base_url"):
+    for key in (
+        "quiet_hours_start",
+        "quiet_hours_end",
+        "public_base_url",
+        "dhcp_allowlist",
+    ):
         if key in data:
             value = (data[key] or "").strip()
             setattr(cfg, key, value)

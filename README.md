@@ -108,8 +108,10 @@ If you'd rather own the whole thing, run NetScan.
   and a sparkline on the dashboard. Your public IP is shown too, redacted until
   you hover it, so a screenshot doesn't give it away.
 - **Configurable alerts** — ARP anomalies (the gateway's MAC changing, an IP
-  hopping between devices), a per-device open-port diary (what opened or closed),
-  merge suggestions for phones that rotate their MAC, and a weekly digest.
+  hopping between devices), a **rogue DHCP server** answering on the LAN (the
+  passive sniffer sees the OFFER; anything but the gateway or an allowlisted
+  server alerts), a per-device open-port diary (what opened or closed), merge
+  suggestions for phones that rotate their MAC, and a weekly digest.
 - **Statistics** — new devices per day, breakdown by type, by brand, by OS, with
   logos you can assign.
 - **Multiple subnets** — scan several CIDRs; each gets its own tab.

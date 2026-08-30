@@ -205,6 +205,7 @@ export function Settings() {
     retention_days: 90,
     telegram_enabled: false,
     public_base_url: "",
+    dhcp_allowlist: "",
     quiet_hours_start: "",
     quiet_hours_end: "",
     mqtt_enabled: false,
@@ -257,6 +258,7 @@ export function Settings() {
         retention_days: settings.data.retention_days,
         telegram_enabled: settings.data.telegram_enabled,
         public_base_url: settings.data.public_base_url,
+        dhcp_allowlist: settings.data.dhcp_allowlist,
         quiet_hours_start: settings.data.quiet_hours_start,
         quiet_hours_end: settings.data.quiet_hours_end,
         mqtt_enabled: settings.data.mqtt_enabled,
@@ -298,6 +300,7 @@ export function Settings() {
         quiet_hours_start: form.quiet_hours_start,
         quiet_hours_end: form.quiet_hours_end,
         public_base_url: form.public_base_url,
+        dhcp_allowlist: form.dhcp_allowlist,
         mqtt_enabled: form.mqtt_enabled,
         mqtt_host: form.mqtt_host,
         mqtt_port: form.mqtt_port,
@@ -737,6 +740,18 @@ export function Settings() {
                 placeholder="http://192.168.1.9:1001"
                 value={form.public_base_url}
                 onChange={(e) => set("public_base_url", e.target.value)}
+              />
+            </Field>
+            <Field
+              label={t("settings.alerts.dhcpAllow")}
+              hint={t("settings.alerts.dhcpAllowHint")}
+              className="sm:col-span-3"
+            >
+              <input
+                className="input mono"
+                placeholder="192.168.1.1, 192.168.1.2"
+                value={form.dhcp_allowlist}
+                onChange={(e) => set("dhcp_allowlist", e.target.value)}
               />
             </Field>
           </div>

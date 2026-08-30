@@ -215,3 +215,17 @@ Archive members are checked before extraction — regular files only, relative
 paths only, no `..` — because `tarfile.extractall` without `filter="data"`
 (Python 3.12+, and the CI floor is 3.11) will happily write outside the target
 directory, and this one runs with the service's privileges.
+
+## Protocol v2 is a lockstep bump, not a negotiated floor
+
+Adding `dhcp_servers` to the report is backward-compatible on paper — an old
+panel would ignore the field, an old agent would omit it. It is still a version
+bump the panel enforces exactly (`report.protocol_version != PROTOCOL_VERSION`
+→ 409), because the two images ship from one repo and one release: there is no
+supported configuration where a v1 agent talks to a v2 panel, so "tolerate the
+old shape" is untested code guarding a state that cannot occur. A hard refuse is
+visible in both logs; a silent partial read is visible in neither.
+
+If agent and panel ever ship on separate cadences, this is the decision to
+revisit — accept `<= PROTOCOL_VERSION` and lean on the fields all being
+optional.

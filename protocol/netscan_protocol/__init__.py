@@ -18,9 +18,14 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 #: Bumped when a change is not backward compatible. The panel refuses a report
-#: whose major version it does not implement, rather than storing a partial
-#: reading of it — a rejected report is visible, a half-parsed one is not.
-PROTOCOL_VERSION = 1
+#: whose version it does not implement, rather than storing a partial reading of
+#: it — a rejected report is visible, a half-parsed one is not. The agent and
+#: panel ship from one repo and upgrade together, so this is an exact match, not
+#: a floor.
+#:
+#: v2: adds `AgentReport.dhcp_servers` — the DHCP servers the passive sniffer
+#:     saw answering on the LAN, so the panel can flag an unexpected one.
+PROTOCOL_VERSION = 2
 
 __all__ = [
     "PROTOCOL_VERSION",
@@ -31,6 +36,7 @@ __all__ = [
     "EnrolResponse",
     "HostObservation",
     "WanObservation",
+    "DhcpServerObservation",
 ]
 
 
@@ -64,6 +70,18 @@ class HostObservation(BaseModel):
     dhcp_hostname: str | None = None
 
 
+class DhcpServerObservation(BaseModel):
+    """A DHCP server the agent's passive sniffer saw answering on the LAN.
+
+    An observation, not a verdict: whether a given server is meant to be there
+    is the panel's call (it knows the gateway and the operator's allowlist).
+    """
+
+    ip: str
+    mac: str | None = None
+    last_seen: datetime | None = None
+
+
 class WanObservation(BaseModel):
     """One internet reachability probe."""
 
@@ -88,6 +106,9 @@ class AgentReport(BaseModel):
     subnets: list[str] = Field(default_factory=list)
     hosts: list[HostObservation] = Field(default_factory=list)
     wan: list[WanObservation] = Field(default_factory=list)
+    # DHCP servers seen answering on the LAN (from the passive sniffer). The
+    # panel flags any that is not the gateway or on the operator's allowlist.
+    dhcp_servers: list[DhcpServerObservation] = Field(default_factory=list)
     # DHCP fingerprints the agent's passive sniffer has collected, by MAC.
     dhcp_fingerprints: int = 0
     # False when the sweep found nothing at all. A healthy sweep always sees at
