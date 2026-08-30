@@ -1,10 +1,16 @@
 name: Images
 
-# Builds the two images, and publishes them on a release.
+# Builds the two images; publishes them to GHCR.
 #
-# Until they are published, every install instruction in the README quietly
-# assumes a local `docker build` — so a reader following it gets "image not
-# found" at the last step. This is what makes the one-line install true.
+#   pull request      ->  build only, one arch, and check the panel actually starts
+#   release           ->  build + publish  :latest  :X.Y  :X.Y.Z  :sha-<commit>
+#                         for linux/amd64 + linux/arm64
+#   workflow_dispatch ->  same as a release but tagged only :edge :sha-<commit>,
+#                         for a pre-release build to test against
+#
+# Publishing on a release is what makes the README's one-line `docker run` true —
+# without it a reader following the instructions hits "image not found" at the
+# last step.
 
 on:
   pull_request:
@@ -21,6 +27,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  # A release or a manual run publishes; a pull request only builds.
+  PUBLISH: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
 
 jobs:
   build:
@@ -40,13 +48,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-qemu-action@v3
-        # arm64 is the point: the target machine is usually a Raspberry Pi.
-        if: github.event_name == 'release'
+        # arm64 is the point: the target machine is usually a Raspberry Pi. Only
+        # emulate it when the result is actually going to be pushed — building
+        # arm64 under QEMU just to throw it away costs about twenty minutes.
+        if: env.PUBLISH == 'true'
 
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to the registry
-        if: github.event_name == 'release'
+        if: env.PUBLISH == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -62,18 +72,19 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=sha,enable=${{ env.PUBLISH == 'true' }}
 
-      - name: Build${{ github.event_name == 'release' && ' and publish' || '' }}
+      - name: Build and publish
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          # On a pull request this only builds, for one architecture: the point
-          # there is to catch a Dockerfile that no longer builds, and emulating
-          # arm64 to learn that costs about twenty minutes.
-          platforms: ${{ github.event_name == 'release' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
-          push: ${{ github.event_name == 'release' }}
-          load: ${{ github.event_name != 'release' }}
+          # Multi-arch only when publishing. On a pull request this builds one
+          # arch: the point there is to catch a Dockerfile that no longer builds.
+          platforms: ${{ env.PUBLISH == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          push: ${{ env.PUBLISH == 'true' }}
+          load: ${{ env.PUBLISH != 'true' }}
           tags: ${{ steps.meta.outputs.tags || 'netscan-ci:test' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
@@ -81,8 +92,9 @@ jobs:
 
       - name: The image actually starts
         # A build that succeeds and an image that runs are different claims, and
-        # only the panel can be checked without a network to scan.
-        if: github.event_name != 'release' && matrix.image == 'netscan-panel'
+        # only the panel can be checked without a network to scan. Runs on pull
+        # requests, where the image is loaded locally rather than pushed.
+        if: env.PUBLISH != 'true' && matrix.image == 'netscan-panel'
         run: |
           docker run -d --name check -p 1001:1001 netscan-ci:test
           for i in $(seq 1 20); do
