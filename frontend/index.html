@@ -4,14 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#0a0b0d" />
+    <meta name="theme-color" content="#131110" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230a0b0d'/%3E%3Crect x='6' y='6' width='9' height='9' fill='%23ff5a1f'/%3E%3Crect x='17' y='6' width='9' height='9' fill='%23303640'/%3E%3Crect x='6' y='17' width='9' height='9' fill='%23303640'/%3E%3Crect x='17' y='17' width='9' height='9' fill='%23303640'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23131110'/%3E%3Ccircle cx='11' cy='11' r='4.5' fill='%23f5a042'/%3E%3Ccircle cx='21' cy='11' r='3' fill='%232e2a26'/%3E%3Ccircle cx='11' cy='21' r='3' fill='%232e2a26'/%3E%3Ccircle cx='21' cy='21' r='3' fill='%232e2a26'/%3E%3C/svg%3E"
     />
     <title>NetScan</title>
   </head>
   <body>
+    <!--
+      DIRECTION — "INSTRUMENT" (supersedes v6 "STATION")
+      THESIS: the panel is a precision instrument, not an industrial control room.
+        Refuses the cold blue-grey dashboard and the flat hard-edged block.
+      OWN-WORLD: warm graphite (dark) / warm porcelain (light), never blue. One
+        tungsten-amber signal that reads as a lit filament (alive / now / selection).
+        Machined depth — a core seated in a tray, warm diffused shadows, a hairline
+        top light. Clash Display for headings + the big readouts, Hanken Grotesk UI,
+        Spline Sans Mono data. ~10px radii. A faint dot-grid ground = the network as
+        a field of nodes; the status mark is a lit node with a concentric ring.
+      STORY: an operator reads state at a glance and drills into a host; the chrome
+        recedes, the data and the amber carry meaning.
+      FIRST VIEWPORT: left rail (monogram, nav, Sweep). Top strip of vitals. The
+        dashboard opens on one instrument cluster — online/total, present, new,
+        internet — then the host register as a single tray.
+      FORM: operator dashboard; signature = the seated-core enclosure + the amber
+        filament sweep during a scan. Motion: spring (cubic-bezier .32,.72,0,1),
+        one route-level fade-up, press-scale on buttons.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the
+        finish review, the verdict, DESIGN.md, and every shipping raster carrying
+        its provenance.
+    -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

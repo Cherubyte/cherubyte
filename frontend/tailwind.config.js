@@ -6,7 +6,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── STATION tokens ──────────────────────────────────────────
+        // ── INSTRUMENT tokens ───────────────────────────────────────
         bg: "rgb(var(--bg) / <alpha-value>)",
         surface: "rgb(var(--surface) / <alpha-value>)",
         "surface-2": "rgb(var(--surface-2) / <alpha-value>)",
@@ -23,18 +23,21 @@ export default {
         "alert-fg": "rgb(var(--alert-fg) / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["Geist", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
-        display: ["Space Grotesk", "Geist", "sans-serif"],
-        mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+        sans: ["Hanken Grotesk", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        display: ["Clash Display", "Hanken Grotesk", "sans-serif"],
+        mono: ["Spline Sans Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       borderColor: {
         DEFAULT: "rgb(var(--edge) / <alpha-value>)",
       },
       borderRadius: {
-        none: "0", sm: "3px", DEFAULT: "3px", md: "3px", lg: "4px", xl: "6px", "2xl": "8px", full: "9999px",
+        none: "0", sm: "5px", DEFAULT: "7px", md: "8px", lg: "10px", xl: "12px", "2xl": "16px", full: "9999px",
       },
       boxShadow: {
-        none: "none", e1: "none", e2: "none", e3: "none",
+        none: "none",
+        e1: "var(--e1)",
+        e2: "var(--e2)",
+        e3: "var(--e3)",
       },
       fontSize: {
         "2xs": ["10px", "1.3"],
@@ -43,19 +46,20 @@ export default {
         base: ["13.5px", "1.5"],
         head: ["19px", "1.15"],
         title: ["30px", "1.05"],
-        readout: ["clamp(38px, 7vw, 84px)", "0.92"],
-        mega: ["clamp(44px, 8vw, 96px)", "0.9"],
+        readout: ["clamp(40px, 7vw, 88px)", "0.9"],
+        mega: ["clamp(46px, 8vw, 100px)", "0.88"],
       },
       transitionTimingFunction: {
-        ease: "cubic-bezier(.2,0,0,1)",
+        ease: "cubic-bezier(.32,.72,0,1)",
+        "ease-out": "cubic-bezier(.16,1,.3,1)",
       },
       keyframes: {
         "leader-draw": { from: { transform: "scaleX(0)" }, to: { transform: "scaleX(1)" } },
         "underline-slide": { from: { transform: "scaleX(0)" }, to: { transform: "scaleX(1)" } },
       },
       animation: {
-        "leader-draw": "leader-draw .12s cubic-bezier(.2,0,0,1)",
-        "underline-slide": "underline-slide .18s cubic-bezier(.2,0,0,1)",
+        "leader-draw": "leader-draw .18s cubic-bezier(.16,1,.3,1)",
+        "underline-slide": "underline-slide .2s cubic-bezier(.16,1,.3,1)",
       },
     },
   },

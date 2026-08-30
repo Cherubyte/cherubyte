@@ -61,7 +61,7 @@ export function Approvals() {
 
   return (
     <div className="space-y-5">
-      <div className="border-b-2 border-edge-2 pb-5">
+      <div className="panel px-5 py-4">
         <Readout
           value={list.length}
           caption={list.length === 1 ? t("approvals.waiting.one") : t("approvals.waiting.many")}

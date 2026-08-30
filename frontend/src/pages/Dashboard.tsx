@@ -77,28 +77,36 @@ export function Dashboard() {
 
   return (
     <div className="space-y-5">
-      {/* hero board */}
-      <div className="flex flex-wrap items-end gap-x-10 gap-y-4 border-b-2 border-edge-2 pb-4">
-        <Readout
-          value={s?.online ?? "—"}
-          unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
-          caption={t("dash.onlineNow")}
-          size="xl"
-        />
-        <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" />
-        <Readout
-          value={newToday}
-          caption={t("dash.newToday")}
-          size="sm"
-          tone={newToday > 0 ? "signal" : "default"}
-        />
-        <WanReadout />
+      {/* hero cluster — an instrument readout */}
+      <div className="panel flex flex-wrap items-stretch overflow-hidden">
+        <div className="flex-[1.6] basis-56 px-5 py-4">
+          <Readout
+            value={s?.online ?? "—"}
+            unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
+            caption={t("dash.onlineNow")}
+            size="xl"
+          />
+        </div>
+        <div className="flex-1 basis-28 border-l border-edge px-5 py-4">
+          <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" />
+        </div>
+        <div className="flex-1 basis-28 border-l border-edge px-5 py-4">
+          <Readout
+            value={newToday}
+            caption={t("dash.newToday")}
+            size="sm"
+            tone={newToday > 0 ? "signal" : "default"}
+          />
+        </div>
+        <div className="flex-[1.6] basis-60 border-l border-edge px-5 py-4">
+          <WanReadout />
+        </div>
         {(s?.pending ?? 0) > 0 && (
           <Link
             to="/approvals"
-            className="group flex items-center gap-2.5 self-stretch bg-alert px-3.5 text-alert-fg transition-opacity hover:opacity-90"
+            className="group flex flex-1 basis-40 items-center gap-2.5 border-l border-edge bg-alert px-4 text-alert-fg transition-opacity hover:opacity-90"
           >
-            <span className="font-display-lt text-[22px] leading-none tnum">{s?.pending}</span>
+            <span className="font-display-lt text-[24px] leading-none tnum">{s?.pending}</span>
             <span className="key text-current">{t("dash.review")}</span>
             <ArrowRight size={12} />
           </Link>
@@ -203,7 +211,7 @@ export function Segmented({
   return (
     <div
       className={clsx(
-        "flex shrink-0 overflow-hidden rounded-[3px] border border-edge-2 text-[12px] font-medium leading-none",
+        "flex shrink-0 overflow-hidden rounded-[8px] border border-edge-2 bg-surface-2 text-[12px] font-medium leading-none shadow-e1",
         className,
       )}
     >

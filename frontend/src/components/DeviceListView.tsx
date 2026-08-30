@@ -96,7 +96,7 @@ export function DeviceListView({
   );
 
   const group = (list: Device[], dim?: boolean) => (
-    <div className="divide-y divide-edge border border-edge">
+    <div className="panel divide-y divide-edge overflow-hidden">
       {list.map((d) => {
         const flash = !dim && prevOnline.current.get(d.id) === false ? "row-flash" : "";
         prevOnline.current.set(d.id, !dim);
@@ -124,9 +124,9 @@ export function DeviceListView({
 
       {offline.length > 0 && (
         <>
-          <div className="mb-2 mt-6 flex items-center gap-3">
+          <div className="mb-2.5 mt-7 flex items-center gap-3">
             <span className="key">{t("list.offlineCount", { n: offline.length })}</span>
-            <span className="h-[2px] flex-1 bg-edge-2" />
+            <span className="h-px flex-1 bg-edge" />
           </div>
           {group(offline, true)}
         </>
@@ -179,15 +179,15 @@ function Row({
         #{String(d.id).padStart(3, "0")}
       </span>
 
-      {/* status square */}
+      {/* status mark — a lit node */}
       <span className="justify-self-center">
-        {pending ? (
-          <span className="block h-[9px] w-[9px] bg-alert" />
-        ) : d.is_online ? (
-          <span className="block h-[9px] w-[9px] bg-signal" />
-        ) : (
-          <span className="block h-[9px] w-[9px] border border-edge-2" />
-        )}
+        <span
+          className={clsx(
+            "signal-mark",
+            pending ? "signal-mark--alert" : d.is_online ? "signal-mark--on" : "signal-mark--off",
+          )}
+          style={{ ["--m" as string]: "9px" }}
+        />
       </span>
 
       {/* device image — borderless, larger */}
