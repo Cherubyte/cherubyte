@@ -256,6 +256,10 @@ export interface AppSettings {
   wan_enabled: boolean;
   wan_target: string;
   wan_interval_seconds: number;
+  metrics_enabled: boolean;
+  /** True when a scrape token is stored; the token itself is never returned. */
+  metrics_token_set: boolean;
+  metrics_path: string;
   weekly_summary_enabled: boolean;
   weekly_summary_weekday: number;
   weekly_summary_hour: number;

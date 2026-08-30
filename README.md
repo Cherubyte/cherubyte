@@ -101,6 +101,9 @@ If you'd rather own the whole thing, run NetScan.
   ntfy notification** (signed, expiring, single-device tokens).
 - **Home Assistant via MQTT** — auto-discovery turns each person into a
   `device_tracker` and each device into a connectivity sensor, no YAML needed.
+- **Prometheus metrics** — a `/api/metrics` scrape endpoint (device counts,
+  per-person presence, agent freshness, WAN state), optionally behind a token.
+  Enable in **Config ▸ Integrations**.
 - **Internet monitoring** — WAN uptime and latency, an alert on the transition,
   and a sparkline on the dashboard. Your public IP is shown too, redacted until
   you hover it, so a screenshot doesn't give it away.
