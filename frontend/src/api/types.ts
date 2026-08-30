@@ -151,6 +151,7 @@ export interface UserDeviceMini {
   is_online: boolean;
   counts_for_presence: boolean;
   last_seen: string;
+  primary_image: string | null;
 }
 
 export interface UserDetail extends User {

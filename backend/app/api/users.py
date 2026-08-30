@@ -15,6 +15,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 _DEVICE_LOAD = (
     selectinload(User.devices).selectinload(Device.macs),
     selectinload(User.devices).selectinload(Device.ips),
+    selectinload(User.devices).selectinload(Device.images),
 )
 
 

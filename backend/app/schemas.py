@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, computed_field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, computed_field
 
 from .models import AccountRole, ApprovalStatus, DeviceType, EventLevel, as_utc
 
@@ -153,6 +153,15 @@ class DeviceMini(ORMModel):
     is_online: bool
     counts_for_presence: bool = True
     last_seen: AwareUtc
+    images: list[ImageOut] = Field(default=[], exclude=True)
+
+    @computed_field
+    @property
+    def primary_image(self) -> str | None:
+        chosen = next((i for i in self.images if i.is_primary), None) or (
+            self.images[0] if self.images else None
+        )
+        return chosen.url if chosen else None
 
 
 class UserDetailOut(UserOut):
