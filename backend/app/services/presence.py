@@ -1,9 +1,8 @@
-"""Derive an hourly presence grid for a user from connection history.
+"""Reconstruct when a user was present, as a list of continuous intervals.
 
-The grid is aligned to **local calendar days**: one row per day, row 0 the
-oldest, the last row today (only filled up to the current hour). Every cell is
-one local hour. `start` is the local midnight of the oldest day (ISO, with the
-machine's UTC offset) so the client can label rows directly.
+Presence is "at least one of the user's presence-devices online". The window is
+the last `days` days; everything is returned in UTC (ISO-8601) and the client
+buckets it into its own local calendar days and renders it to the minute.
 """
 
 from __future__ import annotations
@@ -14,9 +13,6 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import ConnectionHistory, Device
-
-# the machine's local timezone — the Pi and the people on the LAN share it
-LOCAL_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 
 
 def _aware(dt: datetime) -> datetime:
@@ -43,14 +39,26 @@ def _open_at_window_start(
     return max(start_utc, _aware(device.first_seen)) if already_on else None
 
 
-async def hourly_grid(session: AsyncSession, user_id: int, days: int = 7) -> dict:
-    now = datetime.now(LOCAL_TZ)
-    today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    start_local = today_midnight - timedelta(days=days - 1)
-    start_utc = start_local.astimezone(timezone.utc)
-    n_hours = days * 24
-    # how many hours into the grid we are right now (cells past this stay empty)
-    filled_hours = int((now - start_local).total_seconds() // 3600) + 1
+def _merge(intervals: list[tuple[datetime, datetime]]) -> list[tuple[datetime, datetime]]:
+    """Union of possibly-overlapping intervals, sorted."""
+    out: list[tuple[datetime, datetime]] = []
+    for a, b in sorted(intervals):
+        if b <= a:
+            continue
+        if out and a <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], b))
+        else:
+            out.append((a, b))
+    return out
+
+
+async def presence_intervals(
+    session: AsyncSession, user_id: int, days: int = 7
+) -> dict:
+    now = datetime.now(timezone.utc)
+    # one day of slack so the client's oldest local calendar day is fully covered
+    # whatever its timezone offset
+    start_utc = now - timedelta(days=days + 1)
 
     devices = (
         await session.execute(
@@ -60,9 +68,12 @@ async def hourly_grid(session: AsyncSession, user_id: int, days: int = 7) -> dic
         )
     ).scalars().all()
 
-    cells = [0] * n_hours
     if not devices:
-        return {"start": start_local.isoformat(), "hours": n_hours, "cells": cells}
+        return {
+            "now": now.isoformat(),
+            "since": start_utc.isoformat(),
+            "intervals": [],
+        }
 
     dev_ids = [d.id for d in devices]
 
@@ -111,7 +122,6 @@ async def hourly_grid(session: AsyncSession, user_id: int, days: int = 7) -> dic
     for h in history:
         by_dev.setdefault(h.device_id, []).append(h)
 
-    now_utc = datetime.now(timezone.utc)
     intervals: list[tuple[datetime, datetime]] = []
     for d in devices:
         evs = by_dev.get(d.id, [])
@@ -124,7 +134,7 @@ async def hourly_grid(session: AsyncSession, user_id: int, days: int = 7) -> dic
                 open_at = None
         if open_at is not None:
             if d.is_online:
-                end = now_utc
+                end = now
             elif evs:
                 end = _aware(evs[-1].timestamp)
             else:
@@ -134,17 +144,11 @@ async def hourly_grid(session: AsyncSession, user_id: int, days: int = 7) -> dic
             if end > open_at:
                 intervals.append((open_at, end))
 
-    for a, b in intervals:
-        if b <= start_utc:
-            continue
-        lo = max(0, int((a - start_utc).total_seconds() // 3600))
-        hi = min(n_hours, filled_hours, int((b - start_utc).total_seconds() // 3600) + 1)
-        for i in range(lo, hi):
-            cells[i] = 1
-
+    merged = _merge(
+        [(max(a, start_utc), min(b, now)) for a, b in intervals if b > start_utc]
+    )
     return {
-        "start": start_local.isoformat(),
-        "hours": n_hours,
-        "cells": cells,
-        "filled_hours": filled_hours,
+        "now": now.isoformat(),
+        "since": start_utc.isoformat(),
+        "intervals": [[a.isoformat(), b.isoformat()] for a, b in merged],
     }
