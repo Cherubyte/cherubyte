@@ -20,6 +20,9 @@ import {
   StatsIcon,
 } from "./Glyph";
 
+/** shown in the sidebar / mobile drawer — single source is package.json */
+const APP_VERSION = `v${__APP_VERSION__}`;
+
 /* ── the routes ─────────────────────────────────────────────────────── */
 type Route = {
   to: string;
@@ -144,7 +147,7 @@ function DesktopShell() {
           <span className="font-display text-[15px] tracking-tight text-fg">NETSCAN</span>
         </div>
 
-        <nav className="flex flex-1 flex-col py-2">
+        <nav className="flex flex-1 flex-col gap-px py-3">
           {ROUTES.map((r) => {
             const on = r.to === active;
             return (
@@ -154,7 +157,7 @@ function DesktopShell() {
                 end={r.end}
                 className={clsx(
                   "relative flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
-                  on ? "text-fg" : "text-fg-2 hover:text-fg",
+                  on ? "bg-surface-2 text-fg" : "text-fg-2 hover:bg-fg/[0.03] hover:text-fg",
                 )}
               >
                 {on && <span className="absolute left-0 top-0 h-full w-[3px] bg-signal" />}
@@ -190,8 +193,9 @@ function DesktopShell() {
               </button>
             </div>
           )}
-          <div className="mt-3 text-right">
-            <span className="label">v0.1.0</span>
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="h-[3px] w-[3px] shrink-0 bg-edge-2" />
+            <span className="label">{APP_VERSION}</span>
           </div>
         </div>
       </aside>

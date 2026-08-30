@@ -37,8 +37,8 @@
   --fg-2: 165 171 181;
   --fg-3: 122 129 139;       /* mono labels · ticks · coordinates */
 
-  --edge: 46 51 59;          /* quiet divider */
-  --edge-2: 70 76 86;        /* structural rule · control border */
+  --edge: 52 58 68;          /* quiet divider */
+  --edge-2: 74 81 92;        /* structural rule · control border */
 
   --signal: 255 90 31;       /* ALIVE only: online · scanning · now · selection */
   --signal-fill-bg: 255 90 31;
@@ -93,6 +93,13 @@ body {
 ::selection { background: rgb(var(--signal) / .28); }
 
 h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
+
+/* keyboard focus — one ring, from the signal token, on anything interactive
+   that does not already draw its own (inputs handle :focus themselves) */
+:where(a, button, summary, [role="button"], [role="tab"], [tabindex]):not([tabindex="-1"]):not(.input):focus-visible {
+  outline: 2px solid rgb(var(--signal));
+  outline-offset: 2px;
+}
 
 .font-display {
   font-family: "Space Grotesk", "Geist", sans-serif;
@@ -200,6 +207,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
     background: rgb(var(--surface-2)); color: rgb(var(--fg));
     font-family: inherit; font-size: 13px;
     border: 1px solid rgb(var(--edge-2)); border-radius: 3px;
+    caret-color: rgb(var(--signal));
     transition: border-color .12s var(--ease), box-shadow .12s var(--ease);
   }
   .input::placeholder { color: rgb(var(--fg-3)); }
@@ -236,10 +244,10 @@ h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
 
 /* scan sweep — an orange bar dragged once down the board while scanning */
 @keyframes sweep-down {
-  0%   { transform: translateY(0); opacity: 0; }
+  0%   { transform: translateY(0);      opacity: 0; }
   5%   { opacity: 1; }
   95%  { opacity: 1; }
-  100% { transform: translateY(1400px); opacity: 0; }
+  100% { transform: translateY(100vh);  opacity: 0; }
 }
 .sweep-line {
   position: absolute; left: 0; right: 0; top: 0; height: 1px; z-index: 20;
@@ -247,6 +255,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
   box-shadow: 0 0 16px 1px rgb(var(--signal) / .4);
   animation: sweep-down 1.6s linear infinite;
   pointer-events: none;
+  will-change: transform;
 }
 
 .mark-breathe { /* kept as a no-op hook — online marks are static now */ }
