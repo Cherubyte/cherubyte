@@ -83,4 +83,5 @@ async def collect() -> AgentReport:
         wan=wan_samples,
         dhcp_fingerprints=len(dhcp_sniffer.all_fingerprints()),
         healthy=healthy,
+        health_port=settings.health_port,
     )

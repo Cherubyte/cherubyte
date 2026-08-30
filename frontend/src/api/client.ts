@@ -114,9 +114,12 @@ export const api = {
   scan: () =>
     req<{
       ok: boolean;
-      status: string;
+      status: "triggered" | "queued" | "stale" | "no-agents";
       agents: number;
+      triggered: number;
+      queued: number;
       last_report: string | null;
+      stale: boolean;
       detail: string;
     }>("/scan", { method: "POST" }),
 

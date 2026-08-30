@@ -64,10 +64,19 @@ export function ipInCidr(ip: string, cidr: string): boolean {
   return (a & mask) === (b & mask);
 }
 
-/** register coordinate: row 0 -> "A·001", row 26 -> "AA·027" (letter cycles) */
-export function coord(i: number): { alpha: string; index: string } {
-  const alpha = String.fromCharCode(65 + (i % 26)).repeat(Math.floor(i / 26) + 1);
-  return { alpha, index: String(i + 1).padStart(3, "0") };
+/**
+ * A host's chart reference — its position on the plotted network, not a
+ * dressed-up database id. It is the segment and host part of the primary IPv4:
+ * "192.168.1.68" -> "1·068", "10.0.4.20" -> "4·020". Sorted by address (the
+ * default), the column reads like a chart's soundings down the sheet, and two
+ * hosts on the same segment sit next to each other. No IPv4 -> "—".
+ */
+export function hostRef(ip: string | null | undefined): string {
+  const n = ip ? ipToLong(ip) : null;
+  if (n === null) return "—";
+  const seg = (n >>> 8) & 255;
+  const host = n & 255;
+  return `${seg}·${String(host).padStart(3, "0")}`;
 }
 
 /** Device types grouped for the picker — the order here is also the order the

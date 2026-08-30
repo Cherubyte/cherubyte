@@ -22,6 +22,10 @@ frontend/dist/
 .idea/
 .claude/
 
+# Design tooling (impeccable) — local working artifacts, not shipped
+.impeccable/
+PRODUCT.md
+
 # Cloudflare
 .wrangler/
 .dev.vars

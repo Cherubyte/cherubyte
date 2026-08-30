@@ -36,6 +36,9 @@ _MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("users", "is_guest", "BOOLEAN NOT NULL DEFAULT 0"),
     ("agents", "public_ip", "VARCHAR(45)"),
     ("agents", "public_ip_at", "DATETIME"),
+    ("agents", "last_ip", "VARCHAR(45)"),
+    ("agents", "health_port", "INTEGER NOT NULL DEFAULT 1002"),
+    ("agents", "scan_requested", "BOOLEAN NOT NULL DEFAULT 0"),
 )
 
 # Indexes added after the first release, applied the same way. (name, table, columns)

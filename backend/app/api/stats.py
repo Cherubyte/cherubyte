@@ -8,8 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from ..config import settings
 from ..database import get_session
-from ..models import ApprovalStatus, Brand, Device, User
+from ..models import Agent, ApprovalStatus, Brand, Device, User, utcnow
 from ..schemas import StatsOut
 from ..scheduler import last_scan
 from ..services import agents as agent_service
@@ -45,6 +46,21 @@ async def summary(session: AsyncSession = Depends(get_session)):
             User.is_guest.is_(False),
         )
     )
+    agent_rows = (
+        await session.execute(select(Agent).where(Agent.enabled.is_(True)))
+    ).scalars().all()
+    seen = [a.last_seen for a in agent_rows if a.last_seen is not None]
+    last_report = max(seen) if seen else None
+    stale_after = max(180.0, 3.0 * settings.scan_interval_seconds)
+    if last_report is None:
+        agents_stale = bool(agent_rows)
+    else:
+        ref = last_report
+        now = utcnow()
+        if ref.tzinfo is None:
+            ref = ref.replace(tzinfo=now.tzinfo)
+        agents_stale = (now - ref).total_seconds() > stale_after
+
     return StatsOut(
         total=total or 0,
         online=online or 0,
@@ -53,6 +69,9 @@ async def summary(session: AsyncSession = Depends(get_session)):
         users_present=present or 0,
         subnet=", ".join(await agent_service.known_subnets(session)),
         last_scan=last_scan(),
+        agents_configured=len(agent_rows),
+        last_report=last_report,
+        agents_stale=agents_stale,
     )
 
 

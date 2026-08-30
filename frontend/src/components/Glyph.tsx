@@ -112,3 +112,23 @@ export const StatsIcon = (p: P) => <Icon {...p} d={UI["StatsIcon"]} />;
 export function DeviceTypeIcon({ type, size = 14, className }: P & { type: DeviceType }) {
   return <Icon size={size} className={className} d={DEVICE[type] ?? DEVICE.unknown} />;
 }
+
+/** The NetScan mark — a charted position: concentric rings on a graticule
+ *  cross, one contact plotted in carmine. Drawn, not an icon-font glyph. */
+export function ChartMark({ size = 24, className }: P) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M16 2v28M2 16h28" stroke="currentColor" strokeWidth="0.75" opacity="0.4" />
+      <circle cx="16" cy="16" r="12" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="16" cy="16" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="16" cy="16" r="2.6" fill="rgb(var(--signal))" />
+    </svg>
+  );
+}

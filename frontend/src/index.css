@@ -2,89 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════════════════════ INSTRUMENT ═════════════════════════════════
-   NetScan as a precision instrument — the panel of a well-made machine,
-   not an industrial control room. Warm graphite (never blue), a tungsten-
-   amber signal that reads as a lit filament, machined depth (a core seated
-   in a tray), one display face with a point of view, spring motion.
-   Dark-first; `.light` is warm porcelain. Supersedes the v6 "STATION".
+/* ═══════════════════════════════ CHART ═══════════════════════════════════
+   NetScan as a hydrographic chart of the LAN. The network is charted water;
+   every device is a plotted contact with a symbol, a leader-tethered label
+   and a sounding. Ink on chart paper by default (ECDIS-night for dark), one
+   spot colour — chart warning carmine — held back for a real caution or the
+   live mark, a desaturated water tint under the plan. Hairline linework,
+   near-square corners, near-flat depth. Supersedes v7 "INSTRUMENT".
+   Faces: Big Shoulders (signage display) · Overpass (Highway-Gothic UI) ·
+   Overpass Mono (soundings, addresses, coordinates, timestamps).
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* ── faces ────────────────────────────────────────────────────────────── */
-/* Clash Display — display: headings, host names, the big readouts. Variable
-   wght 200–700. Fontshare Free License — see FFL-ClashDisplay.txt */
-@font-face { font-family:"Clash Display"; src:url("/fonts/ClashDisplay-Variable.woff2") format("woff2"); font-weight:200 700; font-display:swap; }
-/* Hanken Grotesk — UI / body. Variable wght 100–900. OFL — OFL-HankenGrotesk.txt */
-@font-face { font-family:"Hanken Grotesk"; src:url("/fonts/HankenGrotesk-Variable.woff2") format("woff2"); font-weight:100 900; font-display:swap; }
-/* Spline Sans Mono — the data layer: addresses, timestamps, counts. wght 300–700. OFL */
-@font-face { font-family:"Spline Sans Mono"; src:url("/fonts/SplineSansMono-Variable.woff2") format("woff2"); font-weight:300 700; font-display:swap; }
-
 /* ═══════════════════════════ tokens ═══════════════════════════════════ */
-/* :root = DARK (the reference). .light opts into warm porcelain. */
+/* :root = LIGHT (the chart sheet). .dark opts into the ECDIS night palette. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --bg: 19 17 15;            /* the room — warm near-black */
-  --surface: 30 27 24;       /* a tray · a row band */
-  --surface-2: 41 37 33;     /* input · hover · a seated core */
-  --surface-3: 54 49 44;     /* deep sunken · skeleton */
+  --paper: 244 239 228;       /* the chart sheet — warm buff */
+  --bg: 244 239 228;
+  --surface: 250 247 239;     /* a plate laid on the sheet */
+  --surface-2: 235 228 213;   /* a sunken sample cell · input · hover */
+  --surface-3: 224 216 199;   /* deep sunken · skeleton */
 
-  --fg: 238 234 228;
-  --fg-2: 174 167 156;
-  --fg-3: 130 122 112;       /* mono labels · ticks · coordinates */
+  --fg: 27 43 51;             /* chart ink */
+  --fg-2: 74 90 96;           /* secondary ink */
+  --fg-3: 125 138 141;        /* soundings · ticks · coordinates */
 
-  --edge: 46 42 38;          /* quiet divider */
-  --edge-2: 68 62 55;        /* structural rule · control border */
+  --edge: 211 205 191;        /* hairline rule */
+  --edge-2: 185 177 160;      /* structural rule · control border */
 
-  --signal: 249 168 79;      /* ALIVE: online · scanning · now · selection — lit filament */
-  --signal-fill-bg: 245 158 66;
-  --signal-fill-fg: 30 19 8;
-  --signal-wash: 249 168 79; /* low-alpha glow / trails */
+  --water: 127 168 160;       /* charted water · known contact · area tint */
+  --water-wash: 127 168 160;
 
-  --alert: 240 96 82;        /* NEEDS ACTION: alerts · leave · unreviewed · destructive */
-  --alert-fg: 28 14 12;
+  --signal: 200 16 46;        /* CAUTION / LIVE / SELECTED — chart warning carmine */
+  --signal-fill-bg: 200 16 46;
+  --signal-fill-fg: 250 247 239;
+  --signal-wash: 200 16 46;
 
-  /* machined depth — warm-tinted, real offset + blur, a hairline top light */
-  --e1: 0 1px 2px rgb(0 0 0 / .30);
-  --e2: 0 6px 20px -6px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .04);
-  --e3: 0 24px 56px -12px rgb(0 0 0 / .60), inset 0 1px 0 rgb(255 255 255 / .05);
-  --ring-focus: 0 0 0 2px rgb(var(--bg)), 0 0 0 4px rgb(var(--signal) / .9);
+  --alert: 166 13 34;         /* NEEDS ACTION — a heavier carmine, always filled + hachured */
+  --alert-fg: 250 247 239;
+
+  --grid: 27 43 51;           /* the graticule, at low alpha */
+
+  /* charts are printed flat — depth is a hairline, not a drop shadow */
+  --e1: 0 0 0 1px rgb(var(--edge) / .55);
+  --e2: 0 1px 3px rgb(30 24 14 / .10), 0 0 0 1px rgb(var(--edge) / .7);
+  --e3: 0 12px 40px -10px rgb(30 24 14 / .30), 0 0 0 1px rgb(var(--edge-2) / .9);
+  --ring-focus: 0 0 0 2px rgb(var(--surface)), 0 0 0 3.5px rgb(var(--signal) / .85);
 
   --ease: cubic-bezier(.32, .72, 0, 1);
   --ease-out: cubic-bezier(.16, 1, .3, 1);
-
-  --dot: rgb(var(--fg) / .028);   /* the network-as-field texture */
 }
 
-:root.light {
-  color-scheme: light;
+:root.dark {
+  color-scheme: dark;
 
-  --bg: 231 226 218;         /* warm grey-beige room */
-  --surface: 250 248 243;    /* porcelain */
-  --surface-2: 240 236 229;
-  --surface-3: 230 224 215;
+  --paper: 8 15 18;           /* the ECDIS night sheet */
+  --bg: 8 15 18;
+  --surface: 20 33 39;        /* a plate — held clear of the sheet */
+  --surface-2: 31 49 56;
+  --surface-3: 45 66 74;
 
-  --fg: 33 29 24;
-  --fg-2: 92 84 74;
-  --fg-3: 134 125 113;
+  --fg: 232 240 238;
+  --fg-2: 173 191 190;
+  --fg-3: 130 152 153;
 
-  --edge: 216 209 198;
-  --edge-2: 195 186 173;
+  --edge: 46 66 73;
+  --edge-2: 74 100 107;
 
-  --signal: 183 104 26;       /* darkened so it holds on porcelain for text/marks */
-  --signal-fill-bg: 214 128 38;
-  --signal-fill-fg: 255 250 243;
-  --signal-wash: 214 128 38;
+  --water: 116 168 156;
+  --water-wash: 116 168 156;
 
-  --alert: 190 46 40;
-  --alert-fg: 255 248 246;
+  --signal: 240 92 116;       /* carmine brightened to hold on the night sheet */
+  --signal-fill-bg: 224 60 88;
+  --signal-fill-fg: 8 14 16;
+  --signal-wash: 240 92 116;
 
-  --e1: 0 1px 2px rgb(60 44 24 / .10);
-  --e2: 0 6px 20px -6px rgb(60 44 24 / .16), inset 0 1px 0 rgb(255 255 255 / .55);
-  --e3: 0 24px 56px -12px rgb(60 44 24 / .22), inset 0 1px 0 rgb(255 255 255 / .6);
-  --ring-focus: 0 0 0 2px rgb(var(--surface)), 0 0 0 4px rgb(var(--signal) / .8);
+  --alert: 240 92 116;
+  --alert-fg: 8 14 16;
 
-  --dot: rgb(40 30 18 / .05);
+  --grid: 150 190 185;
+
+  --e1: 0 0 0 1px rgb(var(--edge-2) / .7);
+  --e2: 0 2px 8px rgb(0 0 0 / .45), 0 0 0 1px rgb(var(--edge-2) / .8);
+  --e3: 0 18px 50px -12px rgb(0 0 0 / .70), 0 0 0 1px rgb(var(--edge-2) / 1);
+  --ring-focus: 0 0 0 2px rgb(var(--surface)), 0 0 0 3.5px rgb(var(--signal) / .85);
 }
 
 /* ═══════════════════════════ base ════════════════════════════════════ */
@@ -93,11 +95,15 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
+  /* the graticule: a faint ruled grid, minor + major, over the chart sheet */
   background:
-    radial-gradient(var(--dot) 1px, transparent 1.4px) 0 0 / 22px 22px,
+    linear-gradient(rgb(var(--grid) / .06) 1px, transparent 1px) 0 -1px / 100% 96px,
+    linear-gradient(90deg, rgb(var(--grid) / .06) 1px, transparent 1px) -1px 0 / 96px 100%,
+    linear-gradient(rgb(var(--grid) / .03) 1px, transparent 1px) 0 -1px / 100% 24px,
+    linear-gradient(90deg, rgb(var(--grid) / .03) 1px, transparent 1px) -1px 0 / 24px 100%,
     rgb(var(--bg));
   color: rgb(var(--fg));
-  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Overpass", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 13.5px;
   font-weight: 400;
   line-height: 1.5;
@@ -105,35 +111,34 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-::selection { background: rgb(var(--signal) / .26); }
+::selection { background: rgb(var(--signal) / .22); }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
+h1, h2, h3, h4 { margin: 0; font-weight: 600; color: rgb(var(--fg)); }
 
-/* keyboard focus — one seated ring, from the signal token, on anything
-   interactive that does not draw its own (inputs handle :focus themselves) */
 :where(a, button, summary, [role="button"], [role="tab"], [tabindex]):not([tabindex="-1"]):not(.input):focus-visible {
   outline: none;
   box-shadow: var(--ring-focus);
-  border-radius: 6px;
+  border-radius: 3px;
 }
 
+/* Big Shoulders — the signage / title-block voice */
 .font-display {
-  font-family: "Clash Display", "Hanken Grotesk", sans-serif;
-  font-weight: 500;
-  letter-spacing: -0.015em;
+  font-family: "Big Shoulders", "Overpass", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.005em;
 }
 .font-display-lt {
-  font-family: "Clash Display", "Hanken Grotesk", sans-serif;
-  font-weight: 450;
-  letter-spacing: -0.02em;
+  font-family: "Big Shoulders", "Overpass", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .tnum { font-variant-numeric: tabular-nums; }
 
 .mono {
-  font-family: "Spline Sans Mono", ui-monospace, SFMono-Regular, monospace;
+  font-family: "Overpass Mono", ui-monospace, SFMono-Regular, monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -152,102 +157,103 @@ h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
 /* ═══════════════════════════ components ══════════════════════════════ */
 @layer components {
   /* ── text-label registers ─────────────────────────────────────────── */
-  /* .label — quiet caption, sentence case */
   .label {
-    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-family: "Overpass Mono", ui-monospace, monospace;
     font-size: 11px;
     font-weight: 400;
     line-height: 1.2;
     letter-spacing: 0;
     color: rgb(var(--fg-3));
   }
-  /* .key — the instrument register: strip keys, column headers */
+  /* .key — the chart-margin register: strip keys, column headers */
   .key {
-    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-family: "Overpass Mono", ui-monospace, monospace;
     font-size: 10px;
-    font-weight: 500;
+    font-weight: 600;
     line-height: 1;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.11em;
     text-transform: uppercase;
     color: rgb(var(--fg-3));
   }
   .data {
-    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-family: "Overpass Mono", ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
     font-size: 12px;
-    letter-spacing: -0.005em;
+    letter-spacing: -0.01em;
   }
 
-  /* ── panel — a tray: a warm slab, hairline edge, machined depth ────── */
+  /* ── panel — a chart plate: clean stock, hairline rule, near-flat ──── */
   .panel {
     background: rgb(var(--surface));
     border: 1px solid rgb(var(--edge));
-    border-radius: 12px;
+    border-radius: 3px;
     box-shadow: var(--e2);
   }
-  /* a core seated inside a tray — the recurring enclosure motif */
+  /* a sample cell seated in a plate — the recurring enclosure */
   .core {
     background: rgb(var(--surface-2));
     border: 1px solid rgb(var(--edge));
-    border-radius: 8px;
+    border-radius: 2px;
   }
+  /* a plate that carries a caution — one hairline of carmine along the top */
   .panel-ruled { position: relative; }
   .panel-ruled::before {
-    content: ""; position: absolute; left: 14px; right: 14px; top: 0;
-    height: 2px; background: rgb(var(--signal)); border-radius: 0 0 2px 2px;
+    content: ""; position: absolute; left: 0; right: 0; top: -1px;
+    height: 2px; background: rgb(var(--signal));
   }
-  .sunken, .inset { background: rgb(var(--surface-2)); border-radius: 8px; }
+  .sunken, .inset { background: rgb(var(--surface-2)); border-radius: 2px; }
 
   /* ── rules ─────────────────────────────────────────────────────────── */
   .rule   { border-top: 1px solid rgb(var(--edge)); }
   .rule-2 { border-top: 1px solid rgb(var(--edge-2)); }
 
-  /* ── buttons — Hanken medium, spring press, 7px ────────────────────── */
+  /* ── buttons — Overpass 500, uppercase-tracked, near-square, press ─── */
   .btn {
     --h: 34px;
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     height: var(--h); padding: 0 15px;
-    font-family: "Hanken Grotesk", sans-serif;
-    font-size: 12.5px; font-weight: 500; line-height: 1;
-    letter-spacing: -0.005em; white-space: nowrap; cursor: pointer;
-    border: 1px solid transparent; border-radius: 8px;
-    transition: background-color .16s var(--ease), border-color .16s var(--ease),
-                color .16s var(--ease), transform .16s var(--ease), box-shadow .16s var(--ease);
+    font-family: "Overpass", sans-serif;
+    font-size: 12px; font-weight: 600; line-height: 1;
+    letter-spacing: 0.03em; white-space: nowrap; cursor: pointer;
+    border: 1px solid transparent; border-radius: 2px;
+    transition: background-color .14s var(--ease), border-color .14s var(--ease),
+                color .14s var(--ease), transform .14s var(--ease), box-shadow .14s var(--ease);
     user-select: none;
   }
   .btn:disabled { opacity: .4; pointer-events: none; }
   .btn:active:not(:disabled) { transform: scale(.975); }
 
-  .btn-primary       { background: rgb(var(--signal-fill-bg)); color: rgb(var(--signal-fill-fg)); box-shadow: var(--e1), inset 0 1px 0 rgb(255 255 255 / .18); }
-  .btn-primary:hover { background: rgb(var(--signal-fill-bg) / .9); box-shadow: var(--e2), 0 0 0 3px rgb(var(--signal) / .16); }
+  /* primary = the ink stamp — carmine is reserved for caution, not chrome */
+  .btn-primary       { background: rgb(var(--fg)); color: rgb(var(--surface)); border-color: rgb(var(--fg)); }
+  .btn-primary:hover { background: rgb(var(--fg) / .86); }
 
-  .btn-secondary       { background: rgb(var(--surface-2)); color: rgb(var(--fg)); border-color: rgb(var(--edge-2)); box-shadow: var(--e1); }
-  .btn-secondary:hover { border-color: rgb(var(--fg-3)); background: rgb(var(--surface-3)); }
+  .btn-secondary       { background: rgb(var(--surface)); color: rgb(var(--fg)); border-color: rgb(var(--edge-2)); }
+  .btn-secondary:hover { border-color: rgb(var(--fg-3)); background: rgb(var(--surface-2)); }
 
   .btn-ghost       { background: transparent; color: rgb(var(--fg-2)); padding: 0 10px; }
   .btn-ghost:hover { color: rgb(var(--fg)); background: rgb(var(--fg) / .06); }
 
-  .btn-danger       { background: transparent; color: rgb(var(--alert)); border-color: rgb(var(--alert) / .45); }
-  .btn-danger:hover { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); border-color: rgb(var(--alert)); }
+  .btn-danger       { background: transparent; color: rgb(var(--signal)); border-color: rgb(var(--signal) / .5); }
+  .btn-danger:hover { background: rgb(var(--signal)); color: rgb(var(--signal-fill-fg)); border-color: rgb(var(--signal)); }
 
-  .btn-sm   { --h: 28px; padding: 0 11px; font-size: 11.5px; border-radius: 7px; }
-  .btn-lg   { --h: 40px; padding: 0 22px; font-size: 13.5px; }
+  .btn-sm   { --h: 27px; padding: 0 10px; font-size: 11px; }
+  .btn-lg   { --h: 40px; padding: 0 22px; font-size: 13px; }
   .btn-icon { padding: 0; width: var(--h); gap: 0; }
 
-  /* ── inputs — a seated core, signal focus ─────────────────────────── */
+  /* ── inputs — a sunken sample cell, carmine focus ─────────────────── */
   .input {
     display: block; width: 100%; height: 36px; padding: 0 12px;
     background: rgb(var(--surface-2)); color: rgb(var(--fg));
     font-family: inherit; font-size: 13px;
-    border: 1px solid rgb(var(--edge-2)); border-radius: 8px;
+    border: 1px solid rgb(var(--edge-2)); border-radius: 2px;
     caret-color: rgb(var(--signal));
-    box-shadow: inset 0 1px 2px rgb(0 0 0 / .12);
-    transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+    box-shadow: inset 0 1px 2px rgb(30 24 14 / .07);
+    transition: border-color .14s var(--ease), box-shadow .14s var(--ease);
   }
-  :root.light .input { box-shadow: inset 0 1px 2px rgb(60 44 24 / .07); }
+  :root.dark .input { box-shadow: inset 0 1px 2px rgb(0 0 0 / .3); }
   .input::placeholder { color: rgb(var(--fg-3)); }
-  .input:focus { outline: none; border-color: rgb(var(--signal)); box-shadow: 0 0 0 3px rgb(var(--signal) / .18); }
-  .input.mono { font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 12.5px; }
+  .input:focus { outline: none; border-color: rgb(var(--signal)); box-shadow: 0 0 0 3px rgb(var(--signal) / .16); }
+  .input.mono { font-family: "Overpass Mono", ui-monospace, monospace; font-size: 12.5px; }
   textarea.input { height: auto; min-height: 76px; padding: 9px 12px; line-height: 1.55; resize: vertical; }
   select.input {
     appearance: none; padding-right: 32px;
@@ -258,70 +264,74 @@ h1, h2, h3, h4 { margin: 0; font-weight: 500; color: rgb(var(--fg)); }
     background-size: 5px 5px; background-repeat: no-repeat;
   }
 
-  /* ── tag — a status chip ──────────────────────────────────────────── */
+  /* ── tag — a chart legend chip ────────────────────────────────────── */
   .tag {
     display: inline-flex; align-items: center; gap: 5px;
-    height: 20px; padding: 0 8px; border-radius: 6px;
-    font-family: "Spline Sans Mono", ui-monospace, monospace;
-    font-size: 10px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    height: 19px; padding: 0 7px; border-radius: 2px;
+    font-family: "Overpass Mono", ui-monospace, monospace;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
     white-space: nowrap;
   }
   .tag-signal  { background: rgb(var(--signal-fill-bg)); color: rgb(var(--signal-fill-fg)); }
   .tag-alert   { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); }
-  .tag-neutral { border: 1px solid rgb(var(--edge-2)); color: rgb(var(--fg-2)); background: rgb(var(--surface-2)); }
+  .tag-neutral { border: 1px solid rgb(var(--edge-2)); color: rgb(var(--fg-2)); background: rgb(var(--surface)); }
   .tag-ink     { border: 1px solid rgb(var(--fg-3)); color: rgb(var(--fg-2)); }
 
-  /* ── the signal mark — a lit node with a concentric ring ──────────── */
+  /* ── the contact mark — a plotted position on the chart ───────────── */
   .signal-mark {
     position: relative; display: inline-block; flex: none;
     width: var(--m, 9px); height: var(--m, 9px); border-radius: 999px;
   }
-  .signal-mark--on   { background: rgb(var(--signal)); box-shadow: 0 0 0 3px rgb(var(--signal) / .22), 0 0 10px rgb(var(--signal) / .5); }
-  .signal-mark--alert{ background: rgb(var(--alert)); box-shadow: 0 0 0 3px rgb(var(--alert) / .22); }
+  /* online: a charted contact — solid ink disc inside a water ring */
+  .signal-mark--on   { background: rgb(var(--fg)); box-shadow: 0 0 0 2.5px rgb(var(--water) / .5); }
+  /* caution: an uncharted contact — carmine, ringed ("position approximate") */
+  .signal-mark--alert{ background: rgb(var(--signal)); box-shadow: 0 0 0 2.5px rgb(var(--signal) / .3); }
+  /* offline: a reported position, not held — hollow hairline, keeps its place */
   .signal-mark--off  { background: transparent; box-shadow: inset 0 0 0 1.5px rgb(var(--fg-3)); }
 }
 
 /* ═══════════════════════════ motion ══════════════════════════════════ */
 
-/* scan — a warm filament dragged once down the board while scanning */
+/* the survey line — a single hairline dragged once down the plot per sweep */
 @keyframes sweep-down {
-  0%   { transform: translateY(0);     opacity: 0; }
-  6%   { opacity: 1; }
-  94%  { opacity: 1; }
+  0%   { transform: translateY(-4px); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
   100% { transform: translateY(100vh); opacity: 0; }
 }
 .sweep-line {
-  position: absolute; left: 0; right: 0; top: 0; height: 2px; z-index: 20;
-  background: linear-gradient(90deg, transparent, rgb(var(--signal)), transparent);
-  box-shadow: 0 0 24px 2px rgb(var(--signal) / .5);
-  animation: sweep-down 1.7s var(--ease-out) infinite;
+  position: absolute; left: 0; right: 0; top: 0; height: 1px; z-index: 20;
+  background: rgb(var(--fg));
+  border-bottom: 1px solid rgb(var(--signal) / .6);
+  animation: sweep-down 1.8s linear infinite;
   pointer-events: none; will-change: transform;
 }
 
-.mark-breathe { /* no-op hook — marks are static */ }
+.mark-breathe { /* no-op — plotted marks are static */ }
 
-/* row state change — a single warm wash that settles */
+/* a new contact drops onto the sheet — one hard chart-negative flash, then still */
 @keyframes row-flash {
-  0%   { background-color: rgb(var(--signal-wash) / .14); }
+  0%   { background-color: rgb(var(--fg)); }
+  10%  { background-color: rgb(var(--fg)); }
   100% { background-color: transparent; }
 }
-.row-flash { animation: row-flash 1.1s var(--ease) 1; }
+.row-flash { animation: row-flash .9s var(--ease) 1; }
 
-/* skeleton — a slow warm sweep */
+/* skeleton — a slow survey sweep */
 @keyframes skel-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-.skeleton { position: relative; overflow: hidden; background: rgb(var(--surface-3)); border-radius: 6px; }
+.skeleton { position: relative; overflow: hidden; background: rgb(var(--surface-3)); border-radius: 2px; }
 .skeleton::after {
   content: ""; position: absolute; inset: 0; transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgb(var(--fg) / .05), transparent);
+  background: linear-gradient(90deg, transparent, rgb(var(--fg) / .06), transparent);
   animation: skel-sweep 1.8s linear infinite;
 }
 
-/* page enter — a gentle heavy fade-up, once per route */
+/* page enter — a quiet, crisp fade-up, once per route (no blur; charts are sharp) */
 @keyframes view-in {
-  from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
-  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.view-in { animation: view-in .34s var(--ease-out) both; }
+.view-in { animation: view-in .26s var(--ease-out) both; }
 
 @keyframes toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }

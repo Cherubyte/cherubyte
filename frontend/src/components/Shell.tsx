@@ -10,6 +10,7 @@ import { useNow } from "../hooks/useNow";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
 import { hms } from "../lib/format";
+import { ChartMark } from "./Glyph";
 import { useT, type MessageKey } from "../i18n";
 import {
   HostsIcon,
@@ -20,24 +21,25 @@ import {
   StatsIcon,
 } from "./Glyph";
 
-/** shown in the sidebar / mobile drawer — single source is package.json */
+/** shown in the margin / mobile drawer — single source is package.json */
 const APP_VERSION = `v${__APP_VERSION__}`;
 
-/* ── the routes ─────────────────────────────────────────────────────── */
+/* ── the routes — each is a sheet in the chart folio ────────────────── */
 type Route = {
   to: string;
+  code: string;
   labelKey: MessageKey;
   titleKey: MessageKey;
   end?: boolean;
   Icon: (p: { size?: number; className?: string }) => JSX.Element;
 };
 const ROUTES: Route[] = [
-  { to: "/", labelKey: "nav.hosts", titleKey: "title.hosts", end: true, Icon: HostsIcon },
-  { to: "/approvals", labelKey: "nav.review", titleKey: "title.review", Icon: ReviewIcon },
-  { to: "/users", labelKey: "nav.people", titleKey: "title.people", Icon: PeopleIcon },
-  { to: "/distribution", labelKey: "nav.stats", titleKey: "title.stats", Icon: StatsIcon },
-  { to: "/events", labelKey: "nav.log", titleKey: "title.log", Icon: LogIcon },
-  { to: "/settings", labelKey: "nav.config", titleKey: "title.config", Icon: ConfigIcon },
+  { to: "/", code: "01", labelKey: "nav.hosts", titleKey: "title.hosts", end: true, Icon: HostsIcon },
+  { to: "/approvals", code: "02", labelKey: "nav.review", titleKey: "title.review", Icon: ReviewIcon },
+  { to: "/users", code: "03", labelKey: "nav.people", titleKey: "title.people", Icon: PeopleIcon },
+  { to: "/distribution", code: "04", labelKey: "nav.stats", titleKey: "title.stats", Icon: StatsIcon },
+  { to: "/events", code: "05", labelKey: "nav.log", titleKey: "title.log", Icon: LogIcon },
+  { to: "/settings", code: "06", labelKey: "nav.config", titleKey: "title.config", Icon: ConfigIcon },
 ];
 
 function titleKeyOf(pathname: string): MessageKey {
@@ -59,27 +61,39 @@ function useScan() {
   const toast = useToast();
   const t = useT();
   const [running, setRunning] = useState(false);
+  const refresh = async () => {
+    await qc.invalidateQueries({ queryKey: ["devices"] });
+    await qc.invalidateQueries({ queryKey: ["stats"] });
+  };
   const mut = useMutation({
     mutationFn: api.scan,
     onMutate: () => setRunning(true),
     onSuccess: (data) => {
-      // The panel can't start a sweep — an agent does, on its own cadence. With
-      // no agent enrolled, clicking Sweep would do nothing at all; say so.
-      if (data.agents === 0) {
+      // The panel can't sweep a network itself — it nudges the agents that can,
+      // and the response says what actually happened.
+      if (data.status === "no-agents") {
         setRunning(false);
-        toast({
-          tone: "error",
-          title: t("scan.noAgents"),
-          desc: t("scan.noAgentsDesc"),
-        });
+        toast({ tone: "error", title: t("scan.noAgents"), desc: t("scan.noAgentsDesc") });
         return;
       }
+      if (data.status === "stale") {
+        setRunning(false);
+        toast({ tone: "error", title: t("scan.staleTitle"), desc: t("scan.staleDesc") });
+        void refresh();
+        return;
+      }
+      if (data.status === "queued") {
+        setRunning(false);
+        toast({ tone: "info", title: t("scan.queued") });
+        void refresh();
+        return;
+      }
+      // triggered: give the agent a moment to sweep and report back
+      toast({ tone: "success", title: t("scan.triggered", { n: data.triggered }) });
       setTimeout(async () => {
         setRunning(false);
-        await qc.invalidateQueries({ queryKey: ["devices"] });
-        await qc.invalidateQueries({ queryKey: ["stats"] });
-        toast({ tone: "success", title: t("toast.scanComplete") });
-      }, 2600);
+        await refresh();
+      }, 3200);
     },
     onError: () => {
       setRunning(false);
@@ -118,6 +132,23 @@ function useLogout() {
   });
 }
 
+/* ── the chart's title block — mark + wordmark ─────────────────────── */
+function TitleBlock({ compact }: { compact?: boolean }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      <ChartMark size={compact ? 20 : 24} />
+      <span
+        className={clsx(
+          "font-display leading-none tracking-[0.06em] text-fg",
+          compact ? "text-[16px]" : "text-[18px]",
+        )}
+      >
+        NETSCAN
+      </span>
+    </span>
+  );
+}
+
 /* ═══════════════════════════ Shell ═══════════════════════════════════ */
 export function Shell() {
   useStream();
@@ -128,7 +159,7 @@ export function Shell() {
 /* ── DESKTOP ───────────────────────────────────────────────────────── */
 function DesktopShell() {
   const { pathname } = useLocation();
-  useTheme(); // keeps the persisted .light class applied; controlled in Config
+  useTheme(); // keeps the persisted theme class applied; controlled in Config
   const { run, running } = useScan();
   const { s, iv } = useVitals();
   const now = useNow();
@@ -140,43 +171,55 @@ function DesktopShell() {
 
   return (
     <div className="flex h-screen bg-bg">
-      {/* sidebar */}
-      <aside className="flex w-[208px] shrink-0 flex-col border-r border-edge bg-surface">
-        <div className="flex h-[54px] items-center gap-2.5 px-4">
-          <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[7px] bg-signal-bg font-display text-[13px] font-semibold text-signal-fg shadow-e1">
-            N
-          </span>
-          <span className="font-display text-[16px] tracking-tight text-fg">NetScan</span>
+      {/* left margin — the chart folio */}
+      <aside className="flex w-[212px] shrink-0 flex-col border-r border-edge-2 bg-surface/70">
+        <div className="flex h-[52px] items-center px-4">
+          <TitleBlock />
         </div>
+        <div className="mx-4 border-t border-edge-2" />
 
-        <nav className="flex flex-1 flex-col gap-0.5 px-2 py-2">
+        <nav className="flex flex-1 flex-col px-2 py-2.5">
+          <span className="key px-2.5 pb-2 pt-1">{t("nav.folio")}</span>
           {ROUTES.map((r) => {
             const on = r.to === active;
+            const pend = r.to === "/approvals" && (s?.pending ?? 0) > 0;
             return (
               <NavLink
                 key={r.to}
                 to={r.to}
                 end={r.end}
                 className={clsx(
-                  "relative flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13px] font-medium transition-colors",
-                  on
-                    ? "bg-surface-2 text-fg shadow-e1"
-                    : "text-fg-2 hover:bg-fg/[0.04] hover:text-fg",
+                  "group relative flex items-center gap-2.5 py-[7px] pl-2.5 pr-2 text-[12.5px] transition-colors",
+                  on ? "text-fg" : "text-fg-2 hover:text-fg",
                 )}
               >
-                <r.Icon size={15} className={on ? "text-signal" : "text-fg-3"} />
-                {t(r.labelKey)}
-                {r.to === "/approvals" && (s?.pending ?? 0) > 0 ? (
-                  <span className="tag tag-alert ml-auto !h-[16px] !px-1.5 !text-[9px]">{s?.pending}</span>
-                ) : (
-                  on && <span className="signal-mark signal-mark--on ml-auto" style={{ ["--m" as string]: "6px" }} />
+                {/* leader tick — carmine only on the held sheet */}
+                <span
+                  className={clsx(
+                    "absolute left-0 top-1/2 h-[13px] w-[2px] -translate-y-1/2",
+                    on ? "bg-signal" : "bg-transparent",
+                  )}
+                />
+                <span
+                  className={clsx(
+                    "mono text-[9.5px] tabular-nums",
+                    on ? "text-signal" : "text-fg-3",
+                  )}
+                >
+                  {r.code}
+                </span>
+                <r.Icon size={14} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
+                <span className={clsx("font-medium", on && "font-semibold")}>{t(r.labelKey)}</span>
+                {pend && (
+                  <span className="tag tag-alert ml-auto !h-[15px] !px-1.5 !text-[9px]">{s?.pending}</span>
                 )}
               </NavLink>
             );
           })}
         </nav>
 
-        <div className="border-t border-edge p-3">
+        <div className="mx-4 border-t border-edge-2" />
+        <div className="p-3.5">
           {canWrite && (
             <button onClick={run} disabled={running} className="btn btn-primary w-full">
               {running ? t("shell.sweeping") : t("shell.sweep")}
@@ -186,7 +229,7 @@ function DesktopShell() {
             <div className={clsx("flex items-center justify-between gap-2", canWrite && "mt-3")}>
               <span className="min-w-0 truncate">
                 <span className="text-[12px] text-fg-2">{account.username}</span>
-                <span className="mono ml-1.5 text-[9px] uppercase tracking-[0.08em] text-fg-3">
+                <span className="mono ml-1.5 text-[9px] uppercase tracking-[0.1em] text-fg-3">
                   {t(`auth.role.${account.role}` as MessageKey)}
                 </span>
               </span>
@@ -199,21 +242,25 @@ function DesktopShell() {
             </div>
           )}
           <div className="mt-2.5 flex items-center gap-2">
-            <span className="h-[3px] w-[3px] shrink-0 bg-edge-2" />
-            <span className="label">{APP_VERSION}</span>
+            <span className="key text-fg-3/80">{t("shell.edition")}</span>
+            <span className="label tabular-nums">{APP_VERSION}</span>
           </div>
         </div>
       </aside>
 
       {/* content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* status strip */}
-        <header className="flex h-[46px] shrink-0 items-center gap-7 border-b border-edge bg-surface px-6">
+        {/* margin strip — chart marginalia */}
+        <header className="flex h-[44px] shrink-0 items-center gap-6 border-b border-edge-2 bg-surface/70 px-6">
           <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
-          <Vital k={t("shell.vital.online")} v={s ? `${s.online}/${s.total}` : "—"} big />
+          <Vital k={t("shell.vital.held")} v={s ? `${s.online} / ${s.total}` : "—"} big />
           <Vital k={t("shell.vital.sweep")} v={cadence(iv)} />
-          <Vital k={t("shell.vital.last")} v={running ? "···" : lastSweep(s?.last_scan ?? null, now)} tone={running ? "signal" : undefined} />
-          <Vital k={t("shell.vital.clock")} v={hms(new Date(now))} className="ml-auto" />
+          <Vital
+            k={t("shell.vital.last")}
+            v={running ? "surveying" : lastSweep(s?.last_report ?? s?.last_scan ?? null, now)}
+            tone={running ? "signal" : s?.agents_stale ? "alert" : undefined}
+          />
+          <Vital k={t("shell.vital.epoch")} v={hms(new Date(now))} className="ml-auto" />
         </header>
 
         <main className="relative min-h-0 flex-1 overflow-y-auto">
@@ -222,9 +269,9 @@ function DesktopShell() {
               <div className="sweep-line" />
             </div>
           )}
-          <div key={pathname} className="view-in mx-auto w-full max-w-[1300px] px-7 py-6">
-            <p className="key mb-5 flex items-center gap-2 text-fg-2">
-              <span className="signal-mark signal-mark--on" style={{ ["--m" as string]: "5px" }} />
+          <div key={pathname} className="view-in mx-auto w-full max-w-[1320px] px-8 py-7">
+            <p className="key mb-6 flex items-center gap-2.5 text-fg-2">
+              <span className="h-[11px] w-[2px] bg-signal" />
               {t(titleKeyOf(pathname))}
             </p>
             <Outlet />
@@ -245,7 +292,7 @@ function Vital({
   k: string;
   v: string;
   big?: boolean;
-  tone?: "signal";
+  tone?: "signal" | "alert";
   className?: string;
 }) {
   return (
@@ -254,8 +301,14 @@ function Vital({
       <span
         className={clsx(
           "mono tnum",
-          big ? "text-[14px] text-fg" : "text-[12px]",
-          tone === "signal" ? "text-signal" : big ? "text-fg" : "text-fg-2",
+          big ? "text-[13px] text-fg" : "text-[12px]",
+          tone === "signal"
+            ? "text-signal"
+            : tone === "alert"
+              ? "text-alert"
+              : big
+                ? "text-fg"
+                : "text-fg-2",
         )}
       >
         {v}
@@ -267,7 +320,7 @@ function Vital({
 /* ── MOBILE ────────────────────────────────────────────────────────── */
 function MobileShell() {
   const { pathname } = useLocation();
-  useTheme(); // keeps the persisted .light class applied; controlled in Config
+  useTheme();
   const { run, running } = useScan();
   const { s, iv } = useVitals();
   const now = useNow();
@@ -278,12 +331,9 @@ function MobileShell() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-40 shrink-0 border-b border-edge bg-surface">
+      <header className="sticky top-0 z-40 shrink-0 border-b border-edge-2 bg-surface">
         <div className="flex h-[48px] items-center gap-2.5 px-4">
-          <span className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-[6px] bg-signal-bg font-display text-[12px] font-semibold text-signal-fg">
-            N
-          </span>
-          <span className="font-display text-[15px] tracking-tight text-fg">NetScan</span>
+          <TitleBlock compact />
           <span className="mono ml-1 text-[13px] tnum text-fg">
             {s ? `${s.online}/${s.total}` : "—"}
           </span>
@@ -300,7 +350,7 @@ function MobileShell() {
         </div>
         <div className="mono flex items-center gap-x-3 overflow-x-auto border-t border-edge px-4 py-1.5 text-[10.5px] text-fg-3">
           <span>{s?.subnet ?? "—"}</span>
-          <span className="text-signal">{s ? t("shell.onlineCount", { n: s.online }) : "—"}</span>
+          <span className="text-fg-2">{s ? t("shell.onlineCount", { n: s.online }) : "—"}</span>
           <span>sweep {cadence(iv)}</span>
           <span>
             {running
@@ -317,8 +367,8 @@ function MobileShell() {
           </div>
         )}
         <div key={pathname} className="view-in px-4 py-4 pb-24">
-          <p className="key mb-3.5 flex items-center gap-2 text-fg-2">
-            <span className="signal-mark signal-mark--on" style={{ ["--m" as string]: "5px" }} />
+          <p className="key mb-3.5 flex items-center gap-2.5 text-fg-2">
+            <span className="h-[11px] w-[2px] bg-signal" />
             {t(titleKeyOf(pathname))}
           </p>
           <Outlet />
@@ -326,7 +376,7 @@ function MobileShell() {
       </main>
 
       {/* bottom tabs */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-edge bg-surface pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-edge-2 bg-surface pb-[env(safe-area-inset-bottom)]">
         {ROUTES.map((r) => {
           const on = r.to === active;
           return (
@@ -336,9 +386,9 @@ function MobileShell() {
               end={r.end}
               className="relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 py-2"
             >
-              <span className={clsx("absolute inset-x-3 top-0 h-[2px] rounded-b", on ? "bg-signal" : "bg-transparent")} />
+              <span className={clsx("absolute inset-x-3 top-0 h-[2px]", on ? "bg-signal" : "bg-transparent")} />
               <span className="relative">
-                <r.Icon size={17} className={on ? "text-signal" : "text-fg-3"} />
+                <r.Icon size={17} className={on ? "text-fg" : "text-fg-3"} />
                 {r.to === "/approvals" && (s?.pending ?? 0) > 0 && (
                   <span className="absolute -right-2 -top-1.5 grid h-[13px] min-w-[13px] place-items-center bg-alert px-[3px] text-[8px] leading-none text-alert-fg">
                     {s?.pending}

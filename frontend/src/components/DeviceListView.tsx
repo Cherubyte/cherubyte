@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Device } from "../api/types";
 import { useNow } from "../hooks/useNow";
-import { deviceTypeLabel, stringHsl, timeAgo } from "../lib/format";
+import { deviceTypeLabel, hostRef, stringHsl, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import { TypeCode, useBrandLogos, useOsLogos } from "./TypeCode";
 import { EmptyState, SkeletonRows } from "./ui";
@@ -17,9 +17,9 @@ type SortKey = "name" | "ip" | "type" | "seen";
 /* one grid track shared by the header and every row */
 const GRID =
   "grid-cols-[10px_40px_minmax(0,1fr)_auto] " +
-  "sm:grid-cols-[52px_10px_40px_minmax(0,1fr)_120px_56px] " +
-  "md:grid-cols-[52px_10px_40px_minmax(0,1fr)_120px_120px_128px_56px] " +
-  "lg:grid-cols-[52px_10px_40px_minmax(0,1fr)_120px_120px_128px_84px_56px]";
+  "sm:grid-cols-[62px_10px_40px_minmax(0,1fr)_120px_64px] " +
+  "md:grid-cols-[62px_10px_40px_minmax(0,1fr)_120px_120px_128px_64px] " +
+  "lg:grid-cols-[62px_10px_40px_minmax(0,1fr)_120px_120px_128px_84px_64px]";
 
 function ipNum(d: Device) {
   const ip = (d.ips.find((i) => i.is_primary) ?? d.ips[0])?.address ?? "";
@@ -109,7 +109,7 @@ export function DeviceListView({
     <div className="relative">
       {/* column header — desktop */}
       <div className={clsx("hidden items-center gap-3 px-3 pb-2 sm:grid", GRID)}>
-        <Head k="ip" className="justify-end">{t("list.col.id")}</Head>
+        <Head k="ip" className="justify-end">{t("list.col.ref")}</Head>
         <span />
         <span />
         <Head k="name">{t("list.col.host")}</Head>
@@ -161,22 +161,24 @@ function Row({
     <div
       onClick={() => nav(`/devices/${d.id}`)}
       className={clsx(
-        "group relative grid h-[64px] cursor-pointer items-center gap-3 bg-surface px-3 transition-colors hover:bg-surface-2 sm:h-[58px]",
+        "group relative grid h-[64px] cursor-pointer items-center gap-3 px-3 transition-colors sm:h-[56px]",
         GRID,
-        dim && "opacity-70",
+        dim
+          ? "bg-surface hover:bg-surface-2"
+          : "bg-water/[0.05] hover:bg-water/[0.12]",
         flash,
       )}
     >
       <span
         className={clsx(
-          "absolute left-0 top-0 h-full w-[3px]",
-          pending ? "bg-alert" : "bg-signal opacity-0 group-hover:opacity-100",
+          "absolute left-0 top-0 h-full w-[2px]",
+          pending ? "bg-signal" : "bg-signal opacity-0 group-hover:opacity-100",
         )}
       />
 
-      {/* id — desktop */}
-      <span className="mono hidden justify-self-end text-[10px] text-fg-3 sm:block">
-        #{String(d.id).padStart(3, "0")}
+      {/* register reference — the host's position on the network — desktop */}
+      <span className="mono hidden justify-self-end text-[10px] tracking-tight text-fg-3 sm:block">
+        {hostRef(ip === "—" ? null : ip)}
       </span>
 
       {/* status mark — a lit node */}
@@ -208,7 +210,7 @@ function Row({
         <div className="mono mt-0.5 truncate text-[10.5px] text-fg-3 sm:hidden">
           {ip} · {deviceTypeLabel(d.device_type)}
           {d.os_family ? ` · ${d.os_family}` : ""} ·{" "}
-          <span className={d.is_online ? "text-signal" : ""}>
+          <span className={d.is_online ? "text-fg-2" : ""}>
             {d.is_online ? t("common.online") : timeAgo(d.last_seen, true)}
           </span>
         </div>
@@ -256,7 +258,7 @@ function Row({
       <span
         className={clsx(
           "mono hidden justify-self-end text-[10.5px] sm:block",
-          d.is_online ? "text-signal" : "text-fg-3",
+          d.is_online ? "text-fg" : "text-fg-3",
         )}
       >
         {d.is_online ? t("list.now") : timeAgo(d.last_seen, true)}

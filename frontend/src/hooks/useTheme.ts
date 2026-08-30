@@ -1,26 +1,30 @@
 import { useEffect, useState } from "react";
 
 /**
- * Light / dark theme. `:root` is dark; the `.light` class opts into the
- * recolour. The choice is persisted per browser and shared across every
- * consumer (module-level store), so the toggle in Config ▸ Interface and any
- * other reader stay in sync. Controlled from Config ▸ Interface.
+ * Light / dark theme. `:root` is the light chart sheet; the `.dark` class opts
+ * into the ECDIS-night palette. The choice is persisted per browser and shared
+ * across every consumer (module-level store), so the toggle in Config ▸
+ * Interface and any other reader stay in sync. Default is light.
+ *
+ * The public API keeps a `light` flag (and `setLight` / `toggle`) so callers
+ * read as "is the light sheet showing?".
  */
-function read(): boolean {
+function readLight(): boolean {
   try {
-    return localStorage.getItem("netscan-theme") === "light";
+    // default (unset) is the light chart sheet
+    return localStorage.getItem("netscan-theme") !== "dark";
   } catch {
-    return false;
+    return true;
   }
 }
 
-let light = read();
+let light = readLight();
 let animate = false;
 const subs = new Set<(v: boolean) => void>();
 
 function apply() {
   const r = document.documentElement;
-  r.classList.toggle("light", light);
+  r.classList.toggle("dark", !light);
   try {
     localStorage.setItem("netscan-theme", light ? "light" : "dark");
   } catch {

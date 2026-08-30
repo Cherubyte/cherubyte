@@ -38,7 +38,7 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
             >
               <span
                 className={
-                  "block w-[3px] shrink-0 " +
+                  "block w-[2px] shrink-0 " +
                   (t.tone === "success"
                     ? "bg-signal"
                     : t.tone === "error"

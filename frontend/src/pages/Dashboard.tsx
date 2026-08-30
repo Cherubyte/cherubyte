@@ -8,7 +8,7 @@ import { Sheet } from "../components/Sheet";
 import { ArrowRight, Search } from "../components/Glyph";
 import { Readout, Redacted } from "../components/ui";
 import { useIsMobile } from "../hooks/useMediaQuery";
-import { ipInCidr } from "../lib/format";
+import { ipInCidr, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import type { Device, WanStatus } from "../api/types";
 
@@ -75,42 +75,73 @@ export function Dashboard() {
     return list;
   }, [all, filter, q, subnets, subnetTab]);
 
+  const blind = !!s?.agents_stale && (s?.agents_configured ?? 0) > 0;
+
   return (
     <div className="space-y-5">
-      {/* hero cluster — an instrument readout */}
-      <div className="panel flex flex-wrap items-stretch overflow-hidden">
-        <div className="flex-[1.6] basis-56 px-5 py-4">
-          <Readout
-            value={s?.online ?? "—"}
-            unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
-            caption={t("dash.onlineNow")}
-            size="xl"
-          />
+      {blind && (
+        <Link
+          to="/settings"
+          className="panel panel-ruled flex items-start gap-3 p-4 transition-colors hover:bg-surface-2"
+        >
+          <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-signal" />
+          <span className="min-w-0">
+            <span className="font-display block text-[15px] leading-tight text-fg">
+              {t("agents.blind", {
+                ago: s?.last_report ? timeAgo(s.last_report, true) : "—",
+              })}
+            </span>
+            <span className="mono mt-1 block text-[11px] leading-relaxed text-fg-2">
+              {t("agents.blindDesc")}
+            </span>
+          </span>
+          <span className="key ml-auto hidden shrink-0 items-center gap-1 self-center text-fg-2 sm:flex">
+            {t("agents.checkLink")}
+            <ArrowRight size={11} />
+          </span>
+        </Link>
+      )}
+
+      {/* the plan's title block — the survey particulars, boxed in the corner */}
+      <div className="panel overflow-hidden">
+        <div className="flex items-center justify-between border-b border-edge px-4 py-2">
+          <span className="key text-fg-2">{t("dash.plan")}</span>
+          <span className="mono text-[11px] text-fg-3">{s?.subnet ?? "—"}</span>
         </div>
-        <div className="flex-1 basis-28 border-l border-edge px-5 py-4">
-          <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" />
+        <div className="flex flex-wrap items-stretch">
+          <div className="flex-[1.5] basis-52 px-4 py-3.5">
+            <Readout
+              value={s?.online ?? "—"}
+              unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
+              caption={t("dash.onlineNow")}
+              size="xl"
+            />
+          </div>
+          <div className="flex-1 basis-24 border-l border-edge px-4 py-3.5">
+            <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" />
+          </div>
+          <div className="flex-1 basis-24 border-l border-edge px-4 py-3.5">
+            <Readout
+              value={newToday}
+              caption={t("dash.newToday")}
+              size="sm"
+              tone={newToday > 0 ? "signal" : "default"}
+            />
+          </div>
+          <div className="flex-[1.5] basis-60 border-l border-edge px-4 py-3.5">
+            <WanReadout />
+          </div>
+          {(s?.pending ?? 0) > 0 && (
+            <Link
+              to="/approvals"
+              className="group flex flex-1 basis-40 items-center gap-2.5 border-l border-edge bg-alert px-4 text-alert-fg transition-opacity hover:opacity-90"
+            >
+              <span className="font-display text-[26px] leading-none tnum">{s?.pending}</span>
+              <span className="key text-current">{t("dash.review")}</span>
+              <ArrowRight size={12} />
+            </Link>
+          )}
         </div>
-        <div className="flex-1 basis-28 border-l border-edge px-5 py-4">
-          <Readout
-            value={newToday}
-            caption={t("dash.newToday")}
-            size="sm"
-            tone={newToday > 0 ? "signal" : "default"}
-          />
-        </div>
-        <div className="flex-[1.6] basis-60 border-l border-edge px-5 py-4">
-          <WanReadout />
-        </div>
-        {(s?.pending ?? 0) > 0 && (
-          <Link
-            to="/approvals"
-            className="group flex flex-1 basis-40 items-center gap-2.5 border-l border-edge bg-alert px-4 text-alert-fg transition-opacity hover:opacity-90"
-          >
-            <span className="font-display-lt text-[24px] leading-none tnum">{s?.pending}</span>
-            <span className="key text-current">{t("dash.review")}</span>
-            <ArrowRight size={12} />
-          </Link>
-        )}
       </div>
 
       {/* subnet tabs */}
@@ -222,7 +253,7 @@ export function Segmented({
           className={clsx(
             "px-3.5 py-2 transition-colors",
             i > 0 && "border-l border-edge-2",
-            value === o.k ? "bg-signal-bg text-signal-fg" : "text-fg-2 hover:text-fg",
+            value === o.k ? "bg-fg text-surface" : "text-fg-2 hover:text-fg",
           )}
         >
           {o.label}
@@ -245,7 +276,7 @@ function WanReadout() {
   const d = wan.data;
   if (!d || !d.samples) return null;
 
-  const tone = d.online === false ? "alert" : "signal";
+  const tone = d.online === false ? "alert" : "default";
   const uptime = d.uptime === null ? "—" : `${(d.uptime * 100).toFixed(1)}%`;
 
   return (
@@ -309,7 +340,7 @@ function Sparkline({ points }: { points: WanStatus["points"] }) {
         ),
       )}
       {paths.map((dPath, i) => (
-        <path key={i} d={dPath} fill="none" stroke="rgb(var(--signal))" strokeWidth={1.5} />
+        <path key={i} d={dPath} fill="none" stroke="rgb(var(--fg-2))" strokeWidth={1.25} />
       ))}
     </svg>
   );
