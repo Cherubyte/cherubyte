@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import clsx from "clsx";
 import { api } from "../api/client";
 import type { AccountRole, AlertRule, SubnetCfg } from "../api/types";
@@ -530,6 +530,8 @@ export function Settings() {
           </div>
         </div>
       </section>
+
+      {isAdmin && <BackupCard />}
 
       </div>
 
@@ -1382,6 +1384,56 @@ function AccountsCard() {
           </Button>
         </div>
       </div>
+    </section>
+  );
+}
+
+/** Download a full backup, or restore one (which restarts the panel). */
+function BackupCard() {
+  const t = useT();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!confirm(t("settings.backup.restoreConfirm"))) return;
+    setBusy(true);
+    try {
+      await api.restoreBackup(file);
+      setDone(true);
+      setTimeout(() => window.location.reload(), 5000);
+    } catch (err) {
+      toast({ tone: "error", title: "settings.backup.restoreFailed", desc: String(err).slice(0, 140) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel mb-3 p-4">
+      <SectionHeader title={t("settings.section.backup")} sub={t("settings.backup.sub")} />
+      {done ? (
+        <p className="mono text-[12px] text-fg-2">{t("settings.backup.restored")}</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <a className="btn btn-secondary" href={api.backupUrl()}>
+            {t("settings.backup.download")}
+          </a>
+          <label className="btn btn-secondary cursor-pointer">
+            {busy ? t("settings.backup.restoring") : t("settings.backup.restore")}
+            <input
+              type="file"
+              accept=".gz,.tgz,application/gzip"
+              className="hidden"
+              disabled={busy}
+              onChange={onFile}
+            />
+          </label>
+        </div>
+      )}
     </section>
   );
 }

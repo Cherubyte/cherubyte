@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json
+import logging
+import os
+import tempfile
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 
 from ..config import settings as cfg
-from ..database import get_session
+from ..database import engine, get_session
 from ..models import Setting
 from ..schemas import SettingsIn, SettingsOut, SubnetCfg
 from ..scheduler import reschedule_digest
@@ -16,6 +23,7 @@ from ..services import (
     action_tokens,
     agents as agent_service,
     alerts,
+    backup as backup_service,
     fingerbank,
     mqtt,
     notify,
@@ -23,6 +31,9 @@ from ..services import (
     retention,
     telegram,
 )
+from .deps import require_admin
+
+logger = logging.getLogger("netscan.api.settings")
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -380,3 +391,68 @@ async def test_ntfy():
         tags=["white_check_mark"],
     )
     return {"ok": ok}
+
+
+# --- backup / restore (admin) --------------------------------------------
+
+_MAX_RESTORE_BYTES = 512 * 1024 * 1024
+
+
+@router.get("/backup")
+async def download_backup(_=Depends(require_admin)):
+    """A gzipped tar of the database and the uploads. Admin only."""
+    tmp = Path(tempfile.mkdtemp(prefix="netscan-backup-")) / backup_service.default_name()
+    try:
+        backup_service.create(tmp)
+    except FileNotFoundError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return FileResponse(
+        tmp,
+        media_type="application/gzip",
+        filename=tmp.name,
+        background=BackgroundTask(lambda: _cleanup(tmp)),
+    )
+
+
+def _cleanup(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+        path.parent.rmdir()
+    except OSError:
+        pass
+
+
+@router.post("/restore")
+async def restore_backup(file: UploadFile, _=Depends(require_admin)):
+    """Replace the database and uploads with a backup, then exit to reload it.
+
+    Every supported deployment restarts the process automatically (systemd
+    `Restart=always`, Docker `restart: unless-stopped`). A hand-run `start.sh`
+    does not — restart it yourself.
+    """
+    tmp_dir = Path(tempfile.mkdtemp(prefix="netscan-restore-"))
+    staged = tmp_dir / "upload.tar.gz"
+    size = 0
+    with staged.open("wb") as out:
+        while chunk := await file.read(1 << 20):
+            size += len(chunk)
+            if size > _MAX_RESTORE_BYTES:
+                _cleanup(staged)
+                raise HTTPException(413, "backup file too large")
+            out.write(chunk)
+
+    try:
+        summary = backup_service.restore(staged)
+    except backup_service.BackupError as exc:
+        raise HTTPException(422, str(exc)) from None
+    finally:
+        _cleanup(staged)
+
+    async def _reload() -> None:
+        await asyncio.sleep(1.0)
+        logger.warning("Exiting to reload the restored database")
+        await engine.dispose()
+        os._exit(0)
+
+    asyncio.create_task(_reload())
+    return {"ok": True, "restarting": True, **summary}

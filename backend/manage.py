@@ -5,6 +5,8 @@ Run from the `backend/` directory with its venv:
 
     .venv/bin/python manage.py create-admin [username]
     .venv/bin/python manage.py init-db
+    .venv/bin/python manage.py backup [path.tar.gz]
+    .venv/bin/python manage.py restore <path.tar.gz>
 
 `create-admin` reads the password from $NETSCAN_ADMIN_PASSWORD when set (so the
 setup script can run unattended), otherwise it prompts. It also promotes an
@@ -85,6 +87,37 @@ def main() -> None:
     if cmd == "init-db":
         asyncio.run(init_db())
         print("Schema is up to date.")
+        return
+
+    if cmd == "backup":
+        from pathlib import Path
+
+        from app.services import backup
+
+        dest = Path(args[1]) if len(args) > 1 else Path(backup.default_name())
+        backup.create(dest)
+        print(f"Backup written to {dest} ({dest.stat().st_size / 1024:.0f} KiB).")
+        return
+
+    if cmd == "restore":
+        from pathlib import Path
+
+        from app.services import backup
+
+        if len(args) < 2:
+            sys.exit("Usage: manage.py restore <path.tar.gz>")
+        src = Path(args[1])
+        if not src.is_file():
+            sys.exit(f"No such file: {src}")
+        try:
+            summary = backup.restore(src)
+        except backup.BackupError as exc:
+            sys.exit(f"Refused: {exc}")
+        print(
+            f"Restored from {src.name} ({summary['uploads']} upload(s)). "
+            "The previous data is kept alongside as *.pre-restore. "
+            "Restart the panel."
+        )
         return
 
     if cmd == "create-admin":

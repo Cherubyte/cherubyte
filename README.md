@@ -160,6 +160,11 @@ journalctl -u netscan-agent -f
 
 Reset a lost admin password: `cd backend && .venv/bin/python manage.py create-admin <name>`.
 
+Back up everything (the SQLite database and the uploaded images) from **Config ▸
+History**, or `manage.py backup [file.tar.gz]`. Restoring — in the UI or
+`manage.py restore <file>` — swaps the files in and restarts the panel; the
+previous data is kept alongside as `*.pre-restore`.
+
 ### Other ways to run
 
 The ARP scan **and** binding port 1001 both need network privileges. The
