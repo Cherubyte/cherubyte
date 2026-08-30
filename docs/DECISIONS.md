@@ -196,3 +196,22 @@ They now sign real tokens with a real RSA key and serve a real JWKS. **When a
 test guards something that matters, remove the check it depends on and confirm
 the right test fails.** Every claim in this file marked "verified" was checked
 that way.
+
+## Restore swaps the files and then exits
+
+Rewriting `netscan.db` while the async engine holds open connections to it
+corrupts the file it is reading. So `POST /api/settings/restore` moves the new
+database and uploads into place, disposes the engine, and calls `os._exit(0)`
+about a second later. Every supported deployment restarts on any exit — systemd
+`Restart=always`, Docker `restart: unless-stopped` — so it comes straight back
+on the restored data. A hand-run `start.sh` does not restart; the response says
+so.
+
+The previous database and uploads are moved aside as `*.pre-restore` rather than
+deleted, so a restore of the wrong file is undone by hand, not from a backup of
+the backup.
+
+Archive members are checked before extraction — regular files only, relative
+paths only, no `..` — because `tarfile.extractall` without `filter="data"`
+(Python 3.12+, and the CI floor is 3.11) will happily write outside the target
+directory, and this one runs with the service's privileges.

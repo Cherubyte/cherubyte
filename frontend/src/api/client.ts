@@ -232,6 +232,21 @@ export const api = {
   deleteAccount: (id: number) =>
     req<void>(`/auth/accounts/${id}`, { method: "DELETE" }),
 
+  backupUrl: () => BASE + "/settings/backup",
+  restoreBackup: async (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(BASE + "/settings/restore", { method: "POST", body: fd });
+    if (!res.ok) {
+      throw new ApiError(
+        `${res.status} — ${(await res.text()).slice(0, 200)}`,
+        false,
+        res.status,
+      );
+    }
+    return res.json() as Promise<{ ok: boolean; restarting: boolean; uploads: number }>;
+  },
+
   apiTokens: () => req<ApiToken[]>("/auth/tokens"),
   createApiToken: (name: string) =>
     req<ApiToken & { token: string }>("/auth/tokens", {
