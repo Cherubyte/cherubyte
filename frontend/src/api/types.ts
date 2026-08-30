@@ -151,18 +151,20 @@ export interface UserDeviceMini {
   is_online: boolean;
   counts_for_presence: boolean;
   last_seen: string;
+  primary_image: string | null;
 }
 
 export interface UserDetail extends User {
   devices: UserDeviceMini[];
 }
 
-export interface PresenceGrid {
-  start: string;
-  hours: number;
-  cells: number[];
-  /** hours from `start` up to "now" — cells past this are the future */
-  filled_hours?: number;
+export interface PresenceData {
+  /** server "now", UTC ISO — the right edge of today's row */
+  now: string;
+  /** oldest instant the window covers, UTC ISO */
+  since: string;
+  /** [start, end] pairs, UTC ISO, merged and sorted */
+  intervals: [string, string][];
 }
 
 export interface Brand {

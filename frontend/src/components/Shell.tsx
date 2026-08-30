@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
@@ -7,10 +7,10 @@ import { AUTH_KEY, useAuth, useCanWrite } from "../auth/AuthProvider";
 import { useStream } from "../hooks/useStream";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { useNow } from "../hooks/useNow";
+import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
 import { hms } from "../lib/format";
-import { useT, useLocale, type MessageKey } from "../i18n";
-import { LOCALES } from "../i18n/locale";
+import { useT, type MessageKey } from "../i18n";
 import {
   HostsIcon,
   ReviewIcon,
@@ -48,26 +48,6 @@ function activeKey(pathname: string): string {
   if (pathname.startsWith("/users/")) return "/users";
   const r = ROUTES.find((s) => (s.end ? pathname === s.to : pathname.startsWith(s.to) && s.to !== "/"));
   return r?.to ?? "/";
-}
-
-/* ── theme — :root is dark; `.light` opts into the recolour ─────────── */
-function useTheme() {
-  const [light, setLight] = useState(() => localStorage.getItem("netscan-theme") === "light");
-  const first = useRef(true);
-  useEffect(() => {
-    const r = document.documentElement;
-    r.classList.toggle("light", light);
-    localStorage.setItem("netscan-theme", light ? "light" : "dark");
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    // brief cross-fade only on an actual toggle
-    r.classList.add("theme-anim");
-    const t = setTimeout(() => r.classList.remove("theme-anim"), 180);
-    return () => clearTimeout(t);
-  }, [light]);
-  return { light, toggle: () => setLight((v) => !v) };
 }
 
 /* ── scan ──────────────────────────────────────────────────────────── */
@@ -143,29 +123,9 @@ export function Shell() {
 }
 
 /* ── DESKTOP ───────────────────────────────────────────────────────── */
-function LangSwitch() {
-  const [locale, setLocale] = useLocale();
-  return (
-    <span className="mono inline-flex overflow-hidden rounded-[3px] border border-edge-2 text-[9px] leading-none">
-      {(Object.keys(LOCALES) as Array<keyof typeof LOCALES>).map((l) => (
-        <button
-          key={l}
-          onClick={() => setLocale(l)}
-          className={clsx(
-            "px-1.5 py-1 uppercase tracking-[0.08em] transition-colors",
-            locale === l ? "bg-signal-bg text-signal-fg" : "text-fg-3 hover:text-fg",
-          )}
-        >
-          {l}
-        </button>
-      ))}
-    </span>
-  );
-}
-
 function DesktopShell() {
   const { pathname } = useLocation();
-  const { light, toggle } = useTheme();
+  useTheme(); // keeps the persisted .light class applied; controlled in Config
   const { run, running } = useScan();
   const { s, iv } = useVitals();
   const now = useNow();
@@ -230,13 +190,7 @@ function DesktopShell() {
               </button>
             </div>
           )}
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <button onClick={toggle} className="label transition-colors hover:text-fg">
-              {light ? t("shell.dark") : t("shell.light")}
-            </button>
-            <LangSwitch />
-          </div>
-          <div className="mt-2 text-right">
+          <div className="mt-3 text-right">
             <span className="label">v0.1.0</span>
           </div>
         </div>
@@ -301,7 +255,7 @@ function Vital({
 /* ── MOBILE ────────────────────────────────────────────────────────── */
 function MobileShell() {
   const { pathname } = useLocation();
-  const { light, toggle } = useTheme();
+  useTheme(); // keeps the persisted .light class applied; controlled in Config
   const { run, running } = useScan();
   const { s, iv } = useVitals();
   const now = useNow();
@@ -320,10 +274,6 @@ function MobileShell() {
             {s ? `${s.online}/${s.total}` : "—"}
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <LangSwitch />
-            <button onClick={toggle} className="label">
-              {light ? "DRK" : "LGT"}
-            </button>
             <button onClick={() => logout.mutate()} className="label">
               {t("auth.logout")}
             </button>

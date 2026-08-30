@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -158,12 +160,43 @@ def unsubscribe(q) -> None:
     _subscribers.discard(q)
 
 
-def _publish(kind: str, payload: dict | None = None) -> None:
+def _emit(kind: str, payload: dict | None = None) -> None:
     for q in list(_subscribers):
         try:
             q.put_nowait({"type": kind, "data": payload or {}})
         except Exception:  # noqa: BLE001
             pass
+
+
+# While reconciling a report we buffer SSE events instead of sending them: a
+# "device_new" that reaches the browser before the transaction commits makes the
+# client refetch /api/devices and *not* see the device — it then only appears on
+# the next poll. `_batch_publish()` holds the events until after the commit.
+_deferred: ContextVar[list[tuple[str, dict | None]] | None] = ContextVar(
+    "monitor_deferred", default=None
+)
+
+
+def _publish(kind: str, payload: dict | None = None) -> None:
+    buf = _deferred.get()
+    if buf is not None:
+        buf.append((kind, payload))
+    else:
+        _emit(kind, payload)
+
+
+@contextmanager
+def _batch_publish():
+    """Collect _publish() calls and flush them on exit — call so the flush lands
+    after the DB commit."""
+    buf: list[tuple[str, dict | None]] = []
+    token = _deferred.set(buf)
+    try:
+        yield
+    finally:
+        _deferred.reset(token)
+    for kind, payload in buf:
+        _emit(kind, payload)
 
 
 async def _log_event(
@@ -711,14 +744,18 @@ async def ingest_report(report: AgentReport, agent_name: str = "agent") -> dict:
 
     await _check_gateway_mac(report.hosts, gateways)
 
-    async with SessionLocal() as session:
-        for host in report.hosts:
-            await _reconcile_host(session, host, host.ip in gateways)
-        await _expire_offline(session)
-        await session.commit()
-        await _publish_mqtt_state(session)
+    # Buffer the SSE events raised during reconciliation and let them out only
+    # once the block exits — i.e. after the commit below — so a client that
+    # reacts to "device_new" sees the device when it refetches.
+    with _batch_publish():
+        async with SessionLocal() as session:
+            for host in report.hosts:
+                await _reconcile_host(session, host, host.ip in gateways)
+            await _expire_offline(session)
+            await session.commit()
+            await _publish_mqtt_state(session)
 
-    _publish("scan_complete", {"found": len(report.hosts), "subnet": subnet})
+        _publish("scan_complete", {"found": len(report.hosts), "subnet": subnet})
     logger.info(
         "Ingested %d hosts from agent %s on %s",
         len(report.hosts), agent_name, subnet or "?",

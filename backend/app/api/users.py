@@ -8,13 +8,14 @@ from sqlalchemy.orm import selectinload
 from ..database import get_session
 from ..models import Device, User
 from ..schemas import UserDetailOut, UserIn, UserOut, UserPatch
-from ..services.presence import hourly_grid
+from ..services.presence import presence_intervals
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 _DEVICE_LOAD = (
     selectinload(User.devices).selectinload(Device.macs),
     selectinload(User.devices).selectinload(Device.ips),
+    selectinload(User.devices).selectinload(Device.images),
 )
 
 
@@ -80,7 +81,7 @@ async def user_presence(
     days: int = Query(10, ge=1, le=30),
 ):
     await _load(session, user_id)
-    return await hourly_grid(session, user_id, days)
+    return await presence_intervals(session, user_id, days)
 
 
 @router.patch("/{user_id}", response_model=UserOut)

@@ -102,6 +102,36 @@ export const Bell = (p: P) => (
   </S>
 );
 
+/* ── log category marks ─────────────────────────────────────────────── */
+export const Radar = (p: P) => (
+  <S {...p}>
+    <circle cx="8" cy="8" r="6" />
+    <circle cx="8" cy="8" r="2.5" />
+    <path d="M8 8l4-3" />
+  </S>
+);
+export const Plug = (p: P) => (
+  <S {...p}>
+    <path d="M6 2v4M10 2v4M4 6h8v2a4 4 0 0 1-8 0zM8 12v2" />
+  </S>
+);
+export const Shield = (p: P) => (
+  <S {...p}>
+    <path d="M8 2l5 2v4c0 3-2 5-5 6-3-1-5-3-5-6V4z" />
+  </S>
+);
+export const Globe = (p: P) => (
+  <S {...p}>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12" />
+  </S>
+);
+export const Wave = (p: P) => (
+  <S {...p}>
+    <path d="M2 10c1.5-3 3-3 4.5 0M7 10c1.5-3 3-3 4.5 0M8 3v3M8 13v-1" />
+  </S>
+);
+
 /* ── bottom-nav icons — filled-block geometry, matches the board ──────── */
 export const HostsIcon = (p: P) => (
   <S {...p}>

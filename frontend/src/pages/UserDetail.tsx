@@ -137,7 +137,15 @@ function DeviceRow({ d, onToggle }: { d: UserDeviceMini; onToggle: (on: boolean)
   const t = useT();
   return (
     <div className="flex items-center gap-3 bg-surface-2 px-3 py-3">
-      <TypeMark type={d.device_type} size={24} />
+      {d.primary_image ? (
+        <img
+          src={d.primary_image}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-[3px] border border-edge object-cover"
+        />
+      ) : (
+        <TypeMark type={d.device_type} size={24} />
+      )}
       <Link to={`/devices/${d.id}`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span

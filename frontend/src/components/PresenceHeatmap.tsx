@@ -7,10 +7,18 @@ import { Skeleton } from "./ui";
 
 /**
  * Presence as a chart-recorder strip: one row per local calendar day (oldest
- * first, today last), an orange segment for every hour the person had at least
- * one presence device online. Gridlines sit behind the fill so segments stay
- * solid. A hairline marks "now" on today's row.
+ * first, today last). Each interval the person was present is drawn as a solid
+ * orange bar, clipped to that day and positioned to the minute. Everything is
+ * converted to the viewer's own timezone. A hairline marks "now" on today's row.
  */
+const DAY_MS = 86_400_000;
+
+function startOfLocalDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
 export function PresenceHeatmap({
   userId,
   days = 7,
@@ -36,15 +44,18 @@ export function PresenceHeatmap({
   if (!grid.data)
     return <Skeleton className="w-full" style={{ height: (cell + 3) * days + 20 }} />;
 
-  const { start, cells } = grid.data;
-  const startDate = new Date(start); // local midnight of the oldest day
-  const anyPresent = cells.some((c) => c === 1);
+  const spans = grid.data.intervals.map(
+    ([a, b]) => [new Date(a).getTime(), new Date(b).getTime()] as const,
+  );
+  const anyPresent = spans.length > 0;
 
   const now = new Date();
   const nowFrac = now.getHours() + now.getMinutes() / 60;
+  // local midnight of the oldest row
+  const firstDay = startOfLocalDay(new Date(now.getTime() - (days - 1) * DAY_MS));
 
   const label = (d: number) => {
-    const dt = new Date(startDate.getTime() + d * 86400000);
+    const dt = new Date(firstDay.getTime() + d * DAY_MS);
     return {
       text: dt.toLocaleDateString(intlLocale(), { day: "2-digit", month: "2-digit" }),
       isToday: d === days - 1,
@@ -73,7 +84,16 @@ export function PresenceHeatmap({
       <div className="space-y-[3px]">
         {Array.from({ length: days }).map((_, d) => {
           const L = label(d);
-          const dayCells = cells.slice(d * 24, d * 24 + 24);
+          const dayStart = firstDay.getTime() + d * DAY_MS;
+          const dayEnd = dayStart + DAY_MS;
+          // intervals overlapping this local day, clipped to it, as [0..24] hours
+          const bars = spans
+            .filter(([a, b]) => b > dayStart && a < dayEnd)
+            .map(([a, b]) => {
+              const from = (Math.max(a, dayStart) - dayStart) / 3_600_000;
+              const to = (Math.min(b, dayEnd) - dayStart) / 3_600_000;
+              return { from, to };
+            });
           return (
             <div key={d} className="grid grid-cols-[52px_1fr] items-center">
               <span
@@ -94,17 +114,18 @@ export function PresenceHeatmap({
                     style={{ left: `${(h / 24) * 100}%` }}
                   />
                 ))}
-                {/* present hours */}
-                {dayCells.map((v, h) =>
-                  v === 1 ? (
-                    <span
-                      key={h}
-                      title={`${L.text} · ${String(h).padStart(2, "0")}:00`}
-                      className="absolute top-0 h-full bg-signal"
-                      style={{ left: `${(h / 24) * 100}%`, width: `${(1 / 24) * 100}%` }}
-                    />
-                  ) : null,
-                )}
+                {/* present intervals, to the minute */}
+                {bars.map((b, i) => (
+                  <span
+                    key={i}
+                    title={`${fmtHour(b.from)}–${fmtHour(b.to)}`}
+                    className="absolute top-0 h-full bg-signal"
+                    style={{
+                      left: `${(b.from / 24) * 100}%`,
+                      width: `${((b.to - b.from) / 24) * 100}%`,
+                    }}
+                  />
+                ))}
                 {/* today: shade the hours not yet reached + a "now" hairline */}
                 {L.isToday && (
                   <>
@@ -129,4 +150,13 @@ export function PresenceHeatmap({
       )}
     </div>
   );
+}
+
+/** hour-of-day float (e.g. 13.5) → "13:30" */
+function fmtHour(h: number): string {
+  const hh = Math.floor(h) % 24;
+  const mm = Math.round((h - Math.floor(h)) * 60);
+  const m = mm === 60 ? 0 : mm;
+  const carry = mm === 60 ? 1 : 0;
+  return `${String((hh + carry) % 24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }

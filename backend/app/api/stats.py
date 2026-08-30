@@ -72,6 +72,8 @@ async def timeline(
         select(func.count(Device.id)).where(Device.first_seen < since)
     ) or 0
 
+    # Buckets are UTC calendar days: this is an aggregate series, not a wall
+    # clock, so it is not worth threading the viewer's offset through here.
     per_day: Counter[str] = Counter()
     for ts in rows:
         per_day[ts.date().isoformat()] += 1

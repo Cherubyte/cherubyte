@@ -36,7 +36,7 @@ export function ymd(d: Date | string): string {
 }
 
 export function num(n: number): string {
-  return n.toLocaleString("pt-PT");
+  return n.toLocaleString(intlLocale());
 }
 
 /** "a.b.c.d" -> unsigned 32-bit int, or null if not a valid IPv4 */

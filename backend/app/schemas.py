@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, computed_field
 
-from typing import Literal
+from .models import AccountRole, ApprovalStatus, DeviceType, EventLevel, as_utc
 
-from .models import AccountRole, ApprovalStatus, DeviceType, EventLevel
+# SQLite returns naive datetimes even for DateTime(timezone=True) columns, and
+# Pydantic then serialises them with no offset — the browser reads that as local
+# time. Coerce every outbound datetime to aware-UTC so the wire always carries a
+# "+00:00"/"Z" and the client can render it in the viewer's own timezone.
+AwareUtc = Annotated[datetime, BeforeValidator(as_utc)]
 
 
 class ORMModel(BaseModel):
@@ -17,13 +22,13 @@ class MacOut(ORMModel):
     address: str
     vendor: str | None = None
     is_random: bool = False
-    last_seen: datetime
+    last_seen: AwareUtc
 
 
 class IpOut(ORMModel):
     address: str
     is_primary: bool = False
-    last_seen: datetime
+    last_seen: AwareUtc
 
 
 class PortOut(ORMModel):
@@ -66,8 +71,8 @@ class DeviceOut(ORMModel):
     is_online: bool
     counts_for_presence: bool = True
     notify_policy: str = "default"
-    first_seen: datetime
-    last_seen: datetime
+    first_seen: AwareUtc
+    last_seen: AwareUtc
     user: UserRef | None = None
     macs: list[MacOut] = []
     ips: list[IpOut] = []
@@ -103,7 +108,7 @@ class EventOut(ORMModel):
     category: str
     message: str
     device_id: int | None = None
-    timestamp: datetime
+    timestamp: AwareUtc
 
 
 class ConnectionOut(ORMModel):
@@ -112,7 +117,7 @@ class ConnectionOut(ORMModel):
     event: str
     ip: str | None = None
     mac: str | None = None
-    timestamp: datetime
+    timestamp: AwareUtc
 
 
 class UserOut(ORMModel):
@@ -147,7 +152,16 @@ class DeviceMini(ORMModel):
     icon: str | None = None
     is_online: bool
     counts_for_presence: bool = True
-    last_seen: datetime
+    last_seen: AwareUtc
+    images: list[ImageOut] = Field(default=[], exclude=True)
+
+    @computed_field
+    @property
+    def primary_image(self) -> str | None:
+        chosen = next((i for i in self.images if i.is_primary), None) or (
+            self.images[0] if self.images else None
+        )
+        return chosen.url if chosen else None
 
 
 class UserDetailOut(UserOut):
@@ -260,8 +274,8 @@ class AccountOut(ORMModel):
     id: int
     username: str
     role: AccountRole
-    created_at: datetime
-    last_login: datetime | None = None
+    created_at: AwareUtc
+    last_login: AwareUtc | None = None
 
 
 class AuthStatusOut(BaseModel):
@@ -300,4 +314,4 @@ class StatsOut(BaseModel):
     approved: int
     users_present: int
     subnet: str
-    last_scan: datetime | None = None
+    last_scan: AwareUtc | None = None

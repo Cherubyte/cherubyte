@@ -14,7 +14,7 @@ import type {
   EventItem,
   FingerbankTest,
   NotifyPolicy,
-  PresenceGrid,
+  PresenceData,
   Stats,
   Timeline,
   TypeCount,
@@ -133,7 +133,7 @@ export const api = {
   users: () => req<User[]>("/users"),
   user: (id: number) => req<UserDetail>(`/users/${id}`),
   userPresence: (id: number, days = 10) =>
-    req<PresenceGrid>(`/users/${id}/presence?days=${days}`),
+    req<PresenceData>(`/users/${id}/presence?days=${days}`),
   createUser: (data: { name: string; notes?: string; is_guest?: boolean }) =>
     req<User>("/users", { method: "POST", body: JSON.stringify(data) }),
   updateUser: (

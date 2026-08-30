@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
+import clsx from "clsx";
 import { api } from "../api/client";
 import type { AccountRole, AlertRule, SubnetCfg } from "../api/types";
 import { AUTH_KEY, useAuth, useCanWrite, useIsAdmin } from "../auth/AuthProvider";
 import { Badge, Button, Field, Redacted, SectionHeader, Toggle } from "../components/ui";
 import { Bell, Plus, Send, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
+import { useTheme } from "../hooks/useTheme";
 import { copyText } from "../lib/ports";
 import { timeAgo } from "../lib/format";
-import { useT, type MessageKey } from "../i18n";
-import { intlLocale } from "../i18n/locale";
+import { useT, useLocale, type MessageKey } from "../i18n";
+import { intlLocale, LOCALES, type Locale } from "../i18n/locale";
 
 /** Alert-kind labels come from the backend (`k.label`, in Portuguese); prefer a
  * localised string keyed by the stable `k.key` when we have one. */
@@ -19,12 +21,148 @@ function alertLabel(t: (k: MessageKey) => string, key: string, fallback: string)
   return out === mk ? fallback : out;
 }
 
+/** Config is split into categories navigated from a side list, so no single
+ *  screen carries the whole surface at once. */
+type SettingsCat =
+  | "network"
+  | "notifications"
+  | "integrations"
+  | "internet"
+  | "history"
+  | "agents"
+  | "interface"
+  | "account"
+  | "accounts";
+
+const SETTINGS_CATS: {
+  k: SettingsCat;
+  labelKey: MessageKey;
+  adminOnly?: boolean;
+  writeOnly?: boolean;
+}[] = [
+  { k: "network", labelKey: "settings.cat.network" },
+  { k: "notifications", labelKey: "settings.cat.notifications" },
+  { k: "integrations", labelKey: "settings.cat.integrations" },
+  { k: "internet", labelKey: "settings.cat.internet" },
+  { k: "history", labelKey: "settings.cat.history" },
+  { k: "agents", labelKey: "settings.cat.agents", writeOnly: true },
+  { k: "interface", labelKey: "settings.cat.interface" },
+  { k: "account", labelKey: "settings.cat.account" },
+  { k: "accounts", labelKey: "settings.cat.accounts", adminOnly: true },
+];
+
+/** Categories that edit the shared settings form and so need the Save bar. */
+const FORM_CATS = new Set<SettingsCat>([
+  "network",
+  "notifications",
+  "integrations",
+  "internet",
+  "history",
+]);
+
+const CAT_KEY = "netscan-settings-tab";
+
+function readCat(isAdmin: boolean): SettingsCat {
+  try {
+    const s = localStorage.getItem(CAT_KEY) as SettingsCat | null;
+    if (s && SETTINGS_CATS.some((c) => c.k === s && (!c.adminOnly || isAdmin))) return s;
+  } catch {
+    /* private mode */
+  }
+  return "network";
+}
+
+function SettingsNav({
+  cat,
+  setCat,
+  isAdmin,
+  canWrite,
+}: {
+  cat: SettingsCat;
+  setCat: (c: SettingsCat) => void;
+  isAdmin: boolean;
+  canWrite: boolean;
+}) {
+  const t = useT();
+  const items = SETTINGS_CATS.filter(
+    (c) => (!c.adminOnly || isAdmin) && (!c.writeOnly || canWrite),
+  );
+  return (
+    <nav className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:mx-0 lg:flex-col lg:pb-0">
+      {items.map((c) => {
+        const on = c.k === cat;
+        return (
+          <button
+            key={c.k}
+            onClick={() => setCat(c.k)}
+            className={clsx(
+              "relative shrink-0 whitespace-nowrap px-3 py-2 text-left text-[13px] font-medium transition-colors",
+              on ? "text-fg" : "text-fg-2 hover:text-fg",
+            )}
+          >
+            {on && (
+              <span className="absolute left-0 top-0 hidden h-full w-[3px] bg-signal lg:block" />
+            )}
+            {on && (
+              <span className="absolute inset-x-1 bottom-0 h-[2px] bg-signal lg:hidden" />
+            )}
+            {t(c.labelKey)}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Per-browser interface preferences: language and theme. Client-only. */
+function InterfaceSection() {
+  const t = useT();
+  const [locale, setLocale] = useLocale();
+  const { light, setLight } = useTheme();
+  return (
+    <section className="panel mb-3 p-4">
+      <SectionHeader title={t("settings.cat.interface")} />
+      <div className="space-y-4">
+        <Field label={t("settings.iface.language")}>
+          <select
+            className="input"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+          >
+            {(Object.keys(LOCALES) as Locale[]).map((l) => (
+              <option key={l} value={l}>
+                {LOCALES[l]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="flex items-center justify-between border-t border-edge-2 pt-3">
+          <span className="label text-fg-3">{t("settings.iface.darkMode")}</span>
+          <Toggle
+            label={t("settings.iface.darkMode")}
+            checked={!light}
+            onChange={(v) => setLight(!v)}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function Settings() {
   const qc = useQueryClient();
   const toast = useToast();
   const t = useT();
   const isAdmin = useIsAdmin();
   const canWrite = useCanWrite();
+  const [cat, setCat] = useState<SettingsCat>(() => readCat(isAdmin));
+  useEffect(() => {
+    try {
+      localStorage.setItem(CAT_KEY, cat);
+    } catch {
+      /* private mode */
+    }
+  }, [cat]);
   const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings });
   const [form, setForm] = useState({
     scan_interval_seconds: 60,
@@ -210,12 +348,18 @@ export function Settings() {
   const d = settings.data;
 
   return (
-    <div className="mx-auto max-w-5xl">
-    <div className="lg:columns-2 lg:gap-3">
-      {canWrite && <AgentsSection />}
+    <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[176px_1fr]">
+      <SettingsNav cat={cat} setCat={setCat} isAdmin={isAdmin} canWrite={canWrite} />
+
+      <div className="min-w-0">
+      {cat === "agents" && canWrite && <AgentsSection />}
+      {cat === "interface" && <InterfaceSection />}
+      {cat === "account" && <AccountCard />}
+      {cat === "accounts" && isAdmin && <AccountsCard />}
 
       {/* ── Network & scanning ─────────────────────────────────────── */}
-      <section className="panel mb-3 break-inside-avoid p-4">
+      <div hidden={cat !== "network"}>
+      <section className="panel mb-3 p-4">
         <SectionHeader title={t("settings.section.network")} />
         <div className="space-y-4">
           <div>
@@ -307,8 +451,11 @@ export function Settings() {
         </div>
       </section>
 
+      </div>
+
       {/* ── History ────────────────────────────────────────────────── */}
-      <section className="panel mb-3 break-inside-avoid p-4">
+      <div hidden={cat !== "history"}>
+      <section className="panel mb-3 p-4">
         <SectionHeader title={t("settings.section.history")} />
         <div className="flex flex-wrap items-end gap-4">
           <Field label={t("settings.retentionDays")} hint={t("settings.retentionHint")} className="w-40">
@@ -340,8 +487,11 @@ export function Settings() {
         </div>
       </section>
 
-      {/* ── Notifications ──────────────────────────────────────────── */}
-      <section className="panel mb-3 break-inside-avoid p-4">
+      </div>
+
+      {/* ── Notifications + Alerts ─────────────────────────────────── */}
+      <div hidden={cat !== "notifications"}>
+      <section className="panel mb-3 p-4">
         <SectionHeader title={t("settings.section.notifications")} />
         <div className="space-y-2">
           <Channel
@@ -459,7 +609,7 @@ export function Settings() {
       </section>
 
       {/* ── Alerts ────────────────────────────────────────────────── */}
-      <section className="panel mb-3 break-inside-avoid p-4">
+      <section className="panel mb-3 p-4">
         <SectionHeader title={t("settings.section.alerts")} sub={t("settings.alerts.sub")} />
         <div className="space-y-3">
           <div className="overflow-x-auto">
@@ -547,8 +697,11 @@ export function Settings() {
         </div>
       </section>
 
-      {/* ── Home Assistant · MQTT ─────────────────────────────────── */}
-      <section className="panel mb-3 break-inside-avoid p-4">
+      </div>
+
+      {/* ── Integrations: Home Assistant · MQTT + Fingerbank ───────── */}
+      <div hidden={cat !== "integrations"}>
+      <section className="panel mb-3 p-4">
         <SectionHeader
           title={t("settings.section.mqtt")}
           actions={
@@ -624,8 +777,11 @@ export function Settings() {
         )}
       </section>
 
+      </div>
+
       {/* ── Internet & digest ─────────────────────────────────────── */}
-      <section className="panel mb-3 break-inside-avoid p-4">
+      <div hidden={cat !== "internet"}>
+      <section className="panel mb-3 p-4">
         <SectionHeader
           title={t("settings.section.internet")}
           actions={
@@ -699,8 +855,11 @@ export function Settings() {
         </div>
       </section>
 
-      {/* ── Device identification ──────────────────────────────────── */}
-      <section className="panel mb-3 break-inside-avoid p-4">
+      </div>
+
+      {/* ── Device identification · Fingerbank ─────────────────────── */}
+      <div hidden={cat !== "integrations"}>
+      <section className="panel mb-3 p-4">
         <SectionHeader
           title={t("settings.section.fingerbank")}
           actions={<Badge tone="neutral">{t("settings.fingerbank.count", { n: d?.dhcp_fingerprints ?? 0 })}</Badge>}
@@ -728,16 +887,16 @@ export function Settings() {
           <p className="mono text-[11px] text-fg-3">{t("settings.fingerbank.testHint")}</p>
         </div>
       </section>
+      </div>
 
-      <AccountCard />
-      {isAdmin && <AccountsCard />}
-    </div>
-
-    <div className="sticky bottom-0 mt-3 pt-1">
-      <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-        {t("settings.save")}
-      </Button>
-    </div>
+      {canWrite && FORM_CATS.has(cat) && (
+        <div className="sticky bottom-0 mt-3 pt-1">
+          <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
+            {t("settings.save")}
+          </Button>
+        </div>
+      )}
+      </div>
     </div>
   );
 }

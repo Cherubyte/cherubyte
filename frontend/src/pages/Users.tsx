@@ -30,10 +30,6 @@ export function Users() {
     },
   });
   const remove = useMutation({ mutationFn: (id: number) => api.deleteUser(id), onSuccess: invalidate });
-  const setGuest = useMutation({
-    mutationFn: ({ id, on }: { id: number; on: boolean }) => api.updateUser(id, { is_guest: on }),
-    onSuccess: invalidate,
-  });
 
   const list = users.data ?? [];
   const main = list.filter((u) => !u.is_guest);
@@ -53,13 +49,6 @@ export function Users() {
           <span className="mono shrink-0 text-[10px] text-fg-3">{t("users.devicesShort", { n: u.device_count })}</span>
           <ArrowRight size={12} className="ml-auto shrink-0 text-fg-3" />
         </Link>
-        <button
-          onClick={() => setGuest.mutate({ id: u.id, on: !u.is_guest })}
-          className="mono text-[10px] text-fg-3 hover:text-signal"
-          title={u.is_guest ? t("users.makePerson") : t("users.makeGuest")}
-        >
-          {u.is_guest ? t("users.toPerson") : t("users.toGuest")}
-        </button>
         <button
           onClick={() => confirm(t("users.removeConfirm", { name: u.name })) && remove.mutate(u.id)}
           className="text-fg-3 hover:text-alert"

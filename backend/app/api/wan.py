@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
+from ..models import iso_utc
 from ..services import wan as wan_service
 
 router = APIRouter(prefix="/wan", tags=["wan"])
@@ -20,10 +21,10 @@ async def wan_history(
         **wan_service.summarise(samples),
         "target": samples[-1].target if samples else "",
         "public_ip": public_ip,
-        "public_ip_at": public_ip_at.isoformat() if public_ip_at else None,
+        "public_ip_at": iso_utc(public_ip_at),
         "points": [
             {
-                "t": s.timestamp.isoformat(),
+                "t": iso_utc(s.timestamp),
                 "ok": s.ok,
                 "ms": round(s.latency_ms, 1) if s.latency_ms is not None else None,
             }
