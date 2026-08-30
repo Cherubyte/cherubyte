@@ -343,11 +343,32 @@ integration) is pulled in with the rest of `requirements.txt`.
 
 ## Roadmap
 
-- Network topology map
+### Not yet done, and needed before the install instructions are true
+
+- **Publish the images.** `netscan-agent` and `netscan-panel` are not on any
+  registry yet, so every `docker run` above assumes you built them locally.
+  `.github/workflows/images.yml` publishes both to GHCR, multi-arch including
+  `arm64`, when a release is created — but no release has been cut.
+- **Deploy the site.** `site/wrangler.jsonc` still carries a placeholder
+  `database_id`, no Cloudflare Access application exists, and `ACCESS_AUD` and
+  `ALLOWED_EMAILS` are unset. `site/README.md` has the four commands.
+- **Run the Windows agent on a real machine.** It is built, installed, started,
+  health-checked and removed on every pull request by a Windows runner — but no
+  human has ever installed it on a machine they own.
+
+### Ideas
+
+- Network topology map — worth it only with managed switches (LLDP/CDP or SNMP);
+  on a flat LAN the picture is always "everything hangs off the router"
 - Wake-on-LAN and per-device actions
 - CSV / report export
 - Passive discovery (sniffing) alongside the active ARP sweep
 - Alembic for non-additive migrations
+- The presence grid captures the timezone once at import, so it drifts by an
+  hour after each DST change until the panel restarts
+
+See [`docs/DECISIONS.md`](docs/DECISIONS.md) for why the system is shaped the way
+it is — each entry anchored to the failure that produced it.
 
 ## License
 
