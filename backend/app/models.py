@@ -23,6 +23,20 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def as_utc(dt: datetime | None) -> datetime | None:
+    """History is stored in UTC, but SQLite hands datetimes back naive. Re-attach
+    the timezone so anything serialising the value emits an offset the browser
+    can read — without it `new Date(iso)` parses the string as local time."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+def iso_utc(dt: datetime | None) -> str | None:
+    aware = as_utc(dt)
+    return aware.isoformat() if aware is not None else None
+
+
 class ApprovalStatus(str, enum.Enum):
     pending = "pending"
     approved = "approved"

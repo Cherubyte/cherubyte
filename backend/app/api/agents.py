@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import Agent, WanSample, utcnow
+from ..models import Agent, WanSample, iso_utc, utcnow
 from ..services import agents as agent_service
 from ..services import wan
 from ..scheduler import note_report
@@ -120,12 +120,12 @@ async def list_agents(
             "version": a.version,
             "enabled": a.enabled,
             "subnets": agent_service.get_subnets(a),
-            "last_seen": a.last_seen,
+            "last_seen": iso_utc(a.last_seen),
             "last_hosts": a.last_hosts,
             "last_fingerprints": a.last_fingerprints,
             "last_healthy": a.last_healthy,
             "public_ip": a.public_ip,
-            "public_ip_at": a.public_ip_at,
+            "public_ip_at": iso_utc(a.public_ip_at),
         }
         for a in rows
     ]
