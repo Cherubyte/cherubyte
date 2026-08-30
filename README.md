@@ -339,6 +339,10 @@ crosses the wire.
   reset passwords with `backend/manage.py`.
 - **Agents** carry a key, not a login — a single-use 24h enrolment token is
   spent once for a long-lived key, of which the panel stores only a hash.
+- **API tokens** (Config ▸ Accounts) — `nsk_`-prefixed bearer tokens for scripts
+  and scrapers, stored hashed and shown once. They authenticate the ordinary API
+  routes but only ever at `viewer` level: reads pass, writes and account/agent
+  management do not.
 - the SPA fallback only serves files from inside `frontend/dist` (path traversal
   is blocked, including via `%2e%2e` and symlinks)
 - CORS is **off** by default — neither production nor the Vite dev server needs

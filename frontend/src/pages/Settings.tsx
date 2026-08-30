@@ -7,6 +7,7 @@ import { AUTH_KEY, useAuth, useCanWrite, useIsAdmin } from "../auth/AuthProvider
 import { Badge, Button, Field, Redacted, SectionHeader, Toggle } from "../components/ui";
 import {
   Bell,
+  Close,
   Globe,
   Image,
   LogIcon,
@@ -393,7 +394,12 @@ export function Settings() {
       {cat === "agents" && canWrite && <AgentsSection />}
       {cat === "interface" && <InterfaceSection />}
       {cat === "account" && <AccountCard />}
-      {cat === "accounts" && isAdmin && <AccountsCard />}
+      {cat === "accounts" && isAdmin && (
+        <>
+          <AccountsCard />
+          <ApiTokensCard />
+        </>
+      )}
 
       {/* ── Network & scanning ─────────────────────────────────────── */}
       <div hidden={cat !== "network"}>
@@ -1376,6 +1382,111 @@ function AccountsCard() {
           </Button>
         </div>
       </div>
+    </section>
+  );
+}
+
+/** Read-only bearer tokens for scripts and scrapers. Shown once on creation. */
+function ApiTokensCard() {
+  const t = useT();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const tokens = useQuery({ queryKey: ["api-tokens"], queryFn: api.apiTokens });
+  const [name, setName] = useState("");
+  const [fresh, setFresh] = useState<string | null>(null);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["api-tokens"] });
+  const create = useMutation({
+    mutationFn: () => api.createApiToken(name.trim()),
+    onSuccess: (row) => {
+      setName("");
+      setFresh(row.token);
+      invalidate();
+    },
+    onError: (e) =>
+      toast({ tone: "error", title: "auth.tokens.failed", desc: String(e).slice(0, 120) }),
+  });
+  const remove = useMutation({
+    mutationFn: (id: number) => api.deleteApiToken(id),
+    onSuccess: invalidate,
+  });
+
+  return (
+    <section className="panel mb-3 break-inside-avoid p-4">
+      <SectionHeader title={t("auth.tokens.title")} sub={t("auth.tokens.sub")} />
+
+      {fresh && (
+        <div className="mb-3 border border-signal/40 bg-surface-2 p-3">
+          <p className="label text-fg-3">{t("auth.tokens.once")}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <code className="mono flex-1 truncate text-[12px]">{fresh}</code>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                copyText(fresh).then((ok) =>
+                  ok
+                    ? toast({ tone: "success", title: "agents.token.copied" })
+                    : toast({ tone: "error", title: "agents.token.copy" }),
+                )
+              }
+            >
+              {t("agents.token.copy")}
+            </Button>
+            <button
+              onClick={() => setFresh(null)}
+              className="shrink-0 px-1 text-fg-3 hover:text-fg"
+              title={t("common.close")}
+            >
+              <Close size={13} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {(tokens.data ?? []).map((tk) => (
+          <div key={tk.id} className="flex items-center gap-2 bg-surface-2 px-3 py-2">
+            <span className="flex-1 truncate text-[12px] text-fg-2">{tk.name}</span>
+            <span className="mono shrink-0 text-[11px] text-fg-3">
+              {tk.last_used_at ? timeAgo(tk.last_used_at) : t("auth.tokens.neverUsed")}
+            </span>
+            <button
+              onClick={() => confirm(t("auth.tokens.removeConfirm")) && remove.mutate(tk.id)}
+              className="shrink-0 px-1 text-fg-3 hover:text-alert"
+              title={t("common.remove")}
+            >
+              <Trash size={13} />
+            </button>
+          </div>
+        ))}
+        {(tokens.data ?? []).length === 0 && (
+          <p className="mono text-[12px] text-fg-3">{t("auth.tokens.none")}</p>
+        )}
+      </div>
+
+      <div className="mt-4 flex items-end gap-3 border-t border-edge-2 pt-3">
+        <Field label={t("auth.tokens.name")} className="flex-1">
+          <input
+            className="input"
+            autoComplete="off"
+            placeholder={t("auth.tokens.namePlaceholder")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </Field>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<Plus size={12} />}
+          loading={create.isPending}
+          disabled={name.trim().length < 2}
+          onClick={() => create.mutate()}
+        >
+          {t("auth.tokens.add")}
+        </Button>
+      </div>
+      <p className="mono mt-2 text-[11px] text-fg-3">{t("auth.tokens.hint")}</p>
     </section>
   );
 }

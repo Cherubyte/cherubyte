@@ -134,6 +134,31 @@ class AuthSession(Base):
     account: Mapped[Account] = relationship()
 
 
+class ApiToken(Base):
+    """A bearer token for scripts and scrapers — read-only, revocable.
+
+    Like an agent key, this is stored hashed (plain SHA-256: it is 32 bytes of
+    `secrets.token_urlsafe`, not a chosen password, so a slow KDF buys nothing).
+    The token is shown once, on creation. It authenticates against the same
+    routes a browser session does, but only ever at `viewer` level — reads pass,
+    writes and account/agent management do not.
+    """
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    role: Mapped[AccountRole] = mapped_column(
+        Enum(AccountRole), default=AccountRole.viewer
+    )
+    created_by: Mapped[int | None] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class User(Base):
     __tablename__ = "users"
 
