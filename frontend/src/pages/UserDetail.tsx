@@ -149,7 +149,7 @@ function DeviceRow({ d, onToggle }: { d: UserDeviceMini; onToggle: (on: boolean)
       <Link to={`/devices/${d.id}`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span
-            className={"h-[7px] w-[7px] shrink-0 " + (d.is_online ? "bg-signal" : "border border-edge-2")}
+            className={"h-[7px] w-[7px] shrink-0 rounded-full " + (d.is_online ? "bg-fg" : "border border-edge-2")}
           />
           <span className="font-display truncate text-[13px] tracking-tight text-fg hover:text-signal">
             {d.display_name}

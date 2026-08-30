@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "../api/client";
 import { AUTH_KEY } from "../auth/AuthProvider";
 import { Button, Field } from "../components/ui";
+import { ChartMark } from "../components/Glyph";
 import { useT } from "../i18n";
 
 export function Login({ setupRequired }: { setupRequired: boolean }) {
@@ -30,13 +31,11 @@ export function Login({ setupRequired }: { setupRequired: boolean }) {
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
         <div className="mb-5 flex items-center gap-2.5">
-          <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[7px] bg-signal-bg font-display text-[13px] font-semibold text-signal-fg shadow-e1">
-            N
-          </span>
-          <span className="font-display text-[16px] tracking-tight text-fg">NetScan</span>
+          <ChartMark size={26} className="text-fg" />
+          <span className="font-display text-[18px] tracking-[0.06em] text-fg">NETSCAN</span>
         </div>
         <div className="panel p-6">
-          <h1 className="font-display mb-1 text-[20px] tracking-tight text-fg">
+          <h1 className="font-display mb-1 text-[26px] leading-none tracking-[0.01em] text-fg">
             {t(setupRequired ? "auth.setup.title" : "auth.login.title")}
           </h1>
           <p className="mono mb-4 text-[11px] text-fg-3">

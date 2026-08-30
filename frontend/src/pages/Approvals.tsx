@@ -5,7 +5,7 @@ import { TypeCode, useBrandLogos, useOsLogos } from "../components/TypeCode";
 import { Badge, Button, EmptyState, Readout, SectionHeader, SkeletonRows } from "../components/ui";
 import { Check, Close, Merge, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
-import { coord, deviceTypeLabel, timeAgo } from "../lib/format";
+import { deviceTypeLabel, hostRef, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import { useNow } from "../hooks/useNow";
 
@@ -125,17 +125,17 @@ export function Approvals() {
         />
       ) : (
         <div className="space-y-2">
-          {list.map((d, i) => {
-            const c = coord(i);
+          {list.map((d) => {
+            const ref = hostRef((d.ips.find((x) => x.is_primary) ?? d.ips[0])?.address);
             const mac = d.macs[0];
             return (
               <div
                 key={d.id}
                 className="panel relative flex flex-col gap-3 py-4 pl-5 pr-4 sm:flex-row sm:items-center"
               >
-                <span className="absolute left-0 top-0 h-full w-[3px] bg-signal" />
+                <span className="absolute left-0 top-0 h-full w-[2px] bg-signal" />
                 <span className="mono hidden shrink-0 self-start pt-1 text-[10px] text-fg-3 sm:block">
-                  {c.alpha}·{c.index}
+                  {ref}
                 </span>
                 <TypeCode device={d} logos={logos} osLogos={osLogos} size={38} />
                 <div className="min-w-0 flex-1">
@@ -155,7 +155,7 @@ export function Approvals() {
                     <span>{deviceTypeLabel(d.device_type)}</span>
                     {d.os_family && <><span>·</span><span>{d.os_family}</span></>}
                     <span>·</span>
-                    <span className={d.is_online ? "text-signal" : ""}>
+                    <span className={d.is_online ? "text-fg-2" : ""}>
                       {d.is_online ? t("common.online") : timeAgo(d.last_seen, true)}
                     </span>
                   </div>

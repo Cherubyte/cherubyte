@@ -1,12 +1,16 @@
-<svg width="440" height="120" viewBox="0 0 440 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NetScan">
-  <rect width="440" height="120" rx="26" fill="#131110"/>
-  <g fill="#2E2A26">
-    <circle cx="54" cy="42" r="7"/>
-    <circle cx="26" cy="70" r="7"/>
-    <circle cx="54" cy="70" r="7"/>
+<svg width="560" height="150" viewBox="0 0 560 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NetScan">
+  <!-- CHART: chart-sheet title block — a plotted position beside the wordmark.
+       GitHub serves file SVGs as text/plain and will not load a web font, so
+       the README uses logo-wordmark.png; this is the editable source. -->
+  <rect width="560" height="150" rx="6" fill="#f4efe4"/>
+  <g stroke="#1b2b33" fill="none">
+    <path d="M75 26v98M26 75h98" stroke-width="1.4" opacity="0.35"/>
+    <circle cx="75" cy="75" r="38" stroke-width="3.4"/>
+    <circle cx="75" cy="75" r="21" stroke-width="3.4"/>
   </g>
-  <circle cx="26" cy="42" r="13" fill="none" stroke="#F5A03C" stroke-width="1.6" opacity="0.35"/>
-  <circle cx="26" cy="42" r="8.5" fill="#F5A03C"/>
-  <text x="94" y="74" font-family="'Clash Display', 'Hanken Grotesk', -apple-system, 'Segoe UI', system-ui, sans-serif"
-        font-size="48" font-weight="560" letter-spacing="-1" fill="#EEEAE4">Net<tspan fill="#F5A03C">Scan</tspan></text>
+  <circle cx="75" cy="75" r="8.5" fill="#c8102e"/>
+  <text x="146" y="92" font-family="'Big Shoulders', 'Arial Narrow', 'Helvetica Neue', sans-serif"
+        font-size="72" font-weight="700" letter-spacing="1.5" fill="#1b2b33">NETSCAN</text>
+  <text x="148" y="116" font-family="'Overpass Mono', ui-monospace, monospace"
+        font-size="11" letter-spacing="4.6" fill="#7d8a8d">SELF-HOSTED NETWORK MONITOR</text>
 </svg>

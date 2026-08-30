@@ -94,6 +94,9 @@ class AgentReport(BaseModel):
     # least the agent's own host, so this is "the scan is broken", not "the
     # network emptied" — and the panel must not expire devices on it.
     healthy: bool = True
+    # Where this agent's health/trigger server is listening. The panel uses it,
+    # with the address the report arrived from, to ask for an out-of-band sweep.
+    health_port: int = 1002
 
 
 class AgentConfig(BaseModel):
@@ -129,6 +132,10 @@ class ReportAck(BaseModel):
     found: int = 0
     degraded: bool = False
     config: AgentConfig = Field(default_factory=AgentConfig)
+    # Set when someone pressed Sweep in the panel and it could not reach the
+    # agent's trigger port directly. The agent should run one cycle now instead
+    # of waiting out the rest of its interval.
+    scan_now: bool = False
 
 
 class EnrolRequest(BaseModel):

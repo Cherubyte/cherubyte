@@ -497,6 +497,13 @@ class Agent(Base):
     version: Mapped[str | None] = mapped_column(String(32))
     subnets: Mapped[str | None] = mapped_column(Text)      # JSON list of CIDRs
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The address the last report came from, and where its trigger server
+    # listens — together they let the panel ask for an out-of-band sweep.
+    last_ip: Mapped[str | None] = mapped_column(String(45))
+    health_port: Mapped[int] = mapped_column(Integer, default=1002)
+    # Set when Sweep was pressed and the panel could not reach the agent
+    # directly; sent on the next ack, then cleared.
+    scan_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     # The egress address this agent's network shows the internet, and when it
     # was last confirmed. Per-agent because two agents on two networks have two.
     public_ip: Mapped[str | None] = mapped_column(String(45))

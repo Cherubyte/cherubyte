@@ -99,7 +99,7 @@ export function PresenceHeatmap({
               <span
                 className={clsx(
                   "mono flex items-baseline gap-1 pr-2 text-[8.5px]",
-                  L.isToday ? "text-signal" : "text-fg-3",
+                  L.isToday ? "text-fg" : "text-fg-3",
                 )}
               >
                 <span className="w-8 text-right tabular-nums">{L.text}</span>

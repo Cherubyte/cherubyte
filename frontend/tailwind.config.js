@@ -1,12 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
-  // :root is dark; the `.light` class opts into the recolour.
-  darkMode: ["selector", ":root:not(.light)"],
+  // :root is the light chart sheet; the `.dark` class opts into ECDIS night.
+  darkMode: ["selector", ":root.dark"],
   theme: {
     extend: {
       colors: {
-        // ── INSTRUMENT tokens ───────────────────────────────────────
+        // ── CHART tokens ────────────────────────────────────────────
+        paper: "rgb(var(--paper) / <alpha-value>)",
         bg: "rgb(var(--bg) / <alpha-value>)",
         surface: "rgb(var(--surface) / <alpha-value>)",
         "surface-2": "rgb(var(--surface-2) / <alpha-value>)",
@@ -16,22 +17,24 @@ export default {
         "fg-3": "rgb(var(--fg-3) / <alpha-value>)",
         edge: "rgb(var(--edge) / <alpha-value>)",
         "edge-2": "rgb(var(--edge-2) / <alpha-value>)",
+        water: "rgb(var(--water) / <alpha-value>)",
         signal: "rgb(var(--signal) / <alpha-value>)",
         "signal-bg": "rgb(var(--signal-fill-bg) / <alpha-value>)",
         "signal-fg": "rgb(var(--signal-fill-fg) / <alpha-value>)",
         alert: "rgb(var(--alert) / <alpha-value>)",
         "alert-fg": "rgb(var(--alert-fg) / <alpha-value>)",
+        grid: "rgb(var(--grid) / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["Hanken Grotesk", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
-        display: ["Clash Display", "Hanken Grotesk", "sans-serif"],
-        mono: ["Spline Sans Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+        sans: ["Overpass", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        display: ["Big Shoulders", "Overpass", "sans-serif"],
+        mono: ["Overpass Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       borderColor: {
         DEFAULT: "rgb(var(--edge) / <alpha-value>)",
       },
       borderRadius: {
-        none: "0", sm: "5px", DEFAULT: "7px", md: "8px", lg: "10px", xl: "12px", "2xl": "16px", full: "9999px",
+        none: "0", sm: "2px", DEFAULT: "2px", md: "3px", lg: "3px", xl: "4px", "2xl": "6px", full: "9999px",
       },
       boxShadow: {
         none: "none",
@@ -44,10 +47,10 @@ export default {
         xs: ["11px", "1.4"],
         sm: ["12px", "1.45"],
         base: ["13.5px", "1.5"],
-        head: ["19px", "1.15"],
-        title: ["30px", "1.05"],
-        readout: ["clamp(40px, 7vw, 88px)", "0.9"],
-        mega: ["clamp(46px, 8vw, 100px)", "0.88"],
+        head: ["20px", "1.12"],
+        title: ["32px", "1.0"],
+        readout: ["clamp(42px, 7vw, 92px)", "0.86"],
+        mega: ["clamp(48px, 8vw, 104px)", "0.84"],
       },
       transitionTimingFunction: {
         ease: "cubic-bezier(.32,.72,0,1)",

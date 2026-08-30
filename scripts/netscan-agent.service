@@ -2,15 +2,21 @@
 Description=NetScan agent — varrimento da rede local
 After=network-online.target
 Wants=network-online.target
+# An always-on monitor should never sit dead because it restarted a few times
+# in quick succession — keep trying rather than give up.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-# __NETSCAN_USER__ / __NETSCAN_ROOT__ are filled in by
+# The USER and ROOT placeholders below are filled in by
 # scripts/install-agent-service.sh (it seds in the invoking user and repo path).
 User=__NETSCAN_USER__
 WorkingDirectory=__NETSCAN_ROOT__/agent
 ExecStart=__NETSCAN_ROOT__/agent/.venv/bin/python run.py
-Restart=on-failure
+# `always`, not `on-failure`: a monitor that stops sweeping is useless, so it
+# comes back from a crash, an OOM kill, or a stray signal too. Only an explicit
+# `systemctl stop` keeps it down.
+Restart=always
 RestartSec=3
 
 # O agente precisa de raw sockets para o varrimento ARP (scapy) e para o

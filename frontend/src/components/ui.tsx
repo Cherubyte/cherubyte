@@ -93,9 +93,9 @@ export function Readout({
   const color =
     tone === "signal" ? "text-signal" : tone === "alert" ? "text-alert" : "text-fg";
   return (
-    <div className={clsx("flex flex-col gap-2", className)}>
+    <div className={clsx("flex flex-col gap-1.5", className)}>
       <div className="flex items-baseline gap-2">
-        <span className={clsx("font-display-lt leading-[0.82] tnum", px, color)}>{value}</span>
+        <span className={clsx("font-display leading-[0.82] tnum", px, color)}>{value}</span>
         {unit && <span className="mono text-[12px] text-fg-3">{unit}</span>}
       </div>
       {caption != null && <span className="key">{caption}</span>}
@@ -221,7 +221,7 @@ export function StatusPill({ online }: { online: boolean }) {
     <span
       className={clsx(
         "label inline-flex items-center gap-2",
-        online ? "text-signal" : "text-fg-3",
+        online ? "text-fg-2" : "text-fg-3",
       )}
     >
       <StatusMark state={online ? "online" : "offline"} size={8} />
@@ -241,7 +241,7 @@ export function ApprovalTag({ status }: { status: ApprovalStatus }) {
 export function LevelDot({ level }: { level: EventLevel }) {
   const c = {
     info: "bg-fg-3",
-    success: "bg-signal",
+    success: "bg-water",
     warning: "bg-alert",
     alert: "bg-alert",
   }[level];
@@ -260,7 +260,7 @@ export function Avatar({ name, size = 26 }: { name: string; size?: number }) {
         background: bg,
         color: readableOn(bg),
         fontSize: size * 0.38,
-        borderRadius: 7,
+        borderRadius: 2,
       }}
     >
       {initials(name)}
@@ -322,7 +322,7 @@ export function Toggle({
             className={clsx(
               "px-2.5 py-1.5 tracking-[0.08em] transition-colors",
               active
-                ? "bg-signal-bg text-signal-fg"
+                ? "bg-fg text-surface"
                 : "bg-transparent text-fg-3 hover:text-fg",
             )}
           >

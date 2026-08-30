@@ -32,6 +32,11 @@ _state: dict = {
     "last_error": None,
 }
 
+# Set to cut the loop's wait short: the panel's Sweep button (via POST /trigger
+# or the scan_now flag on an ack) asks for one cycle now rather than at the end
+# of the interval.
+_wake = asyncio.Event()
+
 
 async def _ensure_enrolled() -> tuple[int, str] | None:
     stored = reporter.load_credentials()
@@ -64,6 +69,10 @@ async def _cycle() -> None:
         changed = apply_config(ack.config)
         if changed:
             logger.info("Panel configuration applied: %s", ", ".join(sorted(changed)))
+        if getattr(ack, "scan_now", False):
+            # The panel wanted a sweep and could not reach us directly.
+            logger.info("Panel requested an out-of-band sweep")
+            _wake.set()
     _state.update(
         last_report_at=datetime.now(timezone.utc).isoformat(),
         last_report_ok=ack is not None,
@@ -87,7 +96,12 @@ async def _loop() -> None:
         except Exception as exc:  # noqa: BLE001
             _state["last_error"] = str(exc)
             logger.exception("Cycle failed")
-        await asyncio.sleep(max(15, settings.scan_interval_seconds))
+        # Sleep out the interval, but wake early if a sweep was asked for.
+        _wake.clear()
+        try:
+            await asyncio.wait_for(_wake.wait(), timeout=max(15, settings.scan_interval_seconds))
+        except asyncio.TimeoutError:
+            pass
 
 
 @contextlib.asynccontextmanager
@@ -102,6 +116,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="NetScan agent", version=reporter.AGENT_VERSION, lifespan=lifespan)
+
+
+@app.post("/trigger")
+async def trigger():
+    """Ask the loop to run a cycle now. The panel calls this when someone
+    presses Sweep and it can reach the agent directly; otherwise it falls back
+    to the scan_now flag on the next report's ack."""
+    _wake.set()
+    return {"queued": True}
 
 
 @app.get("/health")

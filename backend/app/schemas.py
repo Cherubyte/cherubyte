@@ -315,3 +315,7 @@ class StatsOut(BaseModel):
     users_present: int
     subnet: str
     last_scan: AwareUtc | None = None
+    # Agent health, so the UI can say when the monitor has gone blind.
+    agents_configured: int = 0
+    last_report: AwareUtc | None = None
+    agents_stale: bool = False

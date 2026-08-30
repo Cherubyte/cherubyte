@@ -23,7 +23,7 @@ export function Distribution() {
       {/* hero */}
       <div className="panel flex flex-wrap items-end gap-x-10 gap-y-4 px-5 py-4">
         <Readout value={s?.total ?? "—"} caption={t("stats.devices")} size="xl" />
-        <Readout value={s?.online ?? "—"} caption={t("stats.onlineNow")} size="sm" tone="signal" />
+        <Readout value={s?.online ?? "—"} caption={t("stats.onlineNow")} size="sm" />
         <Readout value={s?.approved ?? "—"} caption={t("stats.approved")} size="sm" />
         <Readout value={s?.pending ?? "—"} caption={t("stats.pending")} size="sm" tone={s?.pending ? "alert" : "default"} />
       </div>
@@ -245,7 +245,7 @@ function LogoBars({
             <div className="relative h-2.5 bg-surface-2">
               <div className="absolute inset-y-0 left-0 bg-edge-2" style={{ width: `${(b.device_count / max) * 100}%` }} />
               {on != null && on > 0 && (
-                <div className="absolute inset-y-0 left-0 bg-signal" style={{ width: `${(on / max) * 100}%` }} />
+                <div className="absolute inset-y-0 left-0 bg-water" style={{ width: `${(on / max) * 100}%` }} />
               )}
             </div>
             <div className="flex items-center justify-end gap-1">

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from netscan_protocol import (
     PROTOCOL_VERSION,
     AgentReport,
@@ -58,6 +58,7 @@ async def enrol_agent(payload: EnrolRequest, session: AsyncSession = Depends(get
 async def receive_report(
     agent_id: int,
     report: AgentReport,
+    request: Request,
     authorization: str | None = Header(None),
     session: AsyncSession = Depends(get_session),
 ):
@@ -78,7 +79,15 @@ async def receive_report(
     agent.last_hosts = len(report.hosts)
     agent.last_fingerprints = report.dhcp_fingerprints
     agent.last_healthy = report.healthy
+    if request.client is not None:
+        agent.last_ip = request.client.host
+    agent.health_port = report.health_port or 1002
     agent_service.set_subnets(agent, report.subnets)
+
+    # If Sweep was pressed and we could not reach the agent directly, tell it
+    # now (on this ack) and clear the request so it fires exactly once.
+    wants_sweep = bool(agent.scan_requested)
+    agent.scan_requested = False
 
     for sample in report.wan:
         session.add(
@@ -104,6 +113,7 @@ async def receive_report(
         found=result.get("found", 0),
         degraded=bool(result.get("degraded")),
         config=agent_service.desired_config(),
+        scan_now=wants_sweep,
     )
 
 

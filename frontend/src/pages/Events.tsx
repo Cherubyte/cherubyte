@@ -44,7 +44,7 @@ const CATEGORIES: { k: string; Icon: IconType; labelKey: MessageKey }[] = [
 
 const LEVEL_MARK: Record<EventLevel, string> = {
   info: "bg-fg-3",
-  success: "bg-signal",
+  success: "bg-water",
   warning: "bg-alert",
   alert: "bg-alert",
 };
@@ -134,7 +134,7 @@ function Chips({
           className={clsx(
             "shrink-0 px-3 py-2 transition-colors",
             i > 0 && "border-l border-edge-2",
-            value === o.k ? "bg-signal-bg text-signal-fg" : "text-fg-2 hover:text-fg",
+            value === o.k ? "bg-fg text-surface" : "text-fg-2 hover:text-fg",
           )}
         >
           {o.label}
@@ -168,10 +168,10 @@ function Row({ e }: { e: EventItem }) {
       {e.device_id && (
         <Link
           to={`/devices/${e.device_id}`}
-          className="mono flex shrink-0 items-center gap-1 pt-px text-[10px] text-fg-3 hover:text-signal"
+          title={t("events.openHost")}
+          className="flex shrink-0 items-center pt-px text-fg-3 transition-colors hover:text-signal"
         >
-          <CornerDown size={11} />
-          {String(e.device_id).padStart(3, "0")}
+          <CornerDown size={12} />
         </Link>
       )}
     </div>

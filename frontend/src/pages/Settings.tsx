@@ -5,7 +5,20 @@ import { api } from "../api/client";
 import type { AccountRole, AlertRule, SubnetCfg } from "../api/types";
 import { AUTH_KEY, useAuth, useCanWrite, useIsAdmin } from "../auth/AuthProvider";
 import { Badge, Button, Field, Redacted, SectionHeader, Toggle } from "../components/ui";
-import { Bell, Plus, Send, Trash } from "../components/Glyph";
+import {
+  Bell,
+  Globe,
+  Image,
+  LogIcon,
+  PeopleIcon,
+  Plug,
+  Plus,
+  Radar,
+  Send,
+  Shield,
+  Trash,
+  Wave,
+} from "../components/Glyph";
 import { useToast } from "../components/Toaster";
 import { useTheme } from "../hooks/useTheme";
 import { copyText } from "../lib/ports";
@@ -36,19 +49,21 @@ type SettingsCat =
 
 const SETTINGS_CATS: {
   k: SettingsCat;
+  code: string;
   labelKey: MessageKey;
+  Icon: (p: { size?: number; className?: string }) => JSX.Element;
   adminOnly?: boolean;
   writeOnly?: boolean;
 }[] = [
-  { k: "network", labelKey: "settings.cat.network" },
-  { k: "notifications", labelKey: "settings.cat.notifications" },
-  { k: "integrations", labelKey: "settings.cat.integrations" },
-  { k: "internet", labelKey: "settings.cat.internet" },
-  { k: "history", labelKey: "settings.cat.history" },
-  { k: "agents", labelKey: "settings.cat.agents", writeOnly: true },
-  { k: "interface", labelKey: "settings.cat.interface" },
-  { k: "account", labelKey: "settings.cat.account" },
-  { k: "accounts", labelKey: "settings.cat.accounts", adminOnly: true },
+  { k: "network", code: "01", labelKey: "settings.cat.network", Icon: Radar },
+  { k: "notifications", code: "02", labelKey: "settings.cat.notifications", Icon: Bell },
+  { k: "integrations", code: "03", labelKey: "settings.cat.integrations", Icon: Plug },
+  { k: "internet", code: "04", labelKey: "settings.cat.internet", Icon: Globe },
+  { k: "history", code: "05", labelKey: "settings.cat.history", Icon: LogIcon },
+  { k: "agents", code: "06", labelKey: "settings.cat.agents", Icon: Wave, writeOnly: true },
+  { k: "interface", code: "07", labelKey: "settings.cat.interface", Icon: Image },
+  { k: "account", code: "08", labelKey: "settings.cat.account", Icon: Shield },
+  { k: "accounts", code: "09", labelKey: "settings.cat.accounts", Icon: PeopleIcon, adminOnly: true },
 ];
 
 /** Categories that edit the shared settings form and so need the Save bar. */
@@ -88,7 +103,8 @@ function SettingsNav({
     (c) => (!c.adminOnly || isAdmin) && (!c.writeOnly || canWrite),
   );
   return (
-    <nav className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:mx-0 lg:flex-col lg:pb-0">
+    <nav className="panel flex gap-1 overflow-x-auto p-1.5 lg:sticky lg:top-1 lg:flex-col lg:gap-0 lg:self-start lg:overflow-visible lg:p-2">
+      <span className="key hidden px-2 pb-2 pt-1 lg:block">{t("settings.sections")}</span>
       {items.map((c) => {
         const on = c.k === cat;
         return (
@@ -96,17 +112,33 @@ function SettingsNav({
             key={c.k}
             onClick={() => setCat(c.k)}
             className={clsx(
-              "relative shrink-0 whitespace-nowrap px-3 py-2 text-left text-[13px] font-medium transition-colors",
-              on ? "text-fg" : "text-fg-2 hover:text-fg",
+              "group relative flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[2px] py-[7px] pl-2.5 pr-2 text-left text-[12.5px] transition-colors",
+              on ? "bg-surface-2 text-fg lg:bg-transparent" : "text-fg-2 hover:text-fg",
             )}
           >
-            {on && (
-              <span className="absolute left-0 top-0 hidden h-full w-[3px] bg-signal lg:block" />
-            )}
-            {on && (
-              <span className="absolute inset-x-1 bottom-0 h-[2px] bg-signal lg:hidden" />
-            )}
-            {t(c.labelKey)}
+            {/* held-sheet leader tick — left on desktop, underline on mobile */}
+            <span
+              className={clsx(
+                "absolute left-0 top-1/2 hidden h-[13px] w-[2px] -translate-y-1/2 lg:block",
+                on ? "bg-signal" : "bg-transparent",
+              )}
+            />
+            <span
+              className={clsx(
+                "absolute inset-x-1 bottom-0 h-[2px] lg:hidden",
+                on ? "bg-signal" : "bg-transparent",
+              )}
+            />
+            <span
+              className={clsx(
+                "mono text-[9.5px] tabular-nums",
+                on ? "text-signal" : "text-fg-3",
+              )}
+            >
+              {c.code}
+            </span>
+            <c.Icon size={14} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
+            <span className={clsx("font-medium", on && "font-semibold")}>{t(c.labelKey)}</span>
           </button>
         );
       })}
@@ -348,7 +380,7 @@ export function Settings() {
   const d = settings.data;
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[176px_1fr]">
+    <div className="grid max-w-5xl gap-4 lg:grid-cols-[206px_1fr] lg:items-start">
       <SettingsNav cat={cat} setCat={setCat} isAdmin={isAdmin} canWrite={canWrite} />
 
       <div className="min-w-0">

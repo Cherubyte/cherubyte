@@ -3,36 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#131110" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1418" media="(prefers-color-scheme: dark)" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,500;10..72,600;10..72,700&family=Overpass:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Overpass+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23131110'/%3E%3Ccircle cx='11' cy='11' r='4.5' fill='%23f5a042'/%3E%3Ccircle cx='21' cy='11' r='3' fill='%232e2a26'/%3E%3Ccircle cx='11' cy='21' r='3' fill='%232e2a26'/%3E%3Ccircle cx='21' cy='21' r='3' fill='%232e2a26'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f4efe4'/%3E%3Cg stroke='%231b2b33' stroke-width='1.2' fill='none'%3E%3Ccircle cx='16' cy='16' r='10'/%3E%3Ccircle cx='16' cy='16' r='5.5'/%3E%3C/g%3E%3Cpath d='M16 3v26M3 16h26' stroke='%231b2b33' stroke-width='0.6' opacity='0.5'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%23c8102e'/%3E%3C/svg%3E"
     />
     <title>NetScan</title>
   </head>
   <body>
     <!--
-      DIRECTION — "INSTRUMENT" (supersedes v6 "STATION")
-      THESIS: the panel is a precision instrument, not an industrial control room.
-        Refuses the cold blue-grey dashboard and the flat hard-edged block.
-      OWN-WORLD: warm graphite (dark) / warm porcelain (light), never blue. One
-        tungsten-amber signal that reads as a lit filament (alive / now / selection).
-        Machined depth — a core seated in a tray, warm diffused shadows, a hairline
-        top light. Clash Display for headings + the big readouts, Hanken Grotesk UI,
-        Spline Sans Mono data. ~10px radii. A faint dot-grid ground = the network as
-        a field of nodes; the status mark is a lit node with a concentric ring.
-      STORY: an operator reads state at a glance and drills into a host; the chrome
-        recedes, the data and the amber carry meaning.
-      FIRST VIEWPORT: left rail (monogram, nav, Sweep). Top strip of vitals. The
-        dashboard opens on one instrument cluster — online/total, present, new,
-        internet — then the host register as a single tray.
-      FORM: operator dashboard; signature = the seated-core enclosure + the amber
-        filament sweep during a scan. Motion: spring (cubic-bezier .32,.72,0,1),
-        one route-level fade-up, press-scale on buttons.
-      FINISH: unreviewed and undocumented is unfinished; this build ends with the
-        finish review, the verdict, DESIGN.md, and every shipping raster carrying
-        its provenance.
+      DIRECTION — "CHART" (supersedes v7 "INSTRUMENT", seed 0192d9d2, mode operate)
+      THESIS: the LAN is charted water and the panel is its hydrographic chart —
+        every device a plotted contact, not a card. Refuses the dark observability
+        dashboard (sidebar + stat-tile grid + one accent) that the last seven
+        directions all drifted into.
+      OWN-WORLD: ink-on-chart-paper by default (warm buff #f4efe4, ink #1b2b33),
+        one spot colour — chart warning carmine #c8102e — used only for a real
+        caution or the live/selected mark; a desaturated water tint #7fa8a0 owns
+        the plan ground and known-contact rows. ECDIS-night palette for dark.
+        Hairline linework, near-square corners, near-flat depth. Big Shoulders
+        (signage display), Overpass (Highway-Gothic UI), Overpass Mono (soundings,
+        MACs, coordinates, timestamps). A graticule ground; contacts carry a
+        symbol + a leader-tethered label + a sounding.
+      STORY: the operator reads the plan — online / present / new / caution — in
+        one look, then follows a contact's leader into its detail plate.
+      FIRST VIEWPORT: a fixed chart margin (title block, index, scale, epoch clock)
+        around the plot. The dashboard opens on the plan cluster — online/total,
+        present, new, internet — then the contact register as one continuous sheet.
+      FORM: operator dashboard; grounded candidate 5 of 7 (hydrographic chart +
+        AIS). Signature: a survey line advances once down the plot per sweep, and
+        the only "something changed" motion anywhere is a single hard chart-negative
+        flash on a new contact. Motion otherwise: one quiet route fade, press-scale.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
     -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

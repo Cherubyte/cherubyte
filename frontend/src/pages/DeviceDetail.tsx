@@ -20,7 +20,7 @@ import {
 } from "../components/ui";
 import { ArrowLeft, ArrowUpRight, Check, Close, Image, Merge, Plus, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
-import { deviceTypeLabel, dateTime, timeAgo } from "../lib/format";
+import { deviceTypeLabel, dateTime, hostRef, timeAgo } from "../lib/format";
 import { useT } from "../i18n";
 import { copyText, downloadRdp, portAction } from "../lib/ports";
 const OS_OPTIONS = [
@@ -383,8 +383,8 @@ export function DeviceDetail() {
         <div className="space-y-px">
           {history.data!.slice(0, 30).map((h) => (
             <div key={h.id} className="flex items-center gap-3 bg-surface-2 py-2 pl-0 pr-3 text-[11.5px]">
-              <span className={"h-full w-[3px] shrink-0 self-stretch " + (h.event === "join" ? "bg-signal" : "bg-alert")} />
-              <span className={"mono w-12 shrink-0 " + (h.event === "join" ? "text-signal" : "text-alert")}>
+              <span className={"h-full w-[2px] shrink-0 self-stretch " + (h.event === "join" ? "bg-water" : "bg-signal")} />
+              <span className={"mono w-12 shrink-0 " + (h.event === "join" ? "text-fg-2" : "text-signal")}>
                 {h.event === "join" ? "JOIN" : "LEAVE"}
               </span>
               <span className="mono text-fg-3">{dateTime(h.timestamp)}</span>
@@ -427,7 +427,9 @@ export function DeviceDetail() {
         <TypeCode device={d} logos={logos} osLogos={osLogos} size={isMobile ? 46 : 56} />
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
-            <span className="tag tag-neutral">HOST {String(d.id).padStart(3, "0")}</span>
+            <span className="tag tag-neutral">
+              HOST {hostRef((d.ips.find((i) => i.is_primary) ?? d.ips[0])?.address)}
+            </span>
             <StatusPill online={d.is_online} />
             {!d.is_online && <span className="mono text-[10px] text-fg-3">{t("device.seenAgo", { ago: timeAgo(d.last_seen) })}</span>}
             <ApprovalTag status={d.approval_status} />

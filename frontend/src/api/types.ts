@@ -207,6 +207,9 @@ export interface Stats {
   users_present: number;
   subnet: string;
   last_scan: string | null;
+  agents_configured: number;
+  last_report: string | null;
+  agents_stale: boolean;
 }
 
 export interface SubnetCfg {
