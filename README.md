@@ -29,6 +29,25 @@ on the same box for a single LAN, or one per network you want to watch. The
 No cloud. No subscription. One local admin account, and your device inventory
 never leaves your network.
 
+## Screens
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="NetScan dashboard — the host list with an instrument-cluster header" width="880">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/device.png" alt="Device detail — identity, network, connection history"><br><sub><b>Device detail</b> — rename it, set its owner and type, see every IP and MAC folded in, and its join/leave history.</sub></td>
+    <td width="50%"><img src="docs/screenshots/people.png" alt="People &amp; presence — a per-hour activity grid for each person"><br><sub><b>People &amp; presence</b> — link devices to people; one square per hour of when they were home.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/log.png" alt="Event log — a filterable timeline of joins, leaves, ports and alerts"><br><sub><b>Event log</b> — every join, leave, port change and alert, filterable by level and category.</sub></td>
+    <td width="50%"><img src="docs/screenshots/stats.png" alt="Statistics — new devices over time, breakdown by type, brand and OS"><br><sub><b>Statistics</b> — new devices over time, and the network broken down by type, brand and OS.</sub></td>
+  </tr>
+</table>
+
+<sub>Screens show a demo network with generic device and people names. Light and dark themes; English or Portuguese.</sub>
+
 ---
 
 ## Why not just use Fing?
@@ -92,7 +111,7 @@ If you'd rather own the whole thing, run NetScan.
   logos you can assign.
 - **Multiple subnets** — scan several CIDRs; each gets its own tab.
 - **Per-device photos** — snap a picture so you recognise the thing later.
-- **English or Portuguese** UI, switchable in the sidebar. Light and dark themes.
+- **English or Portuguese** UI, and light or dark themes — both in **Config ▸ Interface**.
 
 ---
 
@@ -372,6 +391,7 @@ it is — each entry anchored to the failure that produced it.
 
 ## License
 
-[MIT](LICENSE). The bundled fonts (`frontend/public/fonts/`) — Geist, Geist Mono
-and Space Grotesk — are under the SIL Open Font License 1.1; their license files
-sit next to them.
+[MIT](LICENSE). The bundled fonts (`frontend/public/fonts/`) — Hanken Grotesk and
+Spline Sans Mono under the SIL Open Font License 1.1, Clash Display under the
+Fontshare Free License — self-hosted, with their license files sitting next to
+them. NetScan makes no external font requests.

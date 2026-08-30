@@ -1,12 +1,12 @@
 <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NetScan">
-  <rect width="120" height="120" rx="20" fill="#0a0b0d"/>
-  <!-- 2x2 board: one live node (safety orange), the rest idle -->
-  <g>
-    <rect x="24" y="24" width="32" height="32" rx="3" fill="#ff5a1f"/>
-    <rect x="64" y="24" width="32" height="32" rx="3" fill="#303640"/>
-    <rect x="24" y="64" width="32" height="32" rx="3" fill="#303640"/>
-    <rect x="64" y="64" width="32" height="32" rx="3" fill="#303640"/>
+  <!-- INSTRUMENT: warm graphite enclosure, a field of nodes, one lit -->
+  <rect width="120" height="120" rx="26" fill="#131110"/>
+  <g fill="#2E2A26">
+    <circle cx="78" cy="42" r="9"/>
+    <circle cx="42" cy="78" r="9"/>
+    <circle cx="78" cy="78" r="9"/>
   </g>
-  <!-- scan tick: a hairline crossing the live node -->
-  <path d="M24 40 H96" stroke="#ff5a1f" stroke-width="2" opacity="0.35"/>
+  <!-- the live node: tungsten amber with a concentric ring -->
+  <circle cx="42" cy="42" r="17" fill="none" stroke="#F5A03C" stroke-width="2" opacity="0.35"/>
+  <circle cx="42" cy="42" r="11" fill="#F5A03C"/>
 </svg>
