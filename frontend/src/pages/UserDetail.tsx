@@ -95,7 +95,7 @@ export function UserDetail() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-b-2 border-edge-2 pb-5">
+      <div className="panel flex items-center gap-3 px-5 py-4">
         <Avatar name={u.name} size={44} />
         <div>
           <div className="flex items-center gap-2">

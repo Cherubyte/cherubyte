@@ -113,7 +113,7 @@ export function DeviceDetail() {
   ];
 
   const identity = (
-    <section className="panel p-4">
+    <section className="panel p-5">
       <SectionHeader
         title={t("device.section.identity")}
         actions={
@@ -210,7 +210,7 @@ export function DeviceDetail() {
   );
 
   const network = (
-    <section className="panel p-4">
+    <section className="panel p-5">
       <SectionHeader title={t("device.section.network")} />
       <div className="space-y-5">
         <div>
@@ -333,7 +333,7 @@ export function DeviceDetail() {
   );
 
   const photos = (
-    <section className="panel p-4">
+    <section className="panel p-5">
       <SectionHeader
         title={t("device.section.photos")}
         sub={String(d.images.length)}
@@ -375,7 +375,7 @@ export function DeviceDetail() {
   );
 
   const historyCard = (
-    <section className="panel p-4">
+    <section className="panel p-5">
       <SectionHeader title={t("device.section.history")} />
       {(history.data ?? []).length === 0 ? (
         <EmptyState title={t("device.history.empty")} />
@@ -423,7 +423,7 @@ export function DeviceDetail() {
       <MergeDialog open={mergeOpen} onClose={() => setMergeOpen(false)} device={d} />
 
       {/* header */}
-      <div className="panel flex items-start gap-4 p-4">
+      <div className="panel flex items-start gap-4 p-5">
         <TypeCode device={d} logos={logos} osLogos={osLogos} size={isMobile ? 46 : 56} />
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
@@ -437,7 +437,7 @@ export function DeviceDetail() {
           </h1>
           <dl className="mt-4 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
             {facts.map(([k, v]) => (
-              <div key={k} className="flex items-baseline gap-2 border-b border-dotted border-edge py-1.5">
+              <div key={k} className="flex items-baseline gap-2 border-b border-edge py-2">
                 <dt className="label shrink-0">{k}</dt>
                 <span className="h-px flex-1" />
                 <dd className="mono truncate text-right text-[11.5px] text-fg-2">{v}</dd>
@@ -468,7 +468,7 @@ export function DeviceDetail() {
       )}
 
       {isMobile && (
-        <div className="sticky bottom-16 -mx-4 flex gap-2 border-t-2 border-edge-2 bg-surface px-4 py-3">
+        <div className="sticky bottom-16 -mx-4 flex gap-2 border-t border-edge bg-surface px-4 py-3">
           {d.approval_status !== "approved" && (
             <Button variant="primary" className="flex-1" icon={<Check size={13} />} onClick={() => approve.mutate()}>{t("common.approve")}</Button>
           )}

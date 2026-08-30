@@ -64,7 +64,7 @@ export function Users() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-x-10 gap-y-4 border-b-2 border-edge-2 pb-4">
+      <div className="panel flex flex-wrap items-end gap-x-10 gap-y-4 px-5 py-4">
         <Readout
           value={main.length ? present : "—"}
           unit={t("users.peopleUnit", { total: main.length })}

@@ -46,7 +46,7 @@ export function Dialog({
       />
       <div
         className={
-          "relative flex max-h-[85vh] flex-col overflow-hidden border border-edge-2 bg-surface " +
+          "relative flex max-h-[85vh] flex-col overflow-hidden rounded-xl border border-edge-2 bg-surface shadow-e3 " +
           (isMobile ? "pb-[env(safe-area-inset-bottom)]" : "")
         }
         style={{
@@ -56,7 +56,7 @@ export function Dialog({
             : "overlay-in .16s cubic-bezier(.2,0,0,1)",
         }}
       >
-        <div className="flex shrink-0 items-center justify-between border-b-2 border-edge-2 px-4 py-2.5">
+        <div className="flex shrink-0 items-center justify-between border-b border-edge px-4 py-3">
           <span className="key text-fg">{title}</span>
           <button onClick={onClose} className="text-fg-3 transition-colors hover:text-fg">
             <Close size={14} />

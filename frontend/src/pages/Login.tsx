@@ -30,11 +30,13 @@ export function Login({ setupRequired }: { setupRequired: boolean }) {
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
         <div className="mb-5 flex items-center gap-2.5">
-          <span className="h-[9px] w-[9px] shrink-0 bg-signal" />
-          <span className="font-display text-[15px] tracking-tight text-fg">NETSCAN</span>
+          <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[7px] bg-signal-bg font-display text-[13px] font-semibold text-signal-fg shadow-e1">
+            N
+          </span>
+          <span className="font-display text-[16px] tracking-tight text-fg">NetScan</span>
         </div>
-        <div className="panel p-5">
-          <h1 className="font-display mb-1 text-[18px] tracking-tight text-fg">
+        <div className="panel p-6">
+          <h1 className="font-display mb-1 text-[20px] tracking-tight text-fg">
             {t(setupRequired ? "auth.setup.title" : "auth.login.title")}
           </h1>
           <p className="mono mb-4 text-[11px] text-fg-3">

@@ -21,7 +21,7 @@ export function Distribution() {
   return (
     <div className="space-y-4">
       {/* hero */}
-      <div className="flex flex-wrap items-end gap-x-10 gap-y-4 border-b-2 border-edge-2 pb-4">
+      <div className="panel flex flex-wrap items-end gap-x-10 gap-y-4 px-5 py-4">
         <Readout value={s?.total ?? "—"} caption={t("stats.devices")} size="xl" />
         <Readout value={s?.online ?? "—"} caption={t("stats.onlineNow")} size="sm" tone="signal" />
         <Readout value={s?.approved ?? "—"} caption={t("stats.approved")} size="sm" />
@@ -92,12 +92,12 @@ function Plot({ series }: { series: TimelinePoint[] }) {
         {[0, Math.round(maxNew / 2), maxNew].map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={yNew(v)} y2={yNew(v)} stroke="rgb(var(--edge))" />
-            <text x={pad.l - 6} y={yNew(v) + 3} textAnchor="end" fontSize="8" fontFamily="Geist Mono" fill="rgb(var(--fg-3))">
+            <text x={pad.l - 6} y={yNew(v) + 3} textAnchor="end" fontSize="8" fontFamily="Spline Sans Mono" fill="rgb(var(--fg-3))">
               {v}
             </text>
           </g>
         ))}
-        <text x={W - pad.r + 6} y={pad.t + 3} fontSize="8" fontFamily="Geist Mono" fill="rgb(var(--fg-3))">
+        <text x={W - pad.r + 6} y={pad.t + 3} fontSize="8" fontFamily="Spline Sans Mono" fill="rgb(var(--fg-3))">
           {maxTot}
         </text>
         <line x1={pad.l} x2={W - pad.r} y1={pad.t + ih} y2={pad.t + ih} stroke="rgb(var(--edge-2))" strokeWidth={2} />
@@ -117,7 +117,7 @@ function Plot({ series }: { series: TimelinePoint[] }) {
 
         {series.map((p, i) =>
           i % 5 === 0 ? (
-            <text key={i} x={x(i)} y={H - 6} fontSize="8" fontFamily="Geist Mono" fill="rgb(var(--fg-3))" textAnchor="middle">
+            <text key={i} x={x(i)} y={H - 6} fontSize="8" fontFamily="Spline Sans Mono" fill="rgb(var(--fg-3))" textAnchor="middle">
               {p.date.slice(5)}
             </text>
           ) : null,

@@ -141,13 +141,15 @@ function DesktopShell() {
   return (
     <div className="flex h-screen bg-bg">
       {/* sidebar */}
-      <aside className="flex w-[196px] shrink-0 flex-col border-r border-edge bg-surface">
-        <div className="flex h-[52px] items-center gap-2.5 border-b border-edge px-4">
-          <span className="h-[9px] w-[9px] shrink-0 bg-signal" />
-          <span className="font-display text-[15px] tracking-tight text-fg">NETSCAN</span>
+      <aside className="flex w-[208px] shrink-0 flex-col border-r border-edge bg-surface">
+        <div className="flex h-[54px] items-center gap-2.5 px-4">
+          <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[7px] bg-signal-bg font-display text-[13px] font-semibold text-signal-fg shadow-e1">
+            N
+          </span>
+          <span className="font-display text-[16px] tracking-tight text-fg">NetScan</span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-px py-3">
+        <nav className="flex flex-1 flex-col gap-0.5 px-2 py-2">
           {ROUTES.map((r) => {
             const on = r.to === active;
             return (
@@ -156,15 +158,18 @@ function DesktopShell() {
                 to={r.to}
                 end={r.end}
                 className={clsx(
-                  "relative flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
-                  on ? "bg-surface-2 text-fg" : "text-fg-2 hover:bg-fg/[0.03] hover:text-fg",
+                  "relative flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13px] font-medium transition-colors",
+                  on
+                    ? "bg-surface-2 text-fg shadow-e1"
+                    : "text-fg-2 hover:bg-fg/[0.04] hover:text-fg",
                 )}
               >
-                {on && <span className="absolute left-0 top-0 h-full w-[3px] bg-signal" />}
                 <r.Icon size={15} className={on ? "text-signal" : "text-fg-3"} />
                 {t(r.labelKey)}
-                {r.to === "/approvals" && (s?.pending ?? 0) > 0 && (
-                  <span className="tag tag-alert ml-auto !h-[15px] !px-1 !text-[9px]">{s?.pending}</span>
+                {r.to === "/approvals" && (s?.pending ?? 0) > 0 ? (
+                  <span className="tag tag-alert ml-auto !h-[16px] !px-1.5 !text-[9px]">{s?.pending}</span>
+                ) : (
+                  on && <span className="signal-mark signal-mark--on ml-auto" style={{ ["--m" as string]: "6px" }} />
                 )}
               </NavLink>
             );
@@ -203,7 +208,7 @@ function DesktopShell() {
       {/* content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* status strip */}
-        <header className="flex h-[44px] shrink-0 items-center gap-7 border-b border-edge bg-surface px-6">
+        <header className="flex h-[46px] shrink-0 items-center gap-7 border-b border-edge bg-surface px-6">
           <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
           <Vital k={t("shell.vital.online")} v={s ? `${s.online}/${s.total}` : "—"} big />
           <Vital k={t("shell.vital.sweep")} v={cadence(iv)} />
@@ -217,8 +222,11 @@ function DesktopShell() {
               <div className="sweep-line" />
             </div>
           )}
-          <div key={pathname} className="view-in mx-auto w-full max-w-[1320px] px-6 py-5">
-            <p className="key mb-4 border-l-2 border-signal pl-2 !text-[11px] text-fg-2">{t(titleKeyOf(pathname))}</p>
+          <div key={pathname} className="view-in mx-auto w-full max-w-[1300px] px-7 py-6">
+            <p className="key mb-5 flex items-center gap-2 text-fg-2">
+              <span className="signal-mark signal-mark--on" style={{ ["--m" as string]: "5px" }} />
+              {t(titleKeyOf(pathname))}
+            </p>
             <Outlet />
           </div>
         </main>
@@ -272,8 +280,10 @@ function MobileShell() {
     <div className="flex min-h-screen flex-col bg-bg">
       <header className="sticky top-0 z-40 shrink-0 border-b border-edge bg-surface">
         <div className="flex h-[48px] items-center gap-2.5 px-4">
-          <span className="h-2 w-2 shrink-0 bg-signal" />
-          <span className="font-display text-[14px] tracking-tight text-fg">NETSCAN</span>
+          <span className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-[6px] bg-signal-bg font-display text-[12px] font-semibold text-signal-fg">
+            N
+          </span>
+          <span className="font-display text-[15px] tracking-tight text-fg">NetScan</span>
           <span className="mono ml-1 text-[13px] tnum text-fg">
             {s ? `${s.online}/${s.total}` : "—"}
           </span>
@@ -307,7 +317,10 @@ function MobileShell() {
           </div>
         )}
         <div key={pathname} className="view-in px-4 py-4 pb-24">
-          <p className="key mb-3 border-l-2 border-signal pl-2 !text-[11px] text-fg-2">{t(titleKeyOf(pathname))}</p>
+          <p className="key mb-3.5 flex items-center gap-2 text-fg-2">
+            <span className="signal-mark signal-mark--on" style={{ ["--m" as string]: "5px" }} />
+            {t(titleKeyOf(pathname))}
+          </p>
           <Outlet />
         </div>
       </main>
@@ -323,7 +336,7 @@ function MobileShell() {
               end={r.end}
               className="relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 py-2"
             >
-              <span className={clsx("absolute inset-x-0 top-0 h-[2px]", on ? "bg-signal" : "bg-transparent")} />
+              <span className={clsx("absolute inset-x-3 top-0 h-[2px] rounded-b", on ? "bg-signal" : "bg-transparent")} />
               <span className="relative">
                 <r.Icon size={17} className={on ? "text-signal" : "text-fg-3"} />
                 {r.to === "/approvals" && (s?.pending ?? 0) > 0 && (

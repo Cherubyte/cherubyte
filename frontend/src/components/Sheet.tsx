@@ -35,7 +35,7 @@ export function Sheet({
         onClick={onClose}
       />
       <div
-        className="relative max-h-[85vh] overflow-y-auto border-t-2 border-signal bg-surface pb-[env(safe-area-inset-bottom)]"
+        className="relative max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-edge-2 bg-surface pb-[env(safe-area-inset-bottom)] shadow-e3"
         style={{ animation: "sheet-up .2s cubic-bezier(.2,0,0,1)" }}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-edge bg-surface px-4 py-2.5">

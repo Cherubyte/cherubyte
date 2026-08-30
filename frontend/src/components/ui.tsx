@@ -43,7 +43,7 @@ export function Button({
 }
 
 function Spinner() {
-  return <span className="inline-block h-3 w-3 animate-spin border border-current border-t-transparent" />;
+  return <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />;
 }
 
 /* ── Block — the only grouping primitive (a solid panel, no border) ───── */
@@ -89,13 +89,13 @@ export function Readout({
   tone?: "default" | "signal" | "alert";
   className?: string;
 }) {
-  const px = { sm: "text-[24px]", md: "text-[34px]", lg: "text-[clamp(34px,5vw,58px)]", xl: "text-[clamp(40px,6vw,72px)]" }[size];
+  const px = { sm: "text-[26px]", md: "text-[36px]", lg: "text-[clamp(36px,5vw,60px)]", xl: "text-[clamp(44px,6vw,78px)]" }[size];
   const color =
     tone === "signal" ? "text-signal" : tone === "alert" ? "text-alert" : "text-fg";
   return (
-    <div className={clsx("flex flex-col gap-1.5", className)}>
+    <div className={clsx("flex flex-col gap-2", className)}>
       <div className="flex items-baseline gap-2">
-        <span className={clsx("font-display-lt leading-[0.8] tnum", px, color)}>{value}</span>
+        <span className={clsx("font-display-lt leading-[0.82] tnum", px, color)}>{value}</span>
         {unit && <span className="mono text-[12px] text-fg-3">{unit}</span>}
       </div>
       {caption != null && <span className="key">{caption}</span>}
@@ -153,12 +153,12 @@ export function SectionHeader({
   return (
     <div
       className={clsx(
-        "mb-3 flex items-center justify-between gap-3 border-b-2 border-edge-2 pb-2",
+        "mb-3.5 flex items-center justify-between gap-3 border-b border-edge pb-2.5",
         className,
       )}
     >
       <div className="flex items-baseline gap-2.5">
-        <h2 className="font-display text-[15px] tracking-tight text-fg">{title}</h2>
+        <h2 className="font-display text-[16px] tracking-tight text-fg">{title}</h2>
         {sub != null && <span className="label">{sub}</span>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
@@ -204,21 +204,11 @@ export function StatusMark({
   online?: boolean;
   size?: number;
 }) {
-  if (state === "online")
-    return (
-      <span
-        className="inline-block shrink-0 bg-signal"
-        style={{ width: size, height: size }}
-      />
-    );
-  if (state === "unreviewed")
-    return <span className="inline-block shrink-0 bg-alert" style={{ width: size, height: size }} />;
-  return (
-    <span
-      className="inline-block shrink-0 border border-edge-2"
-      style={{ width: size, height: size }}
-    />
-  );
+  const cls =
+    state === "online" ? "signal-mark signal-mark--on"
+    : state === "unreviewed" ? "signal-mark signal-mark--alert"
+    : "signal-mark signal-mark--off";
+  return <span className={cls} style={{ ["--m" as string]: `${size}px` }} />;
 }
 /** legacy signature: <StatusMark online={bool} /> */
 export function statusOf(online: boolean): "online" | "offline" {
@@ -270,7 +260,7 @@ export function Avatar({ name, size = 26 }: { name: string; size?: number }) {
         background: bg,
         color: readableOn(bg),
         fontSize: size * 0.38,
-        borderRadius: 3,
+        borderRadius: 7,
       }}
     >
       {initials(name)}
@@ -319,7 +309,7 @@ export function Toggle({
     <span
       role="group"
       aria-label={label}
-      className="mono inline-flex shrink-0 select-none overflow-hidden rounded-[3px] border border-edge-2 text-[10px] leading-none"
+      className="mono inline-flex shrink-0 select-none overflow-hidden rounded-[7px] border border-edge-2 bg-surface-2 text-[10px] leading-none"
     >
       {(["ON", "OFF"] as const).map((s) => {
         const active = (s === "ON") === checked;
@@ -330,7 +320,7 @@ export function Toggle({
             aria-pressed={active}
             onClick={() => onChange(s === "ON")}
             className={clsx(
-              "px-2.5 py-1.5 tracking-[0.1em] transition-colors",
+              "px-2.5 py-1.5 tracking-[0.08em] transition-colors",
               active
                 ? "bg-signal-bg text-signal-fg"
                 : "bg-transparent text-fg-3 hover:text-fg",
@@ -383,13 +373,13 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2.5 border border-edge bg-surface-2 px-6 py-16 text-center">
+    <div className="core flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
       {icon ? (
         <span className="text-fg-3">{icon}</span>
       ) : (
-        <span className="mb-0.5 h-2.5 w-2.5 shrink-0 border border-edge-2" />
+        <span className="signal-mark signal-mark--off mb-0.5" style={{ ["--m" as string]: "11px" }} />
       )}
-      <p className="font-display text-[15px] tracking-tight text-fg">{title}</p>
+      <p className="font-display text-[16px] tracking-tight text-fg">{title}</p>
       {description && (
         <p className="mono max-w-sm text-[11px] leading-relaxed text-fg-2">{description}</p>
       )}
@@ -448,7 +438,7 @@ export function QueryState({
   if (q.isError) {
     const msg = q.error instanceof Error ? q.error.message : t("common.loadError");
     return (
-      <div className="border-y-2 border-alert bg-surface px-3 py-4">
+      <div className="core border-alert/60 px-4 py-4">
         <p className="key text-alert">{t("common.signalLost")}</p>
         <p className="mono mt-1.5 text-[11px] leading-relaxed text-fg-2">{msg}</p>
         {q.refetch && (

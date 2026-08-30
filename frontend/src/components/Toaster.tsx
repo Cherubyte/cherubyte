@@ -33,7 +33,7 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
             <button
               key={t.id}
               onClick={() => dismiss(t.id)}
-              className="pointer-events-auto flex w-[min(360px,calc(100vw-1.5rem))] items-stretch gap-2.5 border border-edge-2 bg-surface py-2 pl-0 pr-3 text-left"
+              className="pointer-events-auto flex w-[min(360px,calc(100vw-1.5rem))] items-stretch gap-2.5 overflow-hidden rounded-lg border border-edge-2 bg-surface py-2 pl-0 pr-3 text-left shadow-e3"
               style={{ animation: "toast-in .16s cubic-bezier(.2,0,0,1)" }}
             >
               <span
