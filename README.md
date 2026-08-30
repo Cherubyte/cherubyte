@@ -205,7 +205,7 @@ docker run -d --name netscan-agent --network host \
   -v netscan-agent:/var/lib/netscan-agent \
   -e NETSCAN_AGENT_PANEL_URL=http://your-panel:1001 \
   -e NETSCAN_AGENT_ENROL_TOKEN=<token> \
-  netscan-agent:latest
+  ghcr.io/nobrega8/netscan-agent:latest
 ```
 
 **Windows service** — download `netscan-agent.exe` from the releases page, then
@@ -233,10 +233,16 @@ be opened on the network the agent sits on.
 NetScan runs as **two containers**, and the split is the point.
 
 ```bash
-docker compose up -d --build panel      # panel on http://<host>:1001
+docker compose up -d panel              # panel on http://<host>:1001
 # in the panel: Agents → new token, then:
 AGENT_ENROL_TOKEN=<token> docker compose up -d agent
 ```
+
+The images are on GHCR — `ghcr.io/nobrega8/netscan-panel` and `-agent` —
+published multi-arch (`amd64` + `arm64`) on every release as `:latest`, `:0.5`
+and `:0.5.0`. `compose` pulls `:latest` by default; set `PANEL_IMAGE` /
+`AGENT_IMAGE` to pin a version, or run `docker compose build` to build from a
+checkout instead.
 
 | | Agent | Panel |
 |---|---|---|
@@ -364,10 +370,11 @@ integration) is pulled in with the rest of `requirements.txt`.
 
 ### Not yet done, and needed before the install instructions are true
 
-- **Publish the images.** `netscan-agent` and `netscan-panel` are not on any
-  registry yet, so every `docker run` above assumes you built them locally.
-  `.github/workflows/images.yml` publishes both to GHCR, multi-arch including
-  `arm64`, when a release is created — but no release has been cut.
+- **Cut the first release.** `.github/workflows/images.yml` publishes both
+  images to GHCR — `:latest` and semver tags on a GitHub release, multi-arch.
+  Until one is cut the `:latest` tag the README and `docker-compose.yml` point
+  at does not exist, so `docker compose up` needs a `build` first.
+  `docs/RELEASING.md` has the steps.
 - **Deploy the site.** `site/wrangler.jsonc` still carries a placeholder
   `database_id`, no Cloudflare Access application exists, and `ACCESS_AUD` and
   `ALLOWED_EMAILS` are unset. `site/README.md` has the four commands.

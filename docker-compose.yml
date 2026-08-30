@@ -5,13 +5,22 @@
 #
 # One agent per network. Add a second service block, with its own enrolment
 # token, for each additional site.
+#
+# The images are pulled from GHCR by default — `docker compose up -d` needs no
+# local build. Override with PANEL_IMAGE / AGENT_IMAGE (e.g. `:edge` for the tip
+# of main, or `:0.5` to pin a minor), or run `docker compose build` to build
+# from this checkout instead.
 
 services:
   panel:
+    image: ${PANEL_IMAGE:-ghcr.io/nobrega8/netscan-panel:latest}
+    # `pull_policy: missing` so `up` pulls the published image; the `build`
+    # section is only used by an explicit `docker compose build`. Without this,
+    # the presence of `build` makes `up` build instead of pull.
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile.panel
-    image: netscan-panel:latest
     container_name: netscan-panel
     restart: unless-stopped
 
@@ -29,10 +38,11 @@ services:
       - panel-data:/app/backend/data
 
   agent:
+    image: ${AGENT_IMAGE:-ghcr.io/nobrega8/netscan-agent:latest}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile.agent
-    image: netscan-agent:latest
     container_name: netscan-agent
     restart: unless-stopped
     depends_on:
