@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database import get_session
+from ..services import api_tokens
 from ..services.metrics import build_exposition
 
 router = APIRouter(tags=["metrics"])
@@ -30,19 +31,23 @@ def _presented_token(request: Request) -> str:
     return request.query_params.get("token", "")
 
 
-def _authorised(request: Request) -> bool:
+async def _authorised(request: Request, session: AsyncSession) -> bool:
+    presented = _presented_token(request)
     want = settings.metrics_token or ""
-    if not want:
+    if want and presented and hmac.compare_digest(presented, want):
         return True
-    got = _presented_token(request)
-    return bool(got) and hmac.compare_digest(got, want)
+    # an API token works here too — one credential for the whole read surface
+    if api_tokens.looks_like_token(presented):
+        return await api_tokens.authenticate(session, presented) is not None
+    # no dedicated token configured: open on the LAN, like the rest of the API
+    return not want
 
 
 @router.get("/metrics")
 async def metrics(request: Request, session: AsyncSession = Depends(get_session)):
     if not settings.metrics_enabled:
         raise HTTPException(404, "metrics endpoint disabled")
-    if not _authorised(request):
+    if not await _authorised(request, session):
         raise HTTPException(
             401,
             "metrics token required",

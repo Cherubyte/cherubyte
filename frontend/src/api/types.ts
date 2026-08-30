@@ -43,6 +43,14 @@ export interface Account {
   last_login: string | null;
 }
 
+export interface ApiToken {
+  id: number;
+  name: string;
+  role: AccountRole;
+  created_at: string;
+  last_used_at: string | null;
+}
+
 export interface AuthStatus {
   setup_required: boolean;
   account: Account | null;

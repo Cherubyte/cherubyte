@@ -12,11 +12,14 @@ from ..schemas import (
     AccountCreateIn,
     AccountOut,
     AccountPatchIn,
+    ApiTokenCreatedOut,
+    ApiTokenCreateIn,
+    ApiTokenOut,
     AuthStatusOut,
     LoginIn,
     ProfileUpdateIn,
 )
-from ..services import auth
+from ..services import api_tokens, auth
 from .deps import current_account, require_admin
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -229,4 +232,41 @@ async def delete_account(
     if account.role == AccountRole.admin and await _last_admin(session, account.id):
         raise HTTPException(409, "Tem de existir pelo menos um admin")
     await session.delete(account)
+    await session.commit()
+
+
+# --- API tokens (admin-managed) ------------------------------------------
+
+@router.get("/tokens", response_model=list[ApiTokenOut])
+async def list_tokens(
+    session: AsyncSession = Depends(get_session), _: Account = Depends(require_admin)
+):
+    rows = await api_tokens.list_all(session)
+    return [ApiTokenOut.model_validate(r) for r in rows]
+
+
+@router.post("/tokens", response_model=ApiTokenCreatedOut, status_code=201)
+async def create_token(
+    payload: ApiTokenCreateIn,
+    session: AsyncSession = Depends(get_session),
+    me: Account = Depends(require_admin),
+):
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(422, "Dá um nome ao token")
+    row, secret = await api_tokens.create(session, name=name, created_by=me.id)
+    await session.commit()
+    out = ApiTokenCreatedOut.model_validate(row)
+    out.token = secret  # shown exactly once
+    return out
+
+
+@router.delete("/tokens/{token_id}", status_code=204)
+async def revoke_token(
+    token_id: int,
+    session: AsyncSession = Depends(get_session),
+    _: Account = Depends(require_admin),
+):
+    if not await api_tokens.revoke(session, token_id):
+        raise HTTPException(404, "Token não encontrado")
     await session.commit()

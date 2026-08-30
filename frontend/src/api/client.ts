@@ -1,6 +1,7 @@
 import type {
   Account,
   AccountRole,
+  ApiToken,
   AgentRow,
   AlertRule,
   AppSettings,
@@ -230,4 +231,13 @@ export const api = {
     }),
   deleteAccount: (id: number) =>
     req<void>(`/auth/accounts/${id}`, { method: "DELETE" }),
+
+  apiTokens: () => req<ApiToken[]>("/auth/tokens"),
+  createApiToken: (name: string) =>
+    req<ApiToken & { token: string }>("/auth/tokens", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  deleteApiToken: (id: number) =>
+    req<void>(`/auth/tokens/${id}`, { method: "DELETE" }),
 };

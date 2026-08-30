@@ -305,6 +305,23 @@ class AccountPatchIn(BaseModel):
     password: str | None = None
 
 
+class ApiTokenOut(ORMModel):
+    id: int
+    name: str
+    role: AccountRole
+    created_at: AwareUtc
+    last_used_at: AwareUtc | None = None
+
+
+class ApiTokenCreateIn(BaseModel):
+    name: str
+
+
+class ApiTokenCreatedOut(ApiTokenOut):
+    # populated once, on creation, then never again
+    token: str = ""
+
+
 class ProfileUpdateIn(BaseModel):
     """Change your own username and/or password. `current` is always required."""
 
