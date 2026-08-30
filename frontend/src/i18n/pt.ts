@@ -209,6 +209,15 @@ export const pt: Record<keyof typeof en, string> = {
   "events.today": "hoje",
   "events.yesterday": "ontem",
   "events.empty": "Sem eventos",
+  "events.cat.all": "Tudo",
+  "events.cat.discovery": "Descoberta",
+  "events.cat.presence": "Presença",
+  "events.cat.ports": "Portos",
+  "events.cat.security": "Segurança",
+  "events.cat.scan": "Varrimento",
+  "events.cat.wan": "Internet",
+  "events.cat.merge": "Fusão",
+  "events.cat.approval": "Aprovação",
 
   // ── distribution (Stats) ────────────────────────────────────────
   "stats.devices": "Dispositivos",

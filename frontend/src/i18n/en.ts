@@ -208,6 +208,15 @@ export const en = {
   "events.today": "today",
   "events.yesterday": "yesterday",
   "events.empty": "No events",
+  "events.cat.all": "All",
+  "events.cat.discovery": "Discovery",
+  "events.cat.presence": "Presence",
+  "events.cat.ports": "Ports",
+  "events.cat.security": "Security",
+  "events.cat.scan": "Scan",
+  "events.cat.wan": "Internet",
+  "events.cat.merge": "Merge",
+  "events.cat.approval": "Approval",
 
   // ── distribution (Stats) ────────────────────────────────────────
   "stats.devices": "Devices",
