@@ -69,7 +69,7 @@ async def trigger_scan(session: AsyncSession = Depends(get_session)):
             "queued": 0,
             "last_report": None,
             "stale": True,
-            "detail": "Nenhum agente inscrito — inscreve um para começar a receber varrimentos.",
+            "detail": "No agent enrolled — enrol one to start receiving sweeps.",
         }
 
     poked = await asyncio.gather(*(_poke(a) for a in agents))
@@ -90,18 +90,18 @@ async def trigger_scan(session: AsyncSession = Depends(get_session)):
     last_report = iso_utc(max(seen)) if seen else None
 
     if triggered:
-        detail = f"Varrimento pedido a {triggered} agente(s)."
+        detail = f"Sweep requested from {triggered} agent(s)."
         if queued:
-            detail += f" {queued} não respondeu(ram) — vão varrer no próximo check-in."
+            detail += f" {queued} did not respond — they'll sweep on their next check-in."
     else:
         detail = (
-            "O painel não alcançou nenhum agente diretamente — vão varrer no "
-            "próximo check-in."
+            "The panel could not reach any agent directly — they'll sweep on "
+            "their next check-in."
         )
         if stale:
             detail = (
-                "Nenhum agente reporta há algum tempo. Verifica se o serviço do "
-                "agente está a correr (systemctl status cherubyte-agent)."
+                "No agent has reported in a while. Check that the agent "
+                "service is running (systemctl status cherubyte-agent)."
             )
 
     return {

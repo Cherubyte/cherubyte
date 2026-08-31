@@ -9,12 +9,13 @@ import { deviceTypeLabel, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import { useNow } from "../hooks/useNow";
 
-/** The backend labels confidence in Portuguese ("alta" / "média"); localise it. */
+/** The backend labels confidence as a stable English key ("high" / "medium" /
+ *  "low"); localise it for display. */
 function confidenceLabel(t: (k: MessageKey) => string, raw: string): string {
   const map: Record<string, MessageKey> = {
-    alta: "approvals.dupes.high",
-    "média": "approvals.dupes.medium",
-    baixa: "approvals.dupes.low",
+    high: "approvals.dupes.high",
+    medium: "approvals.dupes.medium",
+    low: "approvals.dupes.low",
   };
   const key = map[raw];
   return key ? t(key) : raw;
@@ -87,7 +88,7 @@ export function Approvals() {
                     <span className="mono text-[11px] text-fg-3">
                       {t("approvals.dupes.absorbs", { n: sg.duplicates.length })}
                     </span>
-                    <Badge tone={sg.confidence === "alta" ? "signal" : "neutral"}>
+                    <Badge tone={sg.confidence === "high" ? "signal" : "neutral"}>
                       {t("approvals.dupes.confidence", { level: confidenceLabel(t, sg.confidence) })}
                     </Badge>
                   </div>

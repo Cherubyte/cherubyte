@@ -134,7 +134,7 @@ def _clean_subnets(raw: list[SubnetCfg]) -> list[dict]:
         try:
             net = ipaddress.ip_network(cidr, strict=False)
         except ValueError:
-            raise HTTPException(422, f"Sub-rede inválida: {cidr}") from None
+            raise HTTPException(422, f"Invalid subnet: {cidr}") from None
         out.append({"cidr": str(net), "label": (entry.label or "").strip()})
     return out
 

@@ -25,14 +25,14 @@ async def current_account(
     token = request.cookies.get(auth.COOKIE_NAME, "")
     account = await auth.account_for_token(session, token)
     if account is None:
-        raise HTTPException(401, "Sessão inválida ou expirada")
+        raise HTTPException(401, "Invalid or expired session")
     return account
 
 
 def require(min_role: AccountRole):
     async def _dep(account: Account = Depends(current_account)) -> Account:
         if _LEVEL[account.role] < _LEVEL[min_role]:
-            raise HTTPException(403, "Sem permissão para esta ação")
+            raise HTTPException(403, "Not permitted to perform this action")
         return account
 
     return _dep
@@ -61,12 +61,12 @@ async def enforce_access(
     if api_tokens.looks_like_token(presented):
         row = await api_tokens.authenticate(session, presented)
         if row is None:
-            raise HTTPException(401, "Token de API inválido")
+            raise HTTPException(401, "Invalid API token")
         # a transient, unpersisted Account carrying only the token's role
         account = Account(username=f"token:{row.name}", role=AccountRole.viewer)
     else:
         account = await current_account(request, session)
 
     if request.method not in _SAFE_METHODS and account.role == AccountRole.viewer:
-        raise HTTPException(403, "Conta só de leitura")
+        raise HTTPException(403, "Read-only account")
     return account
