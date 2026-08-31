@@ -36,6 +36,9 @@ COPY backend/ backend/
 # config.py resolves paths relative to the backend package, so the built SPA
 # has to land at /app/frontend/dist for settings.frontend_dist to find it
 COPY --from=frontend /build/dist frontend/dist
+# package.json travels with it — it's the app's single source of version truth
+# (config.py reads it back for the "Update" check), not just the frontend's
+COPY --from=frontend /build/package.json frontend/package.json
 
 VOLUME ["/app/backend/data"]
 

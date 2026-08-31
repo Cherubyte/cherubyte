@@ -11,10 +11,10 @@ from fastapi.staticfiles import StaticFiles
 
 from .api import api_router
 from .api.settings import _load_from_db
-from .config import UPLOAD_DIR, settings
+from .config import APP_VERSION, UPLOAD_DIR, settings
 from .database import SessionLocal, init_db
 from .scheduler import scheduler, start as start_scheduler
-from .services import mqtt, oui
+from .services import mqtt, oui, update
 from .services.retention import run_purge
 
 logging.basicConfig(
@@ -39,13 +39,16 @@ async def lifespan(app: FastAPI):
     # the purge job only fires 24h in; a box that reboots daily would never
     # reach it, so run one pass at startup too
     asyncio.create_task(run_purge())
+    # same for the update check — don't make a fresh install wait 12h to learn
+    # it's already current
+    asyncio.create_task(update.check())
     logger.info("Cherubyte up on :%s", settings.port)
     yield
     mqtt.stop()
     scheduler.shutdown(wait=False)
 
 
-app = FastAPI(title="Cherubyte", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Cherubyte", version=APP_VERSION, lifespan=lifespan)
 
 # The SPA is served from this same origin in production, and in development the
 # Vite server proxies /api and /uploads server-side — neither makes a

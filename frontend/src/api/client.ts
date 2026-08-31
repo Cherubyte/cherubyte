@@ -20,6 +20,7 @@ import type {
   Timeline,
   TypeCount,
   MergeSuggestion,
+  UpdateStatus,
   User,
   UserDetail,
   WanStatus,
@@ -203,6 +204,10 @@ export const api = {
 
   testFingerbank: () =>
     req<FingerbankTest>("/settings/fingerbank/test", { method: "POST" }),
+
+  updateStatus: () => req<UpdateStatus>("/settings/update"),
+  checkForUpdate: () => req<UpdateStatus>("/settings/update/check", { method: "POST" }),
+  applyUpdate: () => req<UpdateStatus>("/settings/update/apply", { method: "POST" }),
 
   // ── auth ──────────────────────────────────────────────────────────
   authStatus: () => req<AuthStatus>("/auth/status"),

@@ -14,10 +14,12 @@ import {
   PeopleIcon,
   Plug,
   Plus,
+  Power,
   Radar,
   Send,
   Shield,
   Trash,
+  UpdateIcon,
   Wave,
 } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
@@ -43,6 +45,7 @@ type SettingsCat =
   | "integrations"
   | "internet"
   | "history"
+  | "update"
   | "agents"
   | "interface"
   | "account"
@@ -61,10 +64,11 @@ const SETTINGS_CATS: {
   { k: "integrations", code: "03", labelKey: "settings.cat.integrations", Icon: Plug },
   { k: "internet", code: "04", labelKey: "settings.cat.internet", Icon: Globe },
   { k: "history", code: "05", labelKey: "settings.cat.history", Icon: LogIcon },
-  { k: "agents", code: "06", labelKey: "settings.cat.agents", Icon: Wave, writeOnly: true },
-  { k: "interface", code: "07", labelKey: "settings.cat.interface", Icon: Image },
-  { k: "account", code: "08", labelKey: "settings.cat.account", Icon: Shield },
-  { k: "accounts", code: "09", labelKey: "settings.cat.accounts", Icon: PeopleIcon, adminOnly: true },
+  { k: "update", code: "06", labelKey: "settings.cat.update", Icon: UpdateIcon },
+  { k: "agents", code: "07", labelKey: "settings.cat.agents", Icon: Wave, writeOnly: true },
+  { k: "interface", code: "08", labelKey: "settings.cat.interface", Icon: Image },
+  { k: "account", code: "09", labelKey: "settings.cat.account", Icon: Shield },
+  { k: "accounts", code: "10", labelKey: "settings.cat.accounts", Icon: PeopleIcon, adminOnly: true },
 ];
 
 /** Categories that edit the shared settings form and so need the Save bar. */
@@ -386,6 +390,7 @@ export function Settings() {
 
       <div className="min-w-0">
       {cat === "agents" && canWrite && <AgentsSection />}
+      {cat === "update" && <UpdateSection isAdmin={isAdmin} />}
       {cat === "interface" && <InterfaceSection />}
       {cat === "account" && <AccountCard />}
       {cat === "accounts" && isAdmin && (
@@ -1241,6 +1246,172 @@ function Channel({
         <div className="space-y-4 bg-surface px-4 py-4 shadow-[inset_0_1px_0_rgba(0,0,0,0.04)]">{children}</div>
       )}
     </div>
+  );
+}
+
+/** Checks the running version against `main` and, for a git checkout, can pull
+ *  and rebuild in place. Everyone can see it; only an admin can trigger a
+ *  check or apply it — same split as backup/restore. */
+function UpdateSection({ isAdmin }: { isAdmin: boolean }) {
+  const t = useT();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const [applying, setApplying] = useState(false);
+
+  const q = useQuery({
+    queryKey: ["update-status"],
+    queryFn: api.updateStatus,
+    refetchInterval: (query) => {
+      const st = query.state.data?.apply.status;
+      return applying || st === "updating" || st === "restarting" ? 2000 : 60000;
+    },
+  });
+
+  const check = useMutation({
+    mutationFn: api.checkForUpdate,
+    onSuccess: (d) => {
+      qc.setQueryData(["update-status"], d);
+      toast({
+        tone: "success",
+        title: d.update_available ? "update.status.available" : "update.status.upToDate",
+      });
+    },
+    onError: (e) =>
+      toast({ tone: "error", title: "update.toast.checkFailed", desc: String(e).slice(0, 140) }),
+  });
+
+  const apply = useMutation({
+    mutationFn: api.applyUpdate,
+    onSuccess: (d) => {
+      qc.setQueryData(["update-status"], d);
+      setApplying(true);
+    },
+    onError: (e) =>
+      toast({ tone: "error", title: "update.toast.applyFailed", desc: String(e).slice(0, 140) }),
+  });
+
+  const d = q.data;
+  const applyStatus = d?.apply.status;
+
+  useEffect(() => {
+    if (!applying || !applyStatus) return;
+    if (applyStatus === "idle") {
+      setApplying(false);
+      toast({ tone: "success", title: "update.toast.applied" });
+    } else if (applyStatus === "failed") {
+      setApplying(false);
+      toast({ tone: "error", title: "update.toast.applyFailed", desc: d?.apply.error ?? undefined });
+    }
+  }, [applying, applyStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!d) return <div className="panel mb-3 p-4"><SectionHeader title={t("settings.cat.update")} /></div>;
+
+  const badge = applying || applyStatus === "updating" || applyStatus === "restarting"
+    ? { tone: "amber" as const, label: t("update.status.updating") }
+    : d.error
+      ? { tone: "alert" as const, label: t("update.status.error") }
+      : !d.latest
+        ? { tone: "neutral" as const, label: t("update.status.unknown") }
+        : d.update_available
+          ? { tone: "amber" as const, label: t("update.status.available") }
+          : { tone: "signal" as const, label: t("update.status.upToDate") };
+
+  return (
+    <section className="panel mb-3 p-4">
+      <SectionHeader
+        title={t("update.title")}
+        sub={t("update.sub")}
+        actions={
+          isAdmin && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<UpdateIcon size={12} />}
+              loading={check.isPending}
+              disabled={applying}
+              onClick={() => check.mutate()}
+            >
+              {t("update.check")}
+            </Button>
+          )
+        }
+      />
+
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-surface-2 px-4 py-3">
+          <div>
+            <p className="label mb-0.5">{t("update.current")}</p>
+            <p className="mono text-[16px] text-fg">v{d.current}</p>
+          </div>
+          <Badge tone={badge.tone}>{badge.label}</Badge>
+          <div className="ml-auto text-right">
+            {d.latest && (
+              <p className="mono text-[11px] text-fg-3">
+                {t("update.latest", { version: d.latest })}
+              </p>
+            )}
+            <p className="mono text-[10.5px] text-fg-3">
+              {d.checked_at
+                ? t("update.checked", { ago: timeAgo(d.checked_at) })
+                : t("update.neverChecked")}
+            </p>
+          </div>
+        </div>
+
+        {d.error && (
+          <p className="text-[11.5px] text-alert">{t("update.checkErrorPrefix")} {d.error}</p>
+        )}
+
+        {d.update_available && isAdmin && (
+          <div className="space-y-3 rounded-xl bg-surface-2 p-4">
+            {d.deploy_mode === "git" ? (
+              <>
+                <p className="text-[12.5px] text-fg-2">{t("update.git.hint")}</p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<Power size={12} />}
+                  loading={applying}
+                  disabled={applying}
+                  onClick={() => {
+                    if (confirm(t("update.apply.confirm"))) apply.mutate();
+                  }}
+                >
+                  {t("update.applyNow")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-[12.5px] text-fg-2">{t("update.container.hint")}</p>
+                <pre className="mono overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
+{`docker compose pull panel
+docker compose up -d panel`}
+                </pre>
+              </>
+            )}
+          </div>
+        )}
+
+        {(applying || d.apply.log.length > 0) && (
+          <div className="rounded-xl bg-surface-2 p-3">
+            <p className="label mb-1.5">
+              {applyStatus === "restarting"
+                ? t("update.apply.restarting")
+                : applyStatus === "failed"
+                  ? t("update.apply.failed")
+                  : t("update.apply.running")}
+            </p>
+            <pre className="mono max-h-48 overflow-y-auto whitespace-pre-wrap break-all text-[10.5px] text-fg-3">
+              {d.apply.log.join("\n") || "…"}
+            </pre>
+          </div>
+        )}
+
+        <p className="text-[11px] leading-relaxed text-fg-3">
+          {d.deploy_mode === "git" ? t("update.mode.git") : t("update.mode.container")}
+        </p>
+      </div>
+    </section>
   );
 }
 

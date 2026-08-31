@@ -9,12 +9,14 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .config import settings
 from .services.digest import run_weekly
 from .services.retention import run_purge
+from .services.update import check as check_for_update
 
 logger = logging.getLogger("cherubyte.scheduler")
 
 scheduler = AsyncIOScheduler()
 _PURGE_JOB_ID = "history-purge"
 _DIGEST_JOB_ID = "weekly-digest"
+_UPDATE_JOB_ID = "update-check"
 
 _state: dict = {"last_scan": None, "running": False}
 
@@ -42,6 +44,14 @@ def start() -> None:
         hour=settings.weekly_summary_hour,
         minute=0,
         id=_DIGEST_JOB_ID,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        check_for_update,
+        "interval",
+        hours=12,
+        id=_UPDATE_JOB_ID,
         max_instances=1,
         coalesce=True,
     )
