@@ -32,7 +32,7 @@ class Suggestion:
 
     @property
     def confidence(self) -> str:
-        return "alta" if "modelo" in self.reason else "média"
+        return "high" if "model" in self.reason else "medium"
 
 
 def _aware(dt: datetime) -> datetime:
@@ -47,10 +47,10 @@ def _identity(device: Device) -> tuple[str, str] | None:
     """What makes two entries look like the same handset, strongest first."""
     model = (device.model or "").strip().lower()
     if model:
-        return ("modelo", model)
+        return ("model", model)
     host = (device.hostname or "").strip().lower()
     if host:
-        return ("nome", host)
+        return ("name", host)
     return None
 
 
@@ -90,7 +90,7 @@ def find(devices: list[Device]) -> list[Suggestion]:
             Suggestion(
                 target=target,
                 duplicates=duplicates,
-                reason=f"MAC aleatório e o mesmo {basis} ({value})",
+                reason=f"Random MAC and the same {basis} ({value})",
             )
         )
     suggestions.sort(key=lambda s: len(s.duplicates), reverse=True)

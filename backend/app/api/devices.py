@@ -428,7 +428,7 @@ async def absorb_mac(
         return await _get(session, device_id)
 
     if mac.device_id == device_id:
-        raise HTTPException(400, "MAC já pertence a este dispositivo")
+        raise HTTPException(400, "MAC already belongs to this device")
 
     await _fold_into(session, device_id, mac.device_id)
     await session.commit()
@@ -452,7 +452,7 @@ async def detach_mac(
 ):
     device = await _get(session, device_id)
     if len(device.macs) <= 1:
-        raise HTTPException(400, "O dispositivo tem de ter pelo menos um MAC")
+        raise HTTPException(400, "The device must have at least one MAC")
     mac = next((m for m in device.macs if m.address == address.lower()), None)
     if mac is None:
         raise HTTPException(404, "MAC not found")

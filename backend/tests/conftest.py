@@ -19,15 +19,23 @@ os.environ["CHERUBYTE_TELEGRAM_CHAT_ID"] = ""
 os.environ["CHERUBYTE_NTFY_TOPIC"] = ""
 
 import pytest_asyncio  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 
 from app.database import Base, SessionLocal, engine, init_db  # noqa: E402
 
 
 @pytest_asyncio.fixture
 async def session():
-    """A clean database per test."""
+    """A clean database per test.
+
+    `alembic_version` lives outside `Base.metadata`, so drop_all() leaves it
+    standing — without dropping it too, init_db() would see a database it
+    thinks is already at "baseline" even though drop_all just wiped every
+    table, and skip re-stamping it.
+    """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
     await init_db()
     async with SessionLocal() as s:
         yield s
