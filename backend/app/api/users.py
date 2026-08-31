@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +25,11 @@ def _present(user: User) -> bool:
     return any(d.is_online and d.counts_for_presence for d in user.devices)
 
 
+def _last_seen(user: User) -> datetime | None:
+    seen = [d.last_seen for d in user.devices if d.last_seen is not None]
+    return max(seen) if seen else None
+
+
 def _to_out(user: User) -> UserOut:
     return UserOut(
         id=user.id,
@@ -32,6 +39,7 @@ def _to_out(user: User) -> UserOut:
         is_guest=user.is_guest,
         device_count=len(user.devices),
         is_present=_present(user),
+        last_seen=_last_seen(user),
     )
 
 

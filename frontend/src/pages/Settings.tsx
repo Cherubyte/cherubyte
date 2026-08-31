@@ -27,7 +27,7 @@ import { timeAgo } from "../lib/format";
 import { useT, useLocale, type MessageKey } from "../i18n";
 import { intlLocale, LOCALES, type Locale } from "../i18n/locale";
 
-/** Alert-kind labels come from the backend (`k.label`, in Portuguese); prefer a
+/** Alert-kind labels come from the backend (`k.label`, in English); prefer a
  * localised string keyed by the stable `k.key` when we have one. */
 function alertLabel(t: (k: MessageKey) => string, key: string, fallback: string): string {
   const mk = `alert.${key}` as MessageKey;

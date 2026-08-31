@@ -158,7 +158,7 @@ async def test_a_gateway_changing_mac_is_reported(session, _quiet):
 
     await monitor._check_gateway_mac(second, gateways)
     assert [s[0] for s in _quiet] == ["arp_anomaly"]
-    assert "MAC do gateway" in _quiet[0][1]
+    assert "Gateway MAC" in _quiet[0][1]
 
 
 async def test_a_stable_gateway_is_silent(session, _quiet):
@@ -205,4 +205,4 @@ async def test_digest_on_an_empty_network_still_formats(session):
     from app.services import digest
 
     data = await digest.collect(session)
-    assert digest.format_lines(data)[0].startswith("Dispositivos na rede: 0")
+    assert digest.format_lines(data)[0].startswith("Devices on the network: 0")

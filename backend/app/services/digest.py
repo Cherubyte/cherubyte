@@ -81,31 +81,31 @@ async def collect(session: AsyncSession, days: int = 7) -> dict:
 
 def format_lines(data: dict) -> list[str]:
     lines = [
-        f"Dispositivos na rede: {data['total_devices']}",
-        f"Novos nos últimos {data['days']} dias: {len(data['new_devices'])}",
+        f"Devices on the network: {data['total_devices']}",
+        f"New in the last {data['days']} days: {len(data['new_devices'])}",
     ]
     for name in data["new_devices"][:8]:
         lines.append(f"  • {name}")
     if len(data["new_devices"]) > 8:
-        lines.append(f"  … e mais {len(data['new_devices']) - 8}")
+        lines.append(f"  … and {len(data['new_devices']) - 8} more")
     if data["pending"]:
-        lines.append(f"Por aprovar: {data['pending']}")
+        lines.append(f"Awaiting approval: {data['pending']}")
     if data["alerts"]:
-        lines.append(f"Alertas registados: {data['alerts']}")
+        lines.append(f"Alerts logged: {data['alerts']}")
 
     wan_data = data.get("wan") or {}
     if wan_data.get("samples"):
         uptime = wan_data["uptime"]
-        line = f"Internet: {uptime * 100:.1f}% disponível"
+        line = f"Internet: {uptime * 100:.1f}% available"
         if wan_data.get("avg_latency_ms") is not None:
-            line += f", {wan_data['avg_latency_ms']:.0f} ms em média"
+            line += f", {wan_data['avg_latency_ms']:.0f} ms average"
         lines.append(line)
 
     if data["top_users"]:
         lines.append("")
-        lines.append("Mais presentes:")
+        lines.append("Most present:")
         for name, count in data["top_users"]:
-            lines.append(f"  • {name} ({count} entradas)")
+            lines.append(f"  • {name} ({count} joins)")
     return lines
 
 
@@ -121,7 +121,7 @@ async def run_weekly() -> dict | None:
         return None
     await broadcast(
         "weekly_summary",
-        "Resumo semanal do Cherubyte",
+        "Cherubyte weekly digest",
         format_lines(data),
         emoji="📊",
         tags=["bar_chart"],

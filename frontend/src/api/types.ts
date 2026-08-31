@@ -153,6 +153,7 @@ export interface User {
   is_guest: boolean;
   is_present: boolean;
   device_count: number;
+  last_seen: string | null;
 }
 
 export interface UserDeviceMini {
