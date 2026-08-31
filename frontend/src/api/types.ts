@@ -64,6 +64,24 @@ export interface FingerbankTest {
   detail?: string;
 }
 
+export interface UpdateApplyStatus {
+  status: "idle" | "updating" | "restarting" | "failed";
+  log: string[];
+  error: string | null;
+  started_at: string | null;
+}
+
+export interface UpdateStatus {
+  current: string;
+  latest: string | null;
+  checked_at: string | null;
+  error: string | null;
+  deploy_mode: "git" | "container";
+  repo_url: string;
+  update_available: boolean;
+  apply: UpdateApplyStatus;
+}
+
 export interface Mac {
   address: string;
   vendor: string | null;
