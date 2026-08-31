@@ -206,6 +206,7 @@ export function Settings() {
     telegram_enabled: false,
     public_base_url: "",
     dhcp_allowlist: "",
+    risky_ports_ignore: "",
     quiet_hours_start: "",
     quiet_hours_end: "",
     mqtt_enabled: false,
@@ -259,6 +260,7 @@ export function Settings() {
         telegram_enabled: settings.data.telegram_enabled,
         public_base_url: settings.data.public_base_url,
         dhcp_allowlist: settings.data.dhcp_allowlist,
+        risky_ports_ignore: settings.data.risky_ports_ignore,
         quiet_hours_start: settings.data.quiet_hours_start,
         quiet_hours_end: settings.data.quiet_hours_end,
         mqtt_enabled: settings.data.mqtt_enabled,
@@ -301,6 +303,7 @@ export function Settings() {
         quiet_hours_end: form.quiet_hours_end,
         public_base_url: form.public_base_url,
         dhcp_allowlist: form.dhcp_allowlist,
+        risky_ports_ignore: form.risky_ports_ignore,
         mqtt_enabled: form.mqtt_enabled,
         mqtt_host: form.mqtt_host,
         mqtt_port: form.mqtt_port,
@@ -752,6 +755,18 @@ export function Settings() {
                 placeholder="192.168.1.1, 192.168.1.2"
                 value={form.dhcp_allowlist}
                 onChange={(e) => set("dhcp_allowlist", e.target.value)}
+              />
+            </Field>
+            <Field
+              label={t("settings.alerts.riskyIgnore")}
+              hint={t("settings.alerts.riskyIgnoreHint")}
+              className="sm:col-span-3"
+            >
+              <input
+                className="input mono"
+                placeholder="445, 3389"
+                value={form.risky_ports_ignore}
+                onChange={(e) => set("risky_ports_ignore", e.target.value)}
               />
             </Field>
           </div>

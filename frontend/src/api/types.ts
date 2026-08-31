@@ -80,6 +80,8 @@ export interface Ip {
 export interface Port {
   port: number;
   service: string | null;
+  /** Set when the port is on the risky-exposure watchlist — a short reason. */
+  risky_reason: string | null;
 }
 
 export interface DeviceImage {
@@ -254,6 +256,7 @@ export interface AppSettings {
   quiet_hours_end: string;
   public_base_url: string;
   dhcp_allowlist: string;
+  risky_ports_ignore: string;
   notification_actions_ready: boolean;
   mqtt_enabled: boolean;
   mqtt_host: string;

@@ -38,14 +38,17 @@ PROBE_PORTS: dict[int, str] = {
     2375: "http",       # Docker API
     3000: "http",       # Grafana / dev servers
     3001: "http",
+    3306: "mysql",
     3389: "rdp",
     5000: "upnp",
     5001: "http-alt",
     5353: "mdns",
+    5432: "postgresql",
     5601: "http",       # Kibana
     5900: "vnc",
     5901: "vnc",
     5985: "winrm",
+    6379: "redis",
     7000: "airplay",
     8000: "http-alt",
     8009: "chromecast",
@@ -57,8 +60,11 @@ PROBE_PORTS: dict[int, str] = {
     9000: "http-alt",
     9090: "http",       # Prometheus / Cockpit
     9100: "jetdirect",
+    9200: "elasticsearch",
     9443: "https-alt",
+    11211: "memcached",
     19999: "http",      # Netdata
+    27017: "mongodb",
     32400: "plex",
     62078: "apple-sync",
 }
