@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from . import dhcp_sniffer, reporter
+from . import dhcp_sniffer, reporter, wol
 from .collector import collect
 from .config import apply_config, settings
 
@@ -73,6 +73,9 @@ async def _cycle() -> None:
             # The panel wanted a sweep and could not reach us directly.
             logger.info("Panel requested an out-of-band sweep")
             _wake.set()
+        macs = getattr(ack, "wake", None) or []
+        if macs:
+            wol.send_all(macs)
     _state.update(
         last_report_at=datetime.now(timezone.utc).isoformat(),
         last_report_ok=ack is not None,

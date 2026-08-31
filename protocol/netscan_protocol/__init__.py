@@ -183,6 +183,10 @@ class ReportAck(BaseModel):
     # agent's trigger port directly. The agent should run one cycle now instead
     # of waiting out the rest of its interval.
     scan_now: bool = False
+    # MAC addresses the panel wants woken — the agent sends a Wake-on-LAN magic
+    # packet to each on its local segment. Additive and optional: an old agent
+    # ignores the field, a new agent against an old panel sees an empty list.
+    wake: list[str] = Field(default_factory=list)
 
 
 class EnrolRequest(BaseModel):

@@ -163,6 +163,7 @@ export const en = {
   "device.notFound": "Host not found",
   "device.mergeWith": "Merge with another",
   "device.merge": "Merge",
+  "device.wake": "Wake",
   "device.deleteConfirm": "Delete this device?",
   "device.deleteConfirmShort": "Delete?",
   "device.fact.ip": "IP",
@@ -543,6 +544,8 @@ export const en = {
   "digest.failed": "Digest failed",
   "person.created": "Person added",
   "visita.created": "Guest added",
+  "wake.sent": "Wake-on-LAN sent",
+  "wake.failed": "Couldn't send Wake-on-LAN",
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -19,7 +19,7 @@ import {
   StatusPill,
   Toggle,
 } from "../components/ui";
-import { ArrowLeft, ArrowUpRight, Check, Close, Image, Merge, Plus, Trash } from "../components/Glyph";
+import { ArrowLeft, ArrowUpRight, Check, Close, Image, Merge, Plus, Power, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
 import { deviceTypeLabel, dateTime, timeAgo } from "../lib/format";
 import { useT } from "../i18n";
@@ -69,6 +69,11 @@ export function DeviceDetail() {
   });
   const approve = useMutation({ mutationFn: () => api.approveDevice(deviceId), onSuccess: () => { invalidate(); toast({ tone: "success", title: "device.approved" }); } });
   const ignore = useMutation({ mutationFn: () => api.ignoreDevice(deviceId), onSuccess: invalidate });
+  const wake = useMutation({
+    mutationFn: () => api.wakeDevice(deviceId),
+    onSuccess: () => toast({ tone: "success", title: "wake.sent" }),
+    onError: (e) => toast({ tone: "error", title: "wake.failed", desc: String(e).slice(0, 100) }),
+  });
   const remove = useMutation({
     mutationFn: () => api.deleteDevice(deviceId),
     onSuccess: () => { invalidate(); toast({ tone: "success", title: "device.deleted" }); nav("/"); },
@@ -403,6 +408,11 @@ export function DeviceDetail() {
           <Button variant="secondary" size="sm" icon={<Merge size={12} />} onClick={() => setMergeOpen(true)}>
             {isMobile ? t("device.merge") : t("device.mergeWith")}
           </Button>
+          {!d.is_online && d.macs.length > 0 && !d.macs[0].is_random && (
+            <Button variant="secondary" size="sm" icon={<Power size={12} />} loading={wake.isPending} onClick={() => wake.mutate()}>
+              {t("device.wake")}
+            </Button>
+          )}
           {!isMobile && (
             <>
               {d.approval_status !== "approved" && (
@@ -466,8 +476,14 @@ export function DeviceDetail() {
 
       {isMobile && (
         <div className="sticky bottom-16 -mx-4 flex gap-2 bg-bg/85 px-4 py-3 shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
-          {d.approval_status !== "approved" && (
-            <Button variant="primary" className="flex-1" icon={<Check size={13} />} onClick={() => approve.mutate()}>{t("common.approve")}</Button>
+          {!d.is_online && d.macs.length > 0 && !d.macs[0].is_random ? (
+            <Button variant="primary" className="flex-1" icon={<Power size={13} />} loading={wake.isPending} onClick={() => wake.mutate()}>
+              {t("device.wake")}
+            </Button>
+          ) : (
+            d.approval_status !== "approved" && (
+              <Button variant="primary" className="flex-1" icon={<Check size={13} />} onClick={() => approve.mutate()}>{t("common.approve")}</Button>
+            )
           )}
           {d.approval_status !== "ignored" && (
             <Button variant="secondary" className="flex-1" onClick={() => ignore.mutate()}>{t("common.ignore")}</Button>

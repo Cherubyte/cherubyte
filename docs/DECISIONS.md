@@ -248,3 +248,18 @@ Software…" → `Cisco IOS`), and the LLDP neighbour table becomes rows in
 `topology_edges`, refreshed whole per agent so a link that goes away just stops
 being re-inserted. `/api/topology` serves the edges; drawing them is still
 future work.
+
+## Wake-on-LAN goes through the agents, not the panel
+
+The panel cannot send a magic packet — it never sits on a monitored network,
+which is the whole point of the split. So a "wake" is a queued MAC, not an
+action: `POST /devices/{id}/wake` writes a `pending_wakes` row, and every agent
+that reports within a 90-second window is handed the MAC on its ack (`wake: []`,
+additive and optional — no protocol bump). Each agent broadcasts the packet on
+its own segment; only the one on the target's link reaches its NIC, the rest go
+nowhere and cost nothing. Rows are cleared once they age past ten minutes.
+
+Handing it to *every* reporting agent rather than routing by subnet keeps the
+panel from having to track which agent owns which L2 segment — a mapping that is
+already fuzzy for routed subnets. A randomised MAC is refused up front: the
+device isn't using it while it's asleep, so the packet would wake nothing.
