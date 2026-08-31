@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     # is not listed here raises a `rogue_dhcp` alert.
     dhcp_allowlist: str = ""
 
+    # Comma-separated port numbers to leave out of the risky-port watchlist
+    # (services/portrisk.py) — e.g. an SMB share you run on purpose.
+    risky_ports_ignore: str = ""
+
     # Alert policy (which events notify, on which channel) as JSON; empty means
     # the defaults in services/alerts.py. Quiet hours are local, HH:MM; equal
     # values disable them. Alerts marked urgent ignore quiet hours.

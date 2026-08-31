@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, type DevicePatch } from "../api/client";
@@ -274,15 +275,23 @@ export function DeviceDetail() {
                     {p.service && <span className="text-fg-3">/{p.service}</span>}
                   </>
                 );
+                const risk = p.risky_reason;
                 if (!ip)
                   return (
-                    <span key={p.port} className="tag tag-neutral">
+                    <span
+                      key={p.port}
+                      title={risk ?? undefined}
+                      className={risk ? "tag tag-signal" : "tag tag-neutral"}
+                    >
                       {inner}
                     </span>
                   );
                 const act = portAction(ip, p.port, p.service);
-                const cls =
-                  "tag tag-neutral inline-flex items-center gap-1 transition-colors hover:border-signal hover:text-signal";
+                const hint = risk ? `${t(act.hint)} · ${risk}` : t(act.hint);
+                const cls = clsx(
+                  "tag inline-flex items-center gap-1 transition-colors hover:border-signal hover:text-signal",
+                  risk ? "tag-signal" : "tag-neutral",
+                );
                 if (act.kind === "web" || act.kind === "scheme")
                   return (
                     <a
@@ -290,7 +299,7 @@ export function DeviceDetail() {
                       href={act.href}
                       target="_blank"
                       rel="noreferrer"
-                      title={t(act.hint)}
+                      title={hint}
                       className={cls}
                     >
                       {inner}
@@ -302,7 +311,7 @@ export function DeviceDetail() {
                     <button
                       key={p.port}
                       type="button"
-                      title={t(act.hint)}
+                      title={hint}
                       onClick={() => downloadRdp(act.host)}
                       className={cls}
                     >
@@ -314,7 +323,7 @@ export function DeviceDetail() {
                   <button
                     key={p.port}
                     type="button"
-                    title={t(act.hint)}
+                    title={hint}
                     onClick={async () => {
                       await copyText(act.text);
                       toast({ tone: "success", title: "porta.copiada", desc: act.text });

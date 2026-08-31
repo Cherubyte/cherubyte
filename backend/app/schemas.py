@@ -35,6 +35,13 @@ class PortOut(ORMModel):
     port: int
     service: str | None = None
 
+    @computed_field
+    @property
+    def risky_reason(self) -> str | None:
+        from .services.portrisk import risk_for
+
+        return risk_for(self.port)
+
 
 class ImageOut(ORMModel):
     id: int
@@ -213,6 +220,7 @@ class SettingsOut(BaseModel):
     quiet_hours_start: str = ""
     quiet_hours_end: str = ""
     dhcp_allowlist: str = ""
+    risky_ports_ignore: str = ""
     alert_kinds: list[dict] = []
     public_base_url: str = ""
     notification_actions_ready: bool = False
@@ -261,6 +269,7 @@ class SettingsIn(BaseModel):
     quiet_hours_end: str | None = None
     public_base_url: str | None = None
     dhcp_allowlist: str | None = None
+    risky_ports_ignore: str | None = None
     mqtt_enabled: bool | None = None
     mqtt_host: str | None = None
     mqtt_port: int | None = None

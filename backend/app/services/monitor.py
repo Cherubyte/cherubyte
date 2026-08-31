@@ -28,7 +28,7 @@ from ..models import (
 )
 from netscan_protocol import AgentReport, HostObservation
 
-from . import action_tokens, fingerbank, mqtt, notify
+from . import action_tokens, fingerbank, mqtt, notify, portrisk
 from .enrichment import ICON_FOR_TYPE, classify
 from .oui import is_locally_administered, vendor_for
 from .naming import best_model, best_name
@@ -446,6 +446,45 @@ async def _report_port_change(
         emoji="🔌",
         tags=["electric_plug"],
         prio=4 if opened else 3,
+    )
+
+    await _report_risky_ports(session, device, host, opened)
+
+
+async def _report_risky_ports(
+    session: AsyncSession,
+    device: Device,
+    host: HostObservation,
+    opened: list[int],
+) -> None:
+    """A watchlisted port opening — a database, a remote shell, an unauthenticated
+    admin API — is louder than an ordinary port change."""
+    hits = portrisk.risky(opened)
+    if not hits:
+        return
+    listing = ", ".join(f"{p} — {reason}" for p, reason in hits)
+    await _log_event(
+        session,
+        f"{device.display_name} abriu uma porta sensível: {listing}",
+        level=EventLevel.alert,
+        category="security",
+        device_id=device.id,
+    )
+    _publish("risky_port", {"id": device.id, "ports": [p for p, _ in hits]})
+    if not _notify_allowed("risky_port", device.id):
+        return
+    await notify.broadcast(
+        "risky_port",
+        "Porta sensível aberta",
+        [
+            f"Dispositivo: {device.display_name}",
+            f"IP: {host.ip}",
+            "",
+            *[f"{p} — {reason}" for p, reason in hits],
+        ],
+        emoji="⚠️",
+        tags=["warning"],
+        prio=5,
     )
 
 

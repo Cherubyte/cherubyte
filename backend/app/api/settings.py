@@ -74,6 +74,7 @@ _PERSISTED = (
     "quiet_hours_end",
     "public_base_url",
     "dhcp_allowlist",
+    "risky_ports_ignore",
     "action_secret",
     "mqtt_host",
     "mqtt_username",
@@ -170,6 +171,7 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         quiet_hours_start=cfg.quiet_hours_start or "",
         quiet_hours_end=cfg.quiet_hours_end or "",
         dhcp_allowlist=cfg.dhcp_allowlist or "",
+        risky_ports_ignore=cfg.risky_ports_ignore or "",
         alert_kinds=[
             {"key": k.key, "label": k.label, "urgent": k.urgent} for k in alerts.KINDS
         ],
@@ -273,6 +275,7 @@ async def update_settings(
         "quiet_hours_end",
         "public_base_url",
         "dhcp_allowlist",
+        "risky_ports_ignore",
     ):
         if key in data:
             value = (data[key] or "").strip()

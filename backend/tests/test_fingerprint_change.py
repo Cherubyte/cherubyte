@@ -70,9 +70,10 @@ async def test_os_family_flip_alerts(session):
 
 @pytest.mark.asyncio
 async def test_only_ports_moving_does_not_alert(session):
-    await monitor._reconcile_host(session, _host(ttl_os="Windows", open_ports={22: "ssh"}), False)
+    # non-risky ports, so the risky-port watchlist stays out of it
+    await monitor._reconcile_host(session, _host(ttl_os="Windows", open_ports={8080: "http"}), False)
     await monitor._reconcile_host(
-        session, _host(ttl_os="Windows", open_ports={22: "ssh", 3389: "rdp", 445: "smb"}), False
+        session, _host(ttl_os="Windows", open_ports={8080: "http", 3000: "http", 8443: "https"}), False
     )
     await session.commit()
     assert await _security_events(session) == []
