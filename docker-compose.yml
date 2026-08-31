@@ -1,0 +1,79 @@
+# Cherubyte runs as two services, and the split is the point: the agent is the
+# only half that needs to see a network, so it is the only half that needs host
+# networking and raw sockets. The panel holds the data and the UI and needs
+# neither — which is what lets it be hosted somewhere the LAN is not.
+#
+# One agent per network. Add a second service block, with its own enrolment
+# token, for each additional site.
+#
+# The images are pulled from GHCR by default — `docker compose up -d` needs no
+# local build. Override with PANEL_IMAGE / AGENT_IMAGE (e.g. `:edge` for the tip
+# of main, or `:0.5` to pin a minor), or run `docker compose build` to build
+# from this checkout instead.
+
+services:
+  panel:
+    image: ${PANEL_IMAGE:-ghcr.io/cherubyte/cherubyte-panel:latest}
+    # `pull_policy: missing` so `up` pulls the published image; the `build`
+    # section is only used by an explicit `docker compose build`. Without this,
+    # the presence of `build` makes `up` build instead of pull.
+    pull_policy: missing
+    build:
+      context: .
+      dockerfile: Dockerfile.panel
+    container_name: cherubyte-panel
+    restart: unless-stopped
+
+    # An ordinary bridge network with a published port. The panel scans
+    # nothing, so it gets no capabilities and no host networking.
+    ports:
+      - "1001:1001"
+
+    environment:
+      # Containers start in UTC and the presence grid is drawn in local time.
+      TZ: ${TZ:-Europe/Lisbon}
+
+    volumes:
+      # SQLite database and uploaded images. Losing this loses your history.
+      - panel-data:/app/backend/data
+
+  agent:
+    image: ${AGENT_IMAGE:-ghcr.io/cherubyte/cherubyte-agent:latest}
+    pull_policy: missing
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: cherubyte-agent
+    restart: unless-stopped
+    depends_on:
+      - panel
+
+    # Discovery is a layer-2 job: the ARP sweep is broadcast, mDNS and SSDP are
+    # multicast, and the neighbour table is read from the kernel. On Docker's
+    # default bridge this container would scan 172.17.0.0/16 and find nothing
+    # of yours.
+    network_mode: host
+
+    cap_add:
+      - NET_RAW      # ARP sweep, DHCP sniffer, TTL probe
+      - NET_ADMIN    # promiscuous mode for the DHCP sniffer
+
+    environment:
+      TZ: ${TZ:-Europe/Lisbon}
+      # With host networking the agent shares the host's stack, so the panel is
+      # reachable on the published port above rather than by service name.
+      CHERUBYTE_AGENT_PANEL_URL: ${PANEL_URL:-http://127.0.0.1:1001}
+      # Mint one in the panel (Agents → new token) and put it here. It is spent
+      # on first start for a long-lived key, which is kept in the volume below.
+      CHERUBYTE_AGENT_ENROL_TOKEN: ${AGENT_ENROL_TOKEN:-}
+      CHERUBYTE_AGENT_NAME: ${AGENT_NAME:-casa}
+      # CHERUBYTE_AGENT_SUBNET: "192.168.1.0/24"   # empty = auto-detect
+
+    volumes:
+      # The issued key. Without this the agent re-enrols on every restart, and
+      # enrolment tokens are single-use — so it would fail on the second start.
+      - agent-state:/var/lib/cherubyte-agent
+
+volumes:
+  panel-data:
+  agent-state:

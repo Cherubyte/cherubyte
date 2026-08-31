@@ -1,0 +1,15 @@
+<svg width="560" height="150" viewBox="0 0 560 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cherubyte">
+  <!-- STUDIO: monochrome mark + wordmark. GitHub serves file SVGs as text/plain
+       and will not load a web font, so the README uses logo-wordmark.png;
+       this is the editable source. -->
+  <rect width="560" height="150" rx="16" fill="#ffffff"/>
+  <g transform="translate(30 33)">
+    <rect width="84" height="84" rx="19" fill="#171717"/>
+    <circle cx="42" cy="42" r="21" fill="none" stroke="#fafafa" stroke-width="5"/>
+    <circle cx="42" cy="42" r="7.6" fill="#fafafa"/>
+  </g>
+  <text x="142" y="82" font-family="-apple-system, 'Inter', 'Helvetica Neue', Arial, sans-serif"
+        font-size="58" font-weight="600" letter-spacing="-1.4" fill="#171717">Cherubyte</text>
+  <text x="145" y="112" font-family="ui-monospace, 'SF Mono', Menlo, monospace"
+        font-size="12" letter-spacing="2.8" fill="#8a8a8f">SELF-HOSTED NETWORK MONITOR</text>
+</svg>

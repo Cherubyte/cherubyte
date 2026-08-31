@@ -1,0 +1,110 @@
+name: Images
+
+# Builds the two images; publishes them to GHCR.
+#
+#   pull request      ->  build only, one arch, and check the panel actually starts
+#   release           ->  build + publish  :latest  :X.Y  :X.Y.Z  :sha-<commit>
+#                         for linux/amd64 + linux/arm64
+#   workflow_dispatch ->  same as a release but tagged only :edge :sha-<commit>,
+#                         for a pre-release build to test against
+#
+# Publishing on a release is what makes the README's one-line `docker run` true —
+# without it a reader following the instructions hits "image not found" at the
+# last step.
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile.*"
+      - "agent/**"
+      - "backend/**"
+      - "frontend/**"
+      - "protocol/**"
+      - ".github/workflows/images.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # A release or a manual run publishes; a pull request only builds.
+  PUBLISH: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: cherubyte-agent
+            dockerfile: Dockerfile.agent
+          - image: cherubyte-panel
+            dockerfile: Dockerfile.panel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        # arm64 is the point: the target machine is usually a Raspberry Pi. Only
+        # emulate it when the result is actually going to be pushed — building
+        # arm64 under QEMU just to throw it away costs about twenty minutes.
+        if: env.PUBLISH == 'true'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the registry
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=sha,enable=${{ env.PUBLISH == 'true' }}
+
+      - name: Build and publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          # Multi-arch only when publishing. On a pull request this builds one
+          # arch: the point there is to catch a Dockerfile that no longer builds.
+          platforms: ${{ env.PUBLISH == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          push: ${{ env.PUBLISH == 'true' }}
+          load: ${{ env.PUBLISH != 'true' }}
+          tags: ${{ steps.meta.outputs.tags || 'cherubyte-ci:test' }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+      - name: The image actually starts
+        # A build that succeeds and an image that runs are different claims, and
+        # only the panel can be checked without a network to scan. Runs on pull
+        # requests, where the image is loaded locally rather than pushed.
+        if: env.PUBLISH != 'true' && matrix.image == 'cherubyte-panel'
+        run: |
+          docker run -d --name check -p 1001:1001 cherubyte-ci:test
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:1001/api/health >/dev/null; then
+              echo "panel answered its health check"
+              docker rm -f check >/dev/null
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "panel never answered; logs follow" >&2
+          docker logs check >&2
+          exit 1
