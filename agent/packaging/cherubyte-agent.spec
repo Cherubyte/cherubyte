@@ -10,8 +10,8 @@ import sys
 WINDOWS = sys.platform == "win32"
 
 hidden = [
-    "netscan_agent.main",
-    "netscan_protocol",
+    "cherubyte_agent.main",
+    "cherubyte_protocol",
     "uvicorn.logging",
     "uvicorn.loops.auto",
     "uvicorn.protocols.http.auto",
@@ -19,7 +19,7 @@ hidden = [
     "uvicorn.lifespan.on",
 ]
 if WINDOWS:
-    hidden += ["win32timezone", "netscan_agent.winservice"]
+    hidden += ["win32timezone", "cherubyte_agent.winservice"]
 
 a = Analysis(
     ["entry.py"],
@@ -44,7 +44,7 @@ exe = EXE(
     a.binaries,
     a.zipfiles,
     a.datas,
-    name="netscan-agent",
+    name="cherubyte-agent",
     debug=False,
     strip=False,
     upx=False,

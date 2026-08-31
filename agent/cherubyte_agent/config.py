@@ -28,10 +28,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 def config_dir() -> Path:
     """Where an installer writes `agent.env`."""
     if sys.platform == "win32":
-        return Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "NetScan Agent"
+        return Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "Cherubyte Agent"
     if sys.platform == "darwin":
-        return Path("/Library/Application Support/NetScan Agent")
-    return Path("/etc/netscan-agent")
+        return Path("/Library/Application Support/Cherubyte Agent")
+    return Path("/etc/cherubyte-agent")
 
 
 def state_dir() -> Path:
@@ -44,8 +44,8 @@ def state_dir() -> Path:
     if sys.platform == "win32":
         return config_dir()
     if sys.platform == "darwin":
-        return Path("/Library/Application Support/NetScan Agent")
-    return Path("/var/lib/netscan-agent")
+        return Path("/Library/Application Support/Cherubyte Agent")
+    return Path("/var/lib/cherubyte-agent")
 
 
 CONFIG_FILE = config_dir() / "agent.env"
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
         # A repo checkout keeps working from agent/.env; an installed agent
         # reads the file its installer wrote. Both are optional.
         env_file=(BASE_DIR / ".env", CONFIG_FILE),
-        env_prefix="NETSCAN_AGENT_",
+        env_prefix="CHERUBYTE_AGENT_",
         extra="ignore",
     )
 

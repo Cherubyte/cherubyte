@@ -10,17 +10,17 @@ import sys
 
 def main() -> None:
     if sys.platform == "win32":
-        from netscan_agent.winservice import main as service_main
+        from cherubyte_agent.winservice import main as service_main
 
         service_main()
         return
 
     import uvicorn
 
-    from netscan_agent.config import settings
+    from cherubyte_agent.config import settings
 
     uvicorn.run(
-        "netscan_agent.main:app", host=settings.health_host, port=settings.health_port
+        "cherubyte_agent.main:app", host=settings.health_host, port=settings.health_port
     )
 
 

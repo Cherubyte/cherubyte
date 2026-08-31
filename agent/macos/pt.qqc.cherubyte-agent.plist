@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  launchd daemon for the NetScan agent.
+  launchd daemon for the Cherubyte agent.
 
   A LaunchDaemon, not a LaunchAgent: the ARP sweep needs raw sockets, so it runs
   as root at boot rather than inside somebody's login session. Configuration is
-  read from /Library/Application Support/NetScan Agent/agent.env — launchd does
+  read from /Library/Application Support/Cherubyte Agent/agent.env — launchd does
   not inherit a shell environment, so nothing here depends on one.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -12,11 +12,11 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>pt.qqc.netscan-agent</string>
+  <string>pt.qqc.cherubyte-agent</string>
 
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/local/bin/netscan-agent</string>
+    <string>/usr/local/bin/cherubyte-agent</string>
   </array>
 
   <key>RunAtLoad</key>
@@ -30,9 +30,9 @@
   <integer>10</integer>
 
   <key>StandardOutPath</key>
-  <string>/var/log/netscan-agent.log</string>
+  <string>/var/log/cherubyte-agent.log</string>
   <key>StandardErrorPath</key>
-  <string>/var/log/netscan-agent.log</string>
+  <string>/var/log/cherubyte-agent.log</string>
 
   <key>ProcessType</key>
   <string>Background</string>

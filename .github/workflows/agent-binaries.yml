@@ -22,14 +22,14 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            asset: netscan-agent-windows-x86_64.exe
-            binary: netscan-agent.exe
+            asset: cherubyte-agent-windows-x86_64.exe
+            binary: cherubyte-agent.exe
           - os: ubuntu-latest
-            asset: netscan-agent-linux-x86_64
-            binary: netscan-agent
+            asset: cherubyte-agent-linux-x86_64
+            binary: cherubyte-agent
           - os: macos-latest
-            asset: netscan-agent-macos-arm64
-            binary: netscan-agent
+            asset: cherubyte-agent-macos-arm64
+            binary: cherubyte-agent
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
 
       - name: Build
         working-directory: agent/packaging
-        run: pyinstaller --clean --noconfirm netscan-agent.spec
+        run: pyinstaller --clean --noconfirm cherubyte-agent.spec
 
       # ---------------------------------------------------------------- checks
 
@@ -87,9 +87,9 @@ jobs:
           Start-Sleep -Seconds 3
 
           ..\..\windows\install-service.ps1 -PanelUrl http://127.0.0.1:8899 `
-            -EnrolToken ci-token -Name ci-runner -ExePath (Resolve-Path .\netscan-agent.exe)
+            -EnrolToken ci-token -Name ci-runner -ExePath (Resolve-Path .\cherubyte-agent.exe)
 
-          $svc = Get-Service NetScanAgent
+          $svc = Get-Service CherubyteAgent
           Write-Host "service status: $($svc.Status)"
           if ($svc.Status -ne 'Running') { throw "service did not reach Running: $($svc.Status)" }
 
@@ -126,21 +126,21 @@ jobs:
           # reaches the URL from the file and reports the panel refusing it,
           # which it cannot do if it never read the file.
           sudo ../../linux/install-service.sh --panel http://127.0.0.1:8899 \
-            --token ci-token --name ci-runner --binary ./netscan-agent
+            --token ci-token --name ci-runner --binary ./cherubyte-agent
           sleep 10
           # Print the evidence BEFORE asserting on it. The first version of this
           # check failed on `is-active` and exited before reaching the log dump,
           # which left a crash-looping binary with no diagnosis in the run.
-          systemctl status netscan-agent.service --no-pager --full || true
-          sudo journalctl -u netscan-agent.service --no-pager | tail -40 || true
+          systemctl status cherubyte-agent.service --no-pager --full || true
+          sudo journalctl -u cherubyte-agent.service --no-pager | tail -40 || true
 
-          systemctl is-active --quiet netscan-agent.service \
-            || { echo "service is $(systemctl is-active netscan-agent.service)" >&2; exit 1; }
+          systemctl is-active --quiet cherubyte-agent.service \
+            || { echo "service is $(systemctl is-active cherubyte-agent.service)" >&2; exit 1; }
           # sudo: the installer makes it 0600 root-only, because it carries the
           # enrolment token.
-          sudo test -f /etc/netscan-agent/agent.env
-          sudo grep -q '127.0.0.1:8899' /etc/netscan-agent/agent.env
-          sudo journalctl -u netscan-agent.service --no-pager | grep -q '127.0.0.1:8899' \
+          sudo test -f /etc/cherubyte-agent/agent.env
+          sudo grep -q '127.0.0.1:8899' /etc/cherubyte-agent/agent.env
+          sudo journalctl -u cherubyte-agent.service --no-pager | grep -q '127.0.0.1:8899' \
             || { echo 'the agent never contacted the configured panel' >&2; exit 1; }
           sudo ../../linux/uninstall-service.sh --purge
           echo 'Linux: installed, configured, contacted the panel, removed.'
@@ -152,12 +152,12 @@ jobs:
           set -euo pipefail
           python3 -m http.server 8899 --bind 127.0.0.1 >/dev/null 2>&1 &
           sudo ../../macos/install-daemon.sh --panel http://127.0.0.1:8899 \
-            --token ci-token --name ci-runner --binary ./netscan-agent
+            --token ci-token --name ci-runner --binary ./cherubyte-agent
           sleep 10
-          sudo launchctl print system/pt.qqc.netscan-agent | head -25 || true
-          sudo tail -40 /var/log/netscan-agent.log || true
-          sudo test -f "/Library/Application Support/NetScan Agent/agent.env"
-          sudo grep -q '127.0.0.1:8899' /var/log/netscan-agent.log \
+          sudo launchctl print system/pt.qqc.cherubyte-agent | head -25 || true
+          sudo tail -40 /var/log/cherubyte-agent.log || true
+          sudo test -f "/Library/Application Support/Cherubyte Agent/agent.env"
+          sudo grep -q '127.0.0.1:8899' /var/log/cherubyte-agent.log \
             || { echo 'the agent never contacted the configured panel' >&2; exit 1; }
           sudo ../../macos/uninstall-daemon.sh --purge
           echo 'macOS: installed, configured, contacted the panel, removed.'

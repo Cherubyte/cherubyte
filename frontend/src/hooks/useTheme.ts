@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 
 export type ThemePref = "system" | "light" | "dark";
 
-const KEY = "netscan-theme-pref";
+const KEY = "cherubyte-theme-pref";
 
 /**
  * The old key, deliberately not migrated.

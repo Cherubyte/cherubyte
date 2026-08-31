@@ -1,6 +1,6 @@
 [Unit]
-Description=NetScan agent — local network sweep
-Documentation=https://github.com/nobrega8/netscan
+Description=Cherubyte agent — local network sweep
+Documentation=https://github.com/nobrega8/cherubyte
 After=network-online.target
 Wants=network-online.target
 # An always-on monitor should never sit dead because it restarted a few times
@@ -9,10 +9,10 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/netscan-agent
+ExecStart=/usr/local/bin/cherubyte-agent
 # Configuration lives in a file, not here: the same mechanism as the Windows and
 # macOS installers, and it keeps the enrolment token out of `systemctl cat`.
-EnvironmentFile=-/etc/netscan-agent/agent.env
+EnvironmentFile=-/etc/cherubyte-agent/agent.env
 
 # `always`, not `on-failure`: a monitor that stops sweeping is useless, so it
 # comes back from a crash, an OOM kill or a stray signal too. Only an explicit
@@ -31,8 +31,8 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-ReadWritePaths=/var/lib/netscan-agent
-StateDirectory=netscan-agent
+ReadWritePaths=/var/lib/cherubyte-agent
+StateDirectory=cherubyte-agent
 
 [Install]
 WantedBy=multi-user.target
