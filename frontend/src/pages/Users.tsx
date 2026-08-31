@@ -37,12 +37,12 @@ export function Users() {
   const present = main.filter((u) => u.is_present).length;
 
   const row = (u: User) => (
-    <div key={u.id} className="panel p-3.5">
-      <div className="mb-2.5 flex items-center gap-3">
+    <div key={u.id} className="panel p-4">
+      <div className="mb-3 flex items-center gap-3">
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: stringHsl(u.name) }} />
-        <Avatar name={u.name} size={26} />
+        <Avatar name={u.name} size={28} />
         <Link to={`/users/${u.id}`} className="group flex min-w-0 flex-1 items-center gap-3">
-          <span className="truncate font-display text-[15px] tracking-tight text-fg group-hover:text-signal">
+          <span className="truncate font-display text-[14px] text-fg group-hover:underline">
             {u.name}
           </span>
           <StatusPill online={u.is_present} />
@@ -56,14 +56,14 @@ export function Users() {
           <Trash size={13} />
         </button>
       </div>
-      <div className="sm:pl-[38px]">
+      <div className="sm:pl-[40px]">
         <PresenceHeatmap userId={u.id} days={7} cell={isMobile ? 11 : 14} />
       </div>
     </div>
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="panel flex flex-wrap items-end gap-x-10 gap-y-4 px-5 py-4">
         <Readout
           value={main.length ? present : "—"}
@@ -81,13 +81,13 @@ export function Users() {
           <label className="block">
             <span className="label mb-1.5 block">{t("users.newPerson")}</span>
             <input
-              className="input h-[28px] w-44 py-0"
+              className="input h-[30px] w-44 py-0"
               placeholder={t("users.name")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </label>
-          <label className="mono flex h-[28px] items-center gap-1.5 text-[11px] text-fg-2">
+          <label className="flex h-[30px] items-center gap-1.5 text-[11.5px] text-fg-2">
             <input type="checkbox" checked={asGuest} onChange={(e) => setAsGuest(e.target.checked)} />
             {t("users.guest")}
           </label>
@@ -100,23 +100,20 @@ export function Users() {
       {users.isLoading && <Skeleton className="h-40 w-full" />}
 
       {!users.isLoading && list.length === 0 && (
-        <EmptyState
-          title={t("users.empty.title")}
-          description={t("users.empty.desc")}
-        />
+        <EmptyState title={t("users.empty.title")} description={t("users.empty.desc")} />
       )}
 
       {main.length > 0 && (
-        <div className="grid gap-2 lg:grid-cols-2 lg:items-start">{main.map(row)}</div>
+        <div className="grid gap-3 lg:grid-cols-2 lg:items-start">{main.map(row)}</div>
       )}
 
       {guests.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex items-center gap-2 pt-2">
             <span className="label">{t("users.guests")}</span>
             <Badge tone="neutral">{guests.length}</Badge>
           </div>
-          <div className="grid gap-2 lg:grid-cols-2 lg:items-start">{guests.map(row)}</div>
+          <div className="grid gap-3 lg:grid-cols-2 lg:items-start">{guests.map(row)}</div>
         </div>
       )}
     </div>

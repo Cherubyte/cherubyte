@@ -113,9 +113,9 @@ export function DeviceTypeIcon({ type, size = 14, className }: P & { type: Devic
   return <Icon size={size} className={className} d={DEVICE[type] ?? DEVICE.unknown} />;
 }
 
-/** The NetScan mark — a charted position: concentric rings on a graticule
- *  cross, one contact plotted in carmine. Drawn, not an icon-font glyph. */
-export function ChartMark({ size = 24, className }: P) {
+/** The NetScan mark — a quiet monochrome glyph: a ring with a solid centre,
+ *  the whole network watched from one point. Drawn, not an icon-font glyph. */
+export function AppMark({ size = 24, className }: P) {
   return (
     <svg
       width={size}
@@ -125,10 +125,11 @@ export function ChartMark({ size = 24, className }: P) {
       className={className}
       aria-hidden="true"
     >
-      <path d="M16 2v28M2 16h28" stroke="currentColor" strokeWidth="0.75" opacity="0.4" />
-      <circle cx="16" cy="16" r="12" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="16" cy="16" r="6.5" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="16" cy="16" r="2.6" fill="rgb(var(--signal))" />
+      <circle cx="16" cy="16" r="10.5" stroke="currentColor" strokeWidth="2" />
+      <circle cx="16" cy="16" r="3.4" fill="currentColor" />
     </svg>
   );
 }
+
+/** @deprecated legacy name — kept so older imports keep working */
+export const ChartMark = AppMark;

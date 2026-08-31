@@ -4,6 +4,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import type { ApprovalStatus, EventLevel } from "../api/types";
 import { initials, readableOn, stringHsl } from "../lib/format";
 import { useT } from "../i18n";
+import { motion, useReducedMotion } from "../lib/motion";
 
 /* ── Button ──────────────────────────────────────────────────────────── */
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -46,7 +47,7 @@ function Spinner() {
   return <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />;
 }
 
-/* ── Block — the only grouping primitive (a solid panel, no border) ───── */
+/* ── Block / Card — the grouping primitive (a card, hairline, soft lift) ─ */
 export function Block({
   children,
   className,
@@ -73,7 +74,7 @@ export function Card({
   return <As className={clsx("panel", className)}>{children}</As>;
 }
 
-/* ── Readout — the station-board figure: big display numeral + caption ── */
+/* ── Readout — a big figure + a quiet caption ─────────────────────────── */
 export function Readout({
   value,
   unit,
@@ -89,23 +90,25 @@ export function Readout({
   tone?: "default" | "signal" | "alert";
   className?: string;
 }) {
-  const px = { sm: "text-[26px]", md: "text-[36px]", lg: "text-[clamp(36px,5vw,60px)]", xl: "text-[clamp(44px,6vw,78px)]" }[size];
-  const color =
-    tone === "signal" ? "text-signal" : tone === "alert" ? "text-alert" : "text-fg";
+  const px = {
+    sm: "text-[24px]",
+    md: "text-[32px]",
+    lg: "text-[clamp(30px,4.4vw,48px)]",
+    xl: "text-[clamp(38px,5.4vw,64px)]",
+  }[size];
+  const color = tone === "alert" ? "text-alert" : "text-fg";
   return (
     <div className={clsx("flex flex-col gap-1.5", className)}>
       <div className="flex items-baseline gap-2">
-        <span className={clsx("font-display leading-[0.82] tnum", px, color)}>{value}</span>
+        <span className={clsx("font-display leading-[0.95] tnum", px, color)}>{value}</span>
         {unit && <span className="mono text-[12px] text-fg-3">{unit}</span>}
       </div>
-      {caption != null && <span className="key">{caption}</span>}
+      {caption != null && <span className="label">{caption}</span>}
     </div>
   );
 }
 
-/* ── Redacted — a value shown masked, revealed on hover / focus / tap ──
-   For things you want on screen but not on a screenshot: the public IP. The
-   dots keep the shape (dots, colons) so the reveal is not a layout jump. */
+/* ── Redacted — a value shown masked, revealed on hover / focus / tap ── */
 export function Redacted({
   value,
   label,
@@ -153,12 +156,12 @@ export function SectionHeader({
   return (
     <div
       className={clsx(
-        "mb-3.5 flex items-center justify-between gap-3 border-b border-edge pb-2.5",
+        "mb-4 flex items-center justify-between gap-3 border-b border-edge pb-3",
         className,
       )}
     >
       <div className="flex items-baseline gap-2.5">
-        <h2 className="font-display text-[16px] tracking-tight text-fg">{title}</h2>
+        <h2 className="font-display text-[15px] text-fg">{title}</h2>
         {sub != null && <span className="label">{sub}</span>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
@@ -174,7 +177,7 @@ export function Key({ children, className }: { children: ReactNode; className?: 
   return <span className={clsx("key", className)}>{children}</span>;
 }
 
-/* ── Badge → hard tag chip ──────────────────────────────────────────── */
+/* ── Badge → chip ──────────────────────────────────────────────────── */
 export function Badge({
   tone = "neutral",
   children,
@@ -195,7 +198,7 @@ export function Badge({
   return <span className={clsx("tag", map[tone], className)}>{children}</span>;
 }
 
-/* ── status marks — a filled square, not a dot ──────────────────────── */
+/* ── status marks — a small dot ─────────────────────────────────────── */
 export function StatusMark({
   state = "offline",
   size = 9,
@@ -225,7 +228,7 @@ export function StatusPill({ online }: { online: boolean }) {
       )}
     >
       <StatusMark state={online ? "online" : "offline"} size={8} />
-      {online ? t("shell.vital.online") : "Offline"}
+      {online ? t("shell.vital.online") : t("common.offline")}
     </span>
   );
 }
@@ -241,14 +244,14 @@ export function ApprovalTag({ status }: { status: ApprovalStatus }) {
 export function LevelDot({ level }: { level: EventLevel }) {
   const c = {
     info: "bg-fg-3",
-    success: "bg-water",
+    success: "bg-fg",
     warning: "bg-alert",
     alert: "bg-alert",
   }[level];
-  return <span className={clsx("block h-full w-[2px] shrink-0", c)} />;
+  return <span className={clsx("block h-full w-[2px] shrink-0 rounded-full", c)} />;
 }
 
-/* ── Avatar — solid block, initials ────────────────────────────────── */
+/* ── Avatar — rounded, initials ────────────────────────────────────── */
 export function Avatar({ name, size = 26 }: { name: string; size?: number }) {
   const bg = stringHsl(name);
   return (
@@ -260,7 +263,7 @@ export function Avatar({ name, size = 26 }: { name: string; size?: number }) {
         background: bg,
         color: readableOn(bg),
         fontSize: size * 0.38,
-        borderRadius: 2,
+        borderRadius: size * 0.32,
       }}
     >
       {initials(name)}
@@ -287,15 +290,15 @@ export function Field({
       {label && <span className="label mb-1.5 block">{label}</span>}
       {children}
       {error ? (
-        <span className="mono mt-1 block text-[11px] text-alert">{error}</span>
+        <span className="mt-1 block text-[11.5px] text-alert">{error}</span>
       ) : (
-        hint && <span className="mono mt-1 block text-[11px] text-fg-3">{hint}</span>
+        hint && <span className="mt-1 block text-[11.5px] text-fg-3">{hint}</span>
       )}
     </label>
   );
 }
 
-/* ── Toggle → ON | OFF segmented ────────────────────────────────────── */
+/* ── Toggle → an animated switch ────────────────────────────────────── */
 export function Toggle({
   checked,
   onChange,
@@ -305,32 +308,28 @@ export function Toggle({
   onChange: (v: boolean) => void;
   label?: string;
 }) {
+  const reduced = useReducedMotion();
   return (
-    <span
-      role="group"
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
       aria-label={label}
-      className="mono inline-flex shrink-0 select-none overflow-hidden rounded-[7px] border border-edge-2 bg-surface-2 text-[10px] leading-none"
+      onClick={() => onChange(!checked)}
+      className={clsx(
+        "relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full border transition-colors",
+        checked
+          ? "border-fg bg-fg"
+          : "border-edge-2 bg-surface-2",
+      )}
     >
-      {(["ON", "OFF"] as const).map((s) => {
-        const active = (s === "ON") === checked;
-        return (
-          <button
-            key={s}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(s === "ON")}
-            className={clsx(
-              "px-2.5 py-1.5 tracking-[0.08em] transition-colors",
-              active
-                ? "bg-fg text-surface"
-                : "bg-transparent text-fg-3 hover:text-fg",
-            )}
-          >
-            {s}
-          </button>
-        );
-      })}
-    </span>
+      <motion.span
+        className="block h-[18px] w-[18px] rounded-full bg-surface shadow-sm"
+        animate={{ x: checked ? 20 : 2 }}
+        transition={reduced ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.25 }}
+        style={{ background: checked ? "rgb(var(--surface))" : "rgb(var(--fg-3))" }}
+      />
+    </button>
   );
 }
 
@@ -347,11 +346,11 @@ export function Skeleton({
 
 export function SkeletonRows({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="space-y-px">
+    <div className="panel divide-y divide-edge overflow-hidden">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 bg-surface px-3 py-3.5">
-          <div className="skeleton h-[9px] w-[9px]" />
-          <div className="skeleton h-6 w-6" />
+        <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+          <div className="skeleton h-[9px] w-[9px] rounded-full" />
+          <div className="skeleton h-8 w-8 rounded-lg" />
           <div className="skeleton h-4 flex-1" style={{ maxWidth: `${40 + ((i * 37) % 40)}%` }} />
           <div className="skeleton ml-auto h-3 w-24" />
         </div>
@@ -379,16 +378,16 @@ export function EmptyState({
       ) : (
         <span className="signal-mark signal-mark--off mb-0.5" style={{ ["--m" as string]: "11px" }} />
       )}
-      <p className="font-display text-[16px] tracking-tight text-fg">{title}</p>
+      <p className="font-display text-[15px] text-fg">{title}</p>
       {description && (
-        <p className="mono max-w-sm text-[11px] leading-relaxed text-fg-2">{description}</p>
+        <p className="max-w-sm text-[12.5px] leading-relaxed text-fg-2">{description}</p>
       )}
       {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
 
-/* ── Stat → small readout ─────────────────────────────────────────── */
+/* ── Stat → small figure ─────────────────────────────────────────── */
 export function Stat({
   label,
   value,
@@ -400,33 +399,27 @@ export function Stat({
   delta?: string;
   tone?: "default" | "amber" | "signal" | "red" | "alert";
 }) {
-  const t =
-    tone === "red" || tone === "alert"
-      ? Number(value) > 0
-        ? "alert"
-        : "default"
-      : tone === "amber"
-        ? "signal"
-        : (tone as "default" | "signal");
+  const isAlert =
+    (tone === "red" || tone === "alert") && Number(value) > 0;
   return (
     <div className="flex flex-col gap-1 py-1">
       <span className="key">{label}</span>
       <div className="flex items-baseline gap-2">
         <span
           className={clsx(
-            "font-display-lt text-[30px] leading-none tnum",
-            t === "alert" ? "text-alert" : t === "signal" ? "text-signal" : "text-fg",
+            "font-display text-[28px] leading-none tnum",
+            isAlert ? "text-alert" : "text-fg",
           )}
         >
           {value}
         </span>
-        {delta && <span className="mono text-[10px] text-signal">{delta}</span>}
+        {delta && <span className="mono text-[10px] text-fg-3">{delta}</span>}
       </div>
     </div>
   );
 }
 
-/* ── QueryState — SIGNAL LOST / skeleton ────────────────────────────── */
+/* ── QueryState — error / skeleton ─────────────────────────────────── */
 export function QueryState({
   q,
   label,
@@ -438,8 +431,8 @@ export function QueryState({
   if (q.isError) {
     const msg = q.error instanceof Error ? q.error.message : t("common.loadError");
     return (
-      <div className="core border-alert/60 px-4 py-4">
-        <p className="key text-alert">{t("common.signalLost")}</p>
+      <div className="core border-alert/50 px-4 py-4">
+        <p className="text-[13px] font-medium text-alert">{t("common.signalLost")}</p>
         <p className="mono mt-1.5 text-[11px] leading-relaxed text-fg-2">{msg}</p>
         {q.refetch && (
           <button onClick={() => q.refetch!()} className="btn btn-danger btn-sm mt-3">

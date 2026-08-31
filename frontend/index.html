@@ -4,45 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b1418" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c0c0c" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,500;10..72,600;10..72,700&family=Overpass:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Overpass+Mono:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f4efe4'/%3E%3Cg stroke='%231b2b33' stroke-width='1.2' fill='none'%3E%3Ccircle cx='16' cy='16' r='10'/%3E%3Ccircle cx='16' cy='16' r='5.5'/%3E%3C/g%3E%3Cpath d='M16 3v26M3 16h26' stroke='%231b2b33' stroke-width='0.6' opacity='0.5'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%23c8102e'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23171717'/%3E%3Ccircle cx='16' cy='16' r='8.5' fill='none' stroke='%23fafaf9' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23fafaf9'/%3E%3C/svg%3E"
     />
     <title>NetScan</title>
   </head>
   <body>
     <!--
-      DIRECTION — "CHART" (supersedes v7 "INSTRUMENT", seed 0192d9d2, mode operate)
-      THESIS: the LAN is charted water and the panel is its hydrographic chart —
-        every device a plotted contact, not a card. Refuses the dark observability
-        dashboard (sidebar + stat-tile grid + one accent) that the last seven
-        directions all drifted into.
-      OWN-WORLD: ink-on-chart-paper by default (warm buff #f4efe4, ink #1b2b33),
-        one spot colour — chart warning carmine #c8102e — used only for a real
-        caution or the live/selected mark; a desaturated water tint #7fa8a0 owns
-        the plan ground and known-contact rows. ECDIS-night palette for dark.
-        Hairline linework, near-square corners, near-flat depth. Big Shoulders
-        (signage display), Overpass (Highway-Gothic UI), Overpass Mono (soundings,
-        MACs, coordinates, timestamps). A graticule ground; contacts carry a
-        symbol + a leader-tethered label + a sounding.
-      STORY: the operator reads the plan — online / present / new / caution — in
-        one look, then follows a contact's leader into its detail plate.
-      FIRST VIEWPORT: a fixed chart margin (title block, index, scale, epoch clock)
-        around the plot. The dashboard opens on the plan cluster — online/total,
-        present, new, internet — then the contact register as one continuous sheet.
-      FORM: operator dashboard; grounded candidate 5 of 7 (hydrographic chart +
-        AIS). Signature: a survey line advances once down the plot per sweep, and
-        the only "something changed" motion anywhere is a single hard chart-negative
-        flash on a new contact. Motion otherwise: one quiet route fade, press-scale.
-      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+      DIRECTION — "STUDIO" (supersedes v8 "CHART")
+      THESIS: a calm, near-monochrome instrument in the spirit of an Apple
+        system app / curated.supply — near-black ink on a warm off-white ground,
+        hairline rules, generous rhythm, restraint. Weight and space carry the
+        hierarchy; red is held back for a real alert or a destructive action.
+      TYPE: Inter (UI) · system monospace (addresses, timestamps, counts).
+      MOTION: interruptible springs via motion/react (see src/lib/motion.ts),
+        all of it optional under prefers-reduced-motion.
+      TOKENS: src/index.css (:root light, :root.dark night) — names in tailwind.config.js.
     -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

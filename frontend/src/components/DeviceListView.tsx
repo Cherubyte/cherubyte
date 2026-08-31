@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { Device } from "../api/types";
 import { useNow } from "../hooks/useNow";
-import { deviceTypeLabel, hostRef, stringHsl, timeAgo } from "../lib/format";
+import { deviceTypeLabel, stringHsl, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import { TypeCode, useBrandLogos, useOsLogos } from "./TypeCode";
 import { EmptyState, SkeletonRows } from "./ui";
@@ -17,9 +17,9 @@ type SortKey = "name" | "ip" | "type" | "seen";
 /* one grid track shared by the header and every row */
 const GRID =
   "grid-cols-[10px_40px_minmax(0,1fr)_auto] " +
-  "sm:grid-cols-[62px_10px_40px_minmax(0,1fr)_120px_64px] " +
-  "md:grid-cols-[62px_10px_40px_minmax(0,1fr)_120px_120px_128px_64px] " +
-  "lg:grid-cols-[62px_10px_40px_minmax(0,1fr)_120px_120px_128px_84px_64px]";
+  "sm:grid-cols-[10px_40px_minmax(0,1fr)_128px_72px] " +
+  "md:grid-cols-[10px_40px_minmax(0,1fr)_128px_128px_136px_72px] " +
+  "lg:grid-cols-[10px_40px_minmax(0,1fr)_128px_128px_136px_92px_72px]";
 
 function ipNum(d: Device) {
   const ip = (d.ips.find((i) => i.is_primary) ?? d.ips[0])?.address ?? "";
@@ -108,8 +108,7 @@ export function DeviceListView({
   return (
     <div className="relative">
       {/* column header — desktop */}
-      <div className={clsx("hidden items-center gap-3 px-3 pb-2 sm:grid", GRID)}>
-        <Head k="ip" className="justify-end">{t("list.col.ref")}</Head>
+      <div className={clsx("hidden items-center gap-3 px-4 pb-2 sm:grid", GRID)}>
         <span />
         <span />
         <Head k="name">{t("list.col.host")}</Head>
@@ -120,7 +119,7 @@ export function DeviceListView({
         <Head k="seen" className="justify-end">{t("list.col.seen")}</Head>
       </div>
 
-      {group(online)}
+      {online.length > 0 && group(online)}
 
       {offline.length > 0 && (
         <>
@@ -161,27 +160,13 @@ function Row({
     <div
       onClick={() => nav(`/devices/${d.id}`)}
       className={clsx(
-        "group relative grid h-[64px] cursor-pointer items-center gap-3 px-3 transition-colors sm:h-[56px]",
+        "group relative grid h-[64px] cursor-pointer items-center gap-3 px-4 transition-colors sm:h-[56px]",
         GRID,
-        dim
-          ? "bg-surface hover:bg-surface-2"
-          : "bg-water/[0.05] hover:bg-water/[0.12]",
+        "hover:bg-surface-2",
         flash,
       )}
     >
-      <span
-        className={clsx(
-          "absolute left-0 top-0 h-full w-[2px]",
-          pending ? "bg-signal" : "bg-signal opacity-0 group-hover:opacity-100",
-        )}
-      />
-
-      {/* register reference — the host's position on the network — desktop */}
-      <span className="mono hidden justify-self-end text-[10px] tracking-tight text-fg-3 sm:block">
-        {hostRef(ip === "—" ? null : ip)}
-      </span>
-
-      {/* status mark — a lit node */}
+      {/* status mark */}
       <span className="justify-self-center">
         <span
           className={clsx(
@@ -192,17 +177,17 @@ function Row({
         />
       </span>
 
-      {/* device image — borderless, larger */}
+      {/* device image */}
       <TypeCode device={d} logos={logos} osLogos={osLogos} size={40} />
 
-      {/* name + sub — clipped */}
+      {/* name + sub */}
       <div className="min-w-0 overflow-hidden">
         <div className="flex items-center gap-2">
           <span className={clsx("truncate text-[13.5px] font-medium", dim ? "text-fg-2" : "text-fg")}>
             {d.display_name}
           </span>
           {pending && (
-            <span className="mono hidden shrink-0 text-[9px] tracking-[0.12em] text-alert sm:inline">
+            <span className="hidden shrink-0 text-[10px] font-medium text-alert sm:inline">
               {t("list.unreviewed")}
             </span>
           )}
@@ -215,7 +200,7 @@ function Row({
           </span>
         </div>
         {sub && (
-          <div className="mono mt-0.5 hidden truncate text-[10px] text-fg-3 sm:block">{sub}</div>
+          <div className="mono mt-0.5 hidden truncate text-[10.5px] text-fg-3 sm:block">{sub}</div>
         )}
       </div>
 
@@ -225,7 +210,7 @@ function Row({
         {d.ips.length > 1 && <span className="ml-1 text-fg-3">+{d.ips.length - 1}</span>}
       </span>
 
-      {/* user — md+ — a name-derived colour dot */}
+      {/* user — md+ */}
       <span className="hidden items-center gap-1.5 md:flex">
         {d.user ? (
           <>
@@ -240,13 +225,13 @@ function Row({
         )}
       </span>
 
-      {/* type — icon + label — md+ */}
+      {/* type — md+ */}
       <span className="hidden items-center gap-1.5 md:flex">
-        <DeviceTypeIcon type={d.device_type} size={14} className="shrink-0 text-fg-2" />
+        <DeviceTypeIcon type={d.device_type} size={14} className="shrink-0 text-fg-3" />
         <span className="truncate text-[11.5px] text-fg-2">{deviceTypeLabel(d.device_type)}</span>
       </span>
 
-      {/* os — logo + family — lg+ */}
+      {/* os — lg+ */}
       <span className="mono hidden items-center gap-1.5 truncate text-[10px] text-fg-3 lg:flex">
         {d.os_family && osLogos.get(d.os_family.toLowerCase()) && (
           <img src={osLogos.get(d.os_family.toLowerCase())} alt="" className="h-3.5 w-3.5 shrink-0 object-contain" />
@@ -265,7 +250,7 @@ function Row({
       </span>
 
       {/* hover actions — desktop */}
-      <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-3 bg-surface-2 pl-4 opacity-0 group-hover:opacity-100 sm:flex">
+      <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-3 bg-surface-2 pl-4 opacity-0 group-hover:opacity-100 sm:flex">
         <button
           onClick={(e) => {
             e.stopPropagation();

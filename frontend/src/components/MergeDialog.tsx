@@ -129,7 +129,7 @@ export function MergeDialog({
         </div>
       ) : (
         <div className="p-4">
-          <div className="flex items-center justify-center gap-4 border border-edge bg-surface-2 p-4">
+          <div className="flex items-center justify-center gap-4 rounded-lg border border-edge bg-surface-2 p-4">
             <div className="flex flex-col items-center gap-1.5 text-center">
               <TypeCode device={device} logos={logos} osLogos={osLogos} size={38} />
               <span className="mono max-w-[110px] truncate text-[10px] text-fg-3 line-through">

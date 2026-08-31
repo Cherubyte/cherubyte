@@ -8,6 +8,8 @@ import { useToast } from "../components/Toaster";
 import { deviceTypeLabel } from "../lib/format";
 import { useT } from "../i18n";
 
+const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
 export function Distribution() {
   const t = useT();
   const stats = useQuery({ queryKey: ["stats"], queryFn: api.stats });
@@ -19,8 +21,8 @@ export function Distribution() {
   const totalTyped = (byType.data ?? []).reduce((n, r) => n + r.count, 0) || 1;
 
   return (
-    <div className="space-y-4">
-      {/* hero */}
+    <div className="space-y-5">
+      {/* figures */}
       <div className="panel flex flex-wrap items-end gap-x-10 gap-y-4 px-5 py-4">
         <Readout value={s?.total ?? "—"} caption={t("stats.devices")} size="xl" />
         <Readout value={s?.online ?? "—"} caption={t("stats.onlineNow")} size="sm" />
@@ -29,13 +31,13 @@ export function Distribution() {
       </div>
 
       {/* timeline */}
-      <section className="panel p-4">
+      <section className="panel p-5">
         <SectionHeader title={t("stats.newDevices")} sub={t("stats.newDevicesSub")} />
         {timeline.data ? <Plot series={timeline.data.series} /> : <QueryState q={timeline} />}
       </section>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        <section className="panel p-4">
+        <section className="panel p-5">
           <SectionHeader title={t("stats.byType")} sub={String((byType.data ?? []).length)} />
           {byType.data ? (
             <TypeBars rows={byType.data} total={totalTyped} />
@@ -44,12 +46,12 @@ export function Distribution() {
           )}
         </section>
 
-        <section className="panel p-4">
+        <section className="panel p-5">
           <SectionHeader title={t("stats.byBrand")} sub={t("stats.assignLogoHint")} />
           <LogoBars kind="brands" online={byBrand.data} />
         </section>
 
-        <section className="panel p-4">
+        <section className="panel p-5">
           <SectionHeader title={t("stats.bySystem")} sub={t("stats.assignLogoHint")} />
           <LogoBars kind="os" />
         </section>
@@ -92,15 +94,15 @@ function Plot({ series }: { series: TimelinePoint[] }) {
         {[0, Math.round(maxNew / 2), maxNew].map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={yNew(v)} y2={yNew(v)} stroke="rgb(var(--edge))" />
-            <text x={pad.l - 6} y={yNew(v) + 3} textAnchor="end" fontSize="8" fontFamily="Spline Sans Mono" fill="rgb(var(--fg-3))">
+            <text x={pad.l - 6} y={yNew(v) + 3} textAnchor="end" fontSize="8" fontFamily={MONO} fill="rgb(var(--fg-3))">
               {v}
             </text>
           </g>
         ))}
-        <text x={W - pad.r + 6} y={pad.t + 3} fontSize="8" fontFamily="Spline Sans Mono" fill="rgb(var(--fg-3))">
+        <text x={W - pad.r + 6} y={pad.t + 3} fontSize="8" fontFamily={MONO} fill="rgb(var(--fg-3))">
           {maxTot}
         </text>
-        <line x1={pad.l} x2={W - pad.r} y1={pad.t + ih} y2={pad.t + ih} stroke="rgb(var(--edge-2))" strokeWidth={2} />
+        <line x1={pad.l} x2={W - pad.r} y1={pad.t + ih} y2={pad.t + ih} stroke="rgb(var(--edge-2))" strokeWidth={1.5} />
 
         {series.map((p, i) => (
           <rect
@@ -109,15 +111,16 @@ function Plot({ series }: { series: TimelinePoint[] }) {
             y={yNew(p.new_devices)}
             width={bw}
             height={pad.t + ih - yNew(p.new_devices)}
-            fill={hover === i ? "rgb(var(--signal))" : "rgb(var(--fg-2))"}
+            rx={1}
+            fill={hover === i ? "rgb(var(--fg))" : "rgb(var(--fg-3))"}
           />
         ))}
 
-        <path d={linePath} fill="none" stroke="rgb(var(--signal))" strokeWidth={1.5} />
+        <path d={linePath} fill="none" stroke="rgb(var(--fg))" strokeWidth={1.5} />
 
         {series.map((p, i) =>
           i % 5 === 0 ? (
-            <text key={i} x={x(i)} y={H - 6} fontSize="8" fontFamily="Spline Sans Mono" fill="rgb(var(--fg-3))" textAnchor="middle">
+            <text key={i} x={x(i)} y={H - 6} fontSize="8" fontFamily={MONO} fill="rgb(var(--fg-3))" textAnchor="middle">
               {p.date.slice(5)}
             </text>
           ) : null,
@@ -125,8 +128,8 @@ function Plot({ series }: { series: TimelinePoint[] }) {
 
         {hover != null && (
           <>
-            <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={pad.t + ih} stroke="rgb(var(--signal))" strokeDasharray="2 2" />
-            <circle cx={x(hover)} cy={yTot(series[hover].total)} r={2.5} fill="rgb(var(--signal))" />
+            <line x1={x(hover)} x2={x(hover)} y1={pad.t} y2={pad.t + ih} stroke="rgb(var(--fg))" strokeDasharray="2 2" />
+            <circle cx={x(hover)} cy={yTot(series[hover].total)} r={2.5} fill="rgb(var(--fg))" />
           </>
         )}
       </svg>
@@ -134,7 +137,7 @@ function Plot({ series }: { series: TimelinePoint[] }) {
         {h && (
           <span>
             {h.date} · <b className="text-fg">{h.new_devices}</b> {t("stats.plotNew")} ·{" "}
-            {t("stats.plotTotal")} <b className="text-signal">{h.total}</b>
+            {t("stats.plotTotal")} <b className="text-fg">{h.total}</b>
           </span>
         )}
       </div>
@@ -148,15 +151,13 @@ function TypeBars({ rows, total }: { rows: { type: string; count: number }[]; to
   if (rows.length === 0) return <EmptyState title={t("stats.noData")} />;
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {rows.map((r) => (
         <div key={r.type} className="grid grid-cols-[16px_88px_1fr_46px] items-center gap-2.5">
           <DeviceTypeIcon type={r.type as DeviceType} size={13} className="text-fg-3" />
-          <span className="truncate text-[12px] text-fg-2">
-            {deviceTypeLabel(r.type)}
-          </span>
-          <div className="h-2.5 bg-surface-2">
-            <div className="h-full bg-fg" style={{ width: `${(r.count / max) * 100}%` }} />
+          <span className="truncate text-[12px] text-fg-2">{deviceTypeLabel(r.type)}</span>
+          <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+            <div className="h-full rounded-full bg-fg" style={{ width: `${(r.count / max) * 100}%` }} />
           </div>
           <span className="mono text-right text-[11px] text-fg-2">
             {r.count}
@@ -210,7 +211,7 @@ function LogoBars({
   if (rows.length === 0) return <EmptyState title={t("stats.noData")} />;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <input
         ref={fileRef}
         type="file"
@@ -233,7 +234,7 @@ function LogoBars({
                 fileRef.current?.click();
               }}
               title={t("stats.assignLogo")}
-              className="grid h-[22px] w-[22px] place-items-center overflow-hidden rounded-[3px] bg-surface-2 text-fg-3 hover:text-fg"
+              className="grid h-[22px] w-[22px] place-items-center overflow-hidden rounded-md bg-surface-2 text-fg-3 hover:text-fg"
             >
               {b.logo_url ? (
                 <img src={b.logo_url} alt="" className="h-full w-full object-contain p-px" />
@@ -242,10 +243,10 @@ function LogoBars({
               )}
             </button>
             <span className="truncate text-[11.5px] text-fg-2">{b.name}</span>
-            <div className="relative h-2.5 bg-surface-2">
-              <div className="absolute inset-y-0 left-0 bg-edge-2" style={{ width: `${(b.device_count / max) * 100}%` }} />
+            <div className="relative h-2 overflow-hidden rounded-full bg-surface-2">
+              <div className="absolute inset-y-0 left-0 rounded-full bg-fg-3" style={{ width: `${(b.device_count / max) * 100}%` }} />
               {on != null && on > 0 && (
-                <div className="absolute inset-y-0 left-0 bg-water" style={{ width: `${(on / max) * 100}%` }} />
+                <div className="absolute inset-y-0 left-0 rounded-full bg-fg" style={{ width: `${(on / max) * 100}%` }} />
               )}
             </div>
             <div className="flex items-center justify-end gap-1">

@@ -49,9 +49,9 @@ export function DeviceTypePicker({
                       onClick={() => pick(ty)}
                       aria-pressed={active}
                       className={clsx(
-                        "flex flex-col items-center gap-1.5 border p-2.5 text-center transition-colors",
+                        "flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-center transition-colors",
                         active
-                          ? "border-signal bg-signal/10 text-signal"
+                          ? "border-fg bg-fg/[0.06] text-fg"
                           : "border-edge text-fg-2 hover:border-edge-2 hover:text-fg",
                       )}
                     >

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { api } from "../api/client";
 import { AUTH_KEY } from "../auth/AuthProvider";
 import { Button, Field } from "../components/ui";
-import { ChartMark } from "../components/Glyph";
+import { AppMark } from "../components/Glyph";
 import { useT } from "../i18n";
 
 export function Login({ setupRequired }: { setupRequired: boolean }) {
@@ -30,19 +30,19 @@ export function Login({ setupRequired }: { setupRequired: boolean }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-5 flex items-center gap-2.5">
-          <ChartMark size={26} className="text-fg" />
-          <span className="font-display text-[18px] tracking-[0.06em] text-fg">NETSCAN</span>
+        <div className="mb-6 flex items-center gap-2.5">
+          <AppMark size={24} className="text-fg" />
+          <span className="font-display text-[17px] text-fg">NetScan</span>
         </div>
-        <div className="panel p-6">
-          <h1 className="font-display mb-1 text-[26px] leading-none tracking-[0.01em] text-fg">
+        <div className="panel p-7">
+          <h1 className="font-display mb-1 text-[22px] text-fg">
             {t(setupRequired ? "auth.setup.title" : "auth.login.title")}
           </h1>
-          <p className="mono mb-4 text-[11px] text-fg-3">
+          <p className="mb-5 text-[12.5px] text-fg-3">
             {t(setupRequired ? "auth.setup.sub" : "auth.login.sub")}
           </p>
           <form
-            className="space-y-3"
+            className="space-y-3.5"
             onSubmit={(e) => {
               e.preventDefault();
               if (canSubmit) submit.mutate();
@@ -81,7 +81,7 @@ export function Login({ setupRequired }: { setupRequired: boolean }) {
               </Field>
             )}
             {submit.isError && (
-              <p className="mono text-[11px] text-alert">
+              <p className="text-[12px] text-alert">
                 {t(setupRequired ? "auth.setup.failed" : "auth.login.failed")}
               </p>
             )}
