@@ -120,6 +120,15 @@ function cadence(iv?: number): string {
   return iv >= 60 ? `${Math.round(iv / 60)}min` : `${iv}s`;
 }
 
+/** `stats.subnet` is a comma-joined list — keep one as-is, collapse several to
+ * "first +N" with the full list on hover so the header line stays tidy. */
+function subnetVital(joined?: string): { label: string; title?: string } {
+  const list = (joined ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (list.length === 0) return { label: "—" };
+  if (list.length === 1) return { label: list[0] };
+  return { label: `${list[0]} +${list.length - 1}`, title: list.join(", ") };
+}
+
 function useVitals() {
   const stats = useQuery({ queryKey: ["stats"], queryFn: api.stats, refetchInterval: 12000 });
   const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings });
@@ -241,6 +250,7 @@ function DesktopShell() {
   const t = useT();
   const reduced = useReducedMotion();
   const active = activeKey(pathname);
+  const net = subnetVital(s?.subnet);
   const { account } = useAuth();
   const canWrite = useCanWrite();
   const logout = useLogout();
@@ -324,7 +334,7 @@ function DesktopShell() {
           <h1 className="font-display text-[15px] text-fg">{t(titleKeyOf(pathname))}</h1>
           <CmdKButton />
           <div className="ml-auto flex items-center gap-5 text-[12px] text-fg-3">
-            <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
+            <Vital k={t("shell.vital.subnet")} v={net.label} title={net.title} />
             <Vital k={t("shell.vital.online")} v={s ? `${s.online} / ${s.total}` : "—"} strong roll />
             <Vital
               k={t("shell.vital.last")}
@@ -353,6 +363,7 @@ function Vital({
   strong,
   tone,
   roll,
+  title,
 }: {
   k: string;
   v: string;
@@ -360,9 +371,10 @@ function Vital({
   tone?: "alert";
   /** flip the figure on change — only for values that tick rarely, not the clock */
   roll?: boolean;
+  title?: string;
 }) {
   return (
-    <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+    <span className="flex items-baseline gap-1.5 whitespace-nowrap" title={title}>
       <span className="text-[10.5px] uppercase tracking-[0.04em] text-fg-3">{k}</span>
       <span
         className={clsx(
@@ -386,6 +398,7 @@ function MobileShell() {
   const t = useT();
   const reduced = useReducedMotion();
   const active = activeKey(pathname);
+  const net = subnetVital(s?.subnet);
   const canWrite = useCanWrite();
   const logout = useLogout();
 
@@ -411,7 +424,7 @@ function MobileShell() {
           </div>
         </div>
         <div className="mono flex items-center gap-x-3 overflow-x-auto px-4 pb-2 text-[10.5px] text-fg-3">
-          <span>{s?.subnet ?? "—"}</span>
+          <span title={net.title}>{net.label}</span>
           <span className="text-fg-2">{s ? t("shell.onlineCount", { n: s.online }) : "—"}</span>
           <span>{cadence(iv)}</span>
           <span>
