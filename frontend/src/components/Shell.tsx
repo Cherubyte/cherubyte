@@ -9,8 +9,9 @@ import { useIsMobile } from "../hooks/useMediaQuery";
 import { useNow } from "../hooks/useNow";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
+import { CommandPalette } from "./CommandPalette";
 import { hms } from "../lib/format";
-import { AppMark, Moon, Sun } from "./Glyph";
+import { AppMark, Moon, Search, Sun } from "./Glyph";
 import { motion, useReducedMotion, snappy, fade } from "../lib/motion";
 import { useT, type MessageKey } from "../i18n";
 import { translate } from "../i18n/translate";
@@ -175,7 +176,34 @@ function Wordmark({ compact }: { compact?: boolean }) {
 export function Shell() {
   useStream();
   const isMobile = useIsMobile();
-  return isMobile ? <MobileShell /> : <DesktopShell />;
+  return (
+    <>
+      {isMobile ? <MobileShell /> : <DesktopShell />}
+      <CommandPalette />
+    </>
+  );
+}
+
+/** small toolbar / top-bar trigger for the ⌘K palette */
+function CmdKButton({ compact }: { compact?: boolean }) {
+  const t = useT();
+  const open = () => window.dispatchEvent(new Event("netscan:cmdk"));
+  if (compact)
+    return (
+      <button onClick={open} aria-label={t("cmd.placeholder")} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 hover:bg-fg/[0.06] hover:text-fg">
+        <Search size={16} />
+      </button>
+    );
+  return (
+    <button
+      onClick={open}
+      className="flex items-center gap-2 rounded-lg bg-fg/[0.05] px-3 py-1.5 text-[12.5px] text-fg-3 transition-colors hover:bg-fg/[0.08] hover:text-fg-2"
+    >
+      <Search size={13} />
+      <span>{t("cmd.trigger")}</span>
+      <kbd className="mono rounded bg-fg/[0.06] px-1 text-[10px]">⌘K</kbd>
+    </button>
+  );
 }
 
 /* ── the animated page body, shared by both shells ─────────────────── */
@@ -280,8 +308,9 @@ function DesktopShell() {
 
       {/* content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-6 bg-bg/70 px-8 backdrop-blur-xl">
+        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-4 bg-bg/70 px-8 backdrop-blur-xl">
           <h1 className="font-display text-[15px] text-fg">{t(titleKeyOf(pathname))}</h1>
+          <CmdKButton />
           <div className="ml-auto flex items-center gap-5 text-[12px] text-fg-3">
             <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
             <Vital k={t("shell.vital.online")} v={s ? `${s.online} / ${s.total}` : "—"} strong />
@@ -352,7 +381,8 @@ function MobileShell() {
           <span className="mono ml-1 text-[13px] tnum text-fg">
             {s ? `${s.online}/${s.total}` : "—"}
           </span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1.5">
+            <CmdKButton compact />
             <ThemeToggle />
             <button onClick={() => logout.mutate()} className="label">
               {t("auth.logout")}

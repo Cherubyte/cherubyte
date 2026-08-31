@@ -73,6 +73,15 @@ export const pt: Record<keyof typeof en, string> = {
   "agents.checkLink": "Ver agentes",
 
   // ── dashboard (Hosts) ───────────────────────────────────────────
+  // ── paleta de comandos (⌘K) ───────────────────────────────────
+  "cmd.trigger": "Procurar",
+  "cmd.placeholder": "Procurar dispositivos, pessoas, páginas…",
+  "cmd.hint": "Procura um dispositivo, uma pessoa ou uma página.",
+  "cmd.empty": "Sem correspondências",
+  "cmd.pages": "Páginas",
+  "cmd.devices": "Dispositivos",
+  "cmd.people": "Pessoas",
+
   "dash.plan": "Resumo",
   "dash.onlineNow": "Dispositivos online agora",
   "dash.totalUnit": "/ {total} total",
