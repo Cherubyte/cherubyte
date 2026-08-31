@@ -93,6 +93,7 @@ export const api = {
     req<{ days: number; ratio: number | null; since: string; now: string; samples: number }>(
       `/devices/${id}/uptime?days=${days}`,
     ),
+  devicesCsvUrl: () => BASE + "/devices/export.csv",
   mergeDevices: (targetId: number, sourceIds: number[]) =>
     req<Device>(`/devices/${targetId}/merge`, {
       method: "POST",

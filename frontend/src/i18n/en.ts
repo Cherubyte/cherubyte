@@ -323,6 +323,7 @@ export const en = {
   "settings.section.history": "History",
   "settings.storedCounts": "{events} events · {connections} connections stored",
   "settings.purgeNow": "Purge now",
+  "settings.exportCsv": "Export devices (CSV)",
   "settings.section.backup": "Backup",
   "settings.backup.sub": "The database and the uploaded images — everything the panel holds.",
   "settings.backup.download": "Download backup",
