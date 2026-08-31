@@ -105,28 +105,37 @@ export function DeviceListView({
     </div>
   );
 
+  // the last column is "Joined" (when this device came online) for the online
+  // table, "Seen" (how long ago it was last seen) for the offline one
+  const header = (lastKey: SortKey, lastLabel: MessageKey) => (
+    <div className={clsx("hidden items-center gap-3 px-4 pb-2 sm:grid", GRID)}>
+      <span />
+      <span />
+      <Head k="name">{t("list.col.host")}</Head>
+      <Head k="ip">{t("list.col.address")}</Head>
+      <span className="key hidden md:block">{t("list.col.user")}</span>
+      <Head k="type" className="hidden md:flex">{t("list.col.type")}</Head>
+      <span className="key hidden lg:block">{t("list.col.os")}</span>
+      <Head k={lastKey} className="justify-end">{t(lastLabel)}</Head>
+    </div>
+  );
+
   return (
     <div className="relative">
-      {/* column header — desktop */}
-      <div className={clsx("hidden items-center gap-3 px-4 pb-2 sm:grid", GRID)}>
-        <span />
-        <span />
-        <Head k="name">{t("list.col.host")}</Head>
-        <Head k="ip">{t("list.col.address")}</Head>
-        <span className="key hidden md:block">{t("list.col.user")}</span>
-        <Head k="type" className="hidden md:flex">{t("list.col.type")}</Head>
-        <span className="key hidden lg:block">{t("list.col.os")}</span>
-        <Head k="seen" className="justify-end">{t("list.col.seen")}</Head>
-      </div>
-
-      {online.length > 0 && group(online)}
+      {online.length > 0 && (
+        <>
+          {header("seen", "list.col.joined")}
+          {group(online)}
+        </>
+      )}
 
       {offline.length > 0 && (
         <>
-          <div className="mb-2.5 mt-7 flex items-center gap-3">
+          <div className="mb-2.5 flex items-center gap-3" style={{ marginTop: online.length > 0 ? "1.75rem" : 0 }}>
             <span className="key">{t("list.offlineCount", { n: offline.length })}</span>
             <span className="h-px flex-1 bg-edge" />
           </div>
+          {header("seen", "list.col.seen")}
           {group(offline, true)}
         </>
       )}
@@ -239,14 +248,16 @@ function Row({
         <span className="truncate">{d.os_family ?? "—"}</span>
       </span>
 
-      {/* seen — desktop */}
+      {/* joined (online) / seen (offline) — desktop */}
       <span
         className={clsx(
           "mono hidden justify-self-end text-[10.5px] sm:block",
           d.is_online ? "text-fg" : "text-fg-3",
         )}
       >
-        {d.is_online ? t("list.now") : timeAgo(d.last_seen, true)}
+        {d.is_online
+          ? timeAgo(d.online_since ?? d.first_seen, true)
+          : timeAgo(d.last_seen, true)}
       </span>
 
       {/* hover actions — desktop */}

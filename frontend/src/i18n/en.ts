@@ -104,6 +104,7 @@ export const en = {
   "list.col.type": "Type",
   "list.col.os": "OS",
   "list.col.seen": "Seen",
+  "list.col.joined": "Joined",
   "list.offlineCount": "Offline · {n}",
   "list.unreviewed": "UNREVIEWED",
   "list.now": "now",

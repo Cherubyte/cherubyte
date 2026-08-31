@@ -117,6 +117,8 @@ export interface Device {
   notify_policy: NotifyPolicy;
   first_seen: string;
   last_seen: string;
+  /** When online: the most recent join (falls back to first_seen). Null otherwise. */
+  online_since: string | null;
   user: UserRef | null;
   macs: Mac[];
   ips: Ip[];
