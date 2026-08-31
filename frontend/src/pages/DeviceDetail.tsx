@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, type DevicePatch } from "../api/client";
 import type { DeviceType } from "../api/types";
 import { TypeCode, useBrandLogos, useOsLogos } from "../components/TypeCode";
+import { TagInput } from "../components/TagInput";
 import { MergeDialog } from "../components/MergeDialog";
 import { DeviceTypePicker } from "../components/DeviceTypePicker";
 import { useIsMobile } from "../hooks/useMediaQuery";
@@ -56,6 +57,7 @@ export function DeviceDetail() {
     queryFn: () => api.deviceUptime(deviceId, 30),
   });
   const users = useQuery({ queryKey: ["users"], queryFn: api.users });
+  const allTags = useQuery({ queryKey: ["device-tags"], queryFn: api.deviceTags });
 
   const [draft, setDraft] = useState<DevicePatch>({});
   const [mergeOpen, setMergeOpen] = useState(false);
@@ -66,6 +68,7 @@ export function DeviceDetail() {
     qc.invalidateQueries({ queryKey: ["device", deviceId] });
     qc.invalidateQueries({ queryKey: ["devices"] });
     qc.invalidateQueries({ queryKey: ["stats"] });
+    qc.invalidateQueries({ queryKey: ["device-tags"] });
   };
   const save = useMutation({
     mutationFn: (p: DevicePatch) => api.updateDevice(deviceId, p),
@@ -190,6 +193,14 @@ export function DeviceDetail() {
               {OS_OPTIONS.map((o) => <option key={o} value={o} />)}
             </datalist>
           </div>
+        </Field>
+        <Field label={t("device.field.tags")} hint={t("device.field.tagsHint")}>
+          <TagInput
+            value={(val("tags") as string[] | undefined) ?? d.tags}
+            onChange={(tags) => setDraft((s) => ({ ...s, tags }))}
+            suggestions={allTags.data}
+            placeholder={t("device.field.tagsPlaceholder")}
+          />
         </Field>
         <Field label={t("device.field.notes")}>
           <textarea className="input" value={(val("notes") as string) ?? ""} onChange={(e) => setDraft((s) => ({ ...s, notes: e.target.value }))} />
@@ -450,6 +461,13 @@ export function DeviceDetail() {
           <h1 className="font-display truncate text-[28px] leading-tight text-fg sm:text-[34px]">
             {d.display_name}
           </h1>
+          {d.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {d.tags.map((tg) => (
+                <span key={tg} className="tag tag-neutral">{tg}</span>
+              ))}
+            </div>
+          )}
           <dl className="core mt-4 grid grid-cols-1 gap-x-8 gap-y-2 px-3.5 py-3 sm:grid-cols-2">
             {facts.map(([k, v]) => (
               <div key={k} className="flex items-baseline gap-2">

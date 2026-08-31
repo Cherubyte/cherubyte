@@ -124,6 +124,7 @@ export interface Device {
   ips: Ip[];
   open_ports: Port[];
   images: DeviceImage[];
+  tags: string[];
 }
 
 export interface EventItem {

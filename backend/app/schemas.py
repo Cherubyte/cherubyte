@@ -14,6 +14,16 @@ from .models import AccountRole, ApprovalStatus, DeviceType, EventLevel, as_utc
 AwareUtc = Annotated[datetime, BeforeValidator(as_utc)]
 
 
+def _split_tags(v: object) -> list[str]:
+    if isinstance(v, str):
+        return [t for t in v.split(",") if t]
+    return list(v) if v else []
+
+
+# `Device.tags` is a comma-separated column; the API speaks a list.
+TagList = Annotated[list[str], BeforeValidator(_split_tags)]
+
+
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -87,6 +97,7 @@ class DeviceOut(ORMModel):
     ips: list[IpOut] = []
     open_ports: list[PortOut] = []
     images: list[ImageOut] = []
+    tags: TagList = []
 
 
 class DeviceUpdate(BaseModel):
@@ -101,6 +112,7 @@ class DeviceUpdate(BaseModel):
     approval_status: ApprovalStatus | None = None
     counts_for_presence: bool | None = None
     notify_policy: Literal["default", "always", "mute"] | None = None
+    tags: list[str] | None = None
 
 
 class MergeRequest(BaseModel):

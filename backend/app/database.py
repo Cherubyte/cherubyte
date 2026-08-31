@@ -34,6 +34,7 @@ _MIGRATIONS: tuple[tuple[str, str, str], ...] = (
     ("devices", "overrides", "VARCHAR(255)"),
     ("devices", "notify_policy", "VARCHAR(16) NOT NULL DEFAULT 'default'"),
     ("devices", "fingerprint", "TEXT"),
+    ("devices", "tags", "VARCHAR(255)"),
     ("users", "is_guest", "BOOLEAN NOT NULL DEFAULT 0"),
     ("agents", "public_ip", "VARCHAR(45)"),
     ("agents", "public_ip_at", "DATETIME"),
