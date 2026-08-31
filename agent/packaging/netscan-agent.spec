@@ -29,7 +29,13 @@ a = Analysis(
     hiddenimports=hidden,
     hookspath=[],
     runtime_hooks=[],
-    excludes=["tkinter", "matplotlib"],
+    # pkg_resources is excluded deliberately. Nothing the agent imports uses it
+    # — checked, module by module — but PyInstaller bundles a runtime hook for
+    # it whenever setuptools is present in the build environment, and that hook
+    # pulls in jaraco.context, which needs `backports`, which does not get
+    # collected. The binary then dies at startup with ModuleNotFoundError before
+    # a single line of our code runs. Leaving it out removes the hook entirely.
+    excludes=["tkinter", "matplotlib", "pkg_resources", "setuptools"],
 )
 pyz = PYZ(a.pure, a.zipped_data)
 exe = EXE(

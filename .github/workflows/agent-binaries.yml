@@ -127,11 +127,17 @@ jobs:
           # which it cannot do if it never read the file.
           sudo ../../linux/install-service.sh --panel http://127.0.0.1:8899 \
             --token ci-token --name ci-runner --binary ./netscan-agent
-          sleep 8
-          systemctl is-active netscan-agent.service
+          sleep 10
+          # Print the evidence BEFORE asserting on it. The first version of this
+          # check failed on `is-active` and exited before reaching the log dump,
+          # which left a crash-looping binary with no diagnosis in the run.
+          systemctl status netscan-agent.service --no-pager --full || true
+          sudo journalctl -u netscan-agent.service --no-pager | tail -40 || true
+
+          systemctl is-active --quiet netscan-agent.service \
+            || { echo "service is $(systemctl is-active netscan-agent.service)" >&2; exit 1; }
           test -f /etc/netscan-agent/agent.env
           grep -q '127.0.0.1:8899' /etc/netscan-agent/agent.env
-          sudo journalctl -u netscan-agent.service --no-pager | tail -20
           sudo journalctl -u netscan-agent.service --no-pager | grep -q '127.0.0.1:8899' \
             || { echo 'the agent never contacted the configured panel' >&2; exit 1; }
           sudo ../../linux/uninstall-service.sh --purge
@@ -145,10 +151,10 @@ jobs:
           python3 -m http.server 8899 --bind 127.0.0.1 >/dev/null 2>&1 &
           sudo ../../macos/install-daemon.sh --panel http://127.0.0.1:8899 \
             --token ci-token --name ci-runner --binary ./netscan-agent
-          sleep 8
-          sudo launchctl print system/pt.qqc.netscan-agent | head -20
+          sleep 10
+          sudo launchctl print system/pt.qqc.netscan-agent | head -25 || true
+          sudo tail -40 /var/log/netscan-agent.log || true
           test -f "/Library/Application Support/NetScan Agent/agent.env"
-          sudo tail -30 /var/log/netscan-agent.log || true
           sudo grep -q '127.0.0.1:8899' /var/log/netscan-agent.log \
             || { echo 'the agent never contacted the configured panel' >&2; exit 1; }
           sudo ../../macos/uninstall-daemon.sh --purge
