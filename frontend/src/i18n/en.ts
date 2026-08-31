@@ -72,6 +72,15 @@ export const en = {
   "agents.checkLink": "Check agents",
 
   // ── dashboard (Hosts) ───────────────────────────────────────────
+  // ── command palette (⌘K) ───────────────────────────────────────
+  "cmd.trigger": "Search",
+  "cmd.placeholder": "Search devices, people, pages…",
+  "cmd.hint": "Search for a device, a person or a page.",
+  "cmd.empty": "No matches",
+  "cmd.pages": "Pages",
+  "cmd.devices": "Devices",
+  "cmd.people": "People",
+
   "dash.plan": "Overview",
   "dash.onlineNow": "Devices online now",
   "dash.totalUnit": "/ {total} total",

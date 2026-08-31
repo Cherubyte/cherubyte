@@ -65,14 +65,18 @@ marks / avatars full. Focus ring: `0 0 0 3px rgb(--fg / .14)`, no border.
 `AppMark` + `NetScan` wordmark,
 then the nav as rounded items — the active one is a white pill (`--surface` +
 a whisper of shadow), no number codes, no leader tick. Foot: primary **Scan**
-button (editors), account + role, version. A sticky **translucent toolbar**
-(`bg-bg/70` + `backdrop-blur-xl`, no divider) carries the section title (plain
-sentence case) and quiet mono vitals — subnet · online/total · last scan · clock.
-Main column `max-w-[1240px]`.
+button (editors), account + role, version, a sun/moon theme toggle. A sticky
+**translucent toolbar** (`bg-bg/70` + `backdrop-blur-xl`, no divider) carries the
+section title (plain sentence case), a **`Search ⌘K`** pill, and quiet mono
+vitals — subnet · online/total · last scan · clock. Main column `max-w-[1240px]`.
 
-**Mobile:** translucent top bar (mark + online/total + Scan + sign-out) with a
-scrollable vitals line → translucent bottom tab bar, active tab = filled icon +
-ink label.
+**Mobile:** translucent top bar (mark + online/total + search + theme + sign-out
++ Scan) with a scrollable vitals line → translucent bottom tab bar, active tab =
+filled icon + ink label.
+
+**Command palette** (`components/CommandPalette.tsx`, mounted once in `Shell`):
+⌘K / Ctrl+K (or the toolbar pill) opens a Spotlight-style search over devices,
+people and pages — grouped, arrow-key + Enter, Esc to close, spring-in.
 
 **Scan in progress:** a 2px indeterminate `scan-bar` under the toolbar (replaces
 the old survey line).
