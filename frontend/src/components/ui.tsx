@@ -77,8 +77,11 @@ export function Card({
 /* ── RollingValue — the figure flips when it changes (a metric ticked) ── */
 export function RollingValue({ children }: { children: ReactNode }) {
   const reduced = useReducedMotion();
+  // Clip the roll with clip-path, NOT overflow:hidden — an inline-block with
+  // overflow≠visible takes its bottom edge as the baseline, which knocks the
+  // figure out of line with the labels beside it in the header vitals.
   return (
-    <span className="relative inline-block overflow-hidden">
+    <span className="relative inline-block [clip-path:inset(0)]">
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
           key={String(children)}
