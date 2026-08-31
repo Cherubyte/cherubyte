@@ -390,7 +390,7 @@ async def _reconcile_host(
             )
             await _log_event(
                 session,
-                f"{device.display_name} entrou na rede ({host.ip})",
+                f"{device.display_name} joined the network ({host.ip})",
                 level=EventLevel.success,
                 category="presence",
                 device_id=device.id,
@@ -399,8 +399,8 @@ async def _reconcile_host(
             await _device_notify(
                 "device_online",
                 device,
-                "Dispositivo entrou na rede",
-                [f"Nome: {device.display_name}", f"IP: {host.ip}", f"MAC: {mac}"],
+                "Device joined the network",
+                [f"Name: {device.display_name}", f"IP: {host.ip}", f"MAC: {mac}"],
                 emoji="📶",
                 tags=["arrow_right"],
                 prio=3,
@@ -473,10 +473,10 @@ async def _report_port_change(
     """A service appearing or disappearing on a known device is worth knowing."""
     parts = []
     if opened:
-        parts.append(f"abriu {_describe_ports(opened, host.open_ports)}")
+        parts.append(f"opened {_describe_ports(opened, host.open_ports)}")
     if closed:
-        parts.append(f"fechou {', '.join(str(p) for p in closed)}")
-    summary = " e ".join(parts)
+        parts.append(f"closed {', '.join(str(p) for p in closed)}")
+    summary = " and ".join(parts)
     await _log_event(
         session,
         f"{device.display_name} {summary}",
@@ -487,14 +487,14 @@ async def _report_port_change(
     _publish("port_change", {"id": device.id, "opened": opened, "closed": closed})
     if not _notify_allowed("port_change", device.id):
         return
-    lines = [f"Dispositivo: {device.display_name}", f"IP: {host.ip}"]
+    lines = [f"Device: {device.display_name}", f"IP: {host.ip}"]
     if opened:
-        lines.append(f"Abriu: {_describe_ports(opened, host.open_ports)}")
+        lines.append(f"Opened: {_describe_ports(opened, host.open_ports)}")
     if closed:
-        lines.append(f"Fechou: {', '.join(str(p) for p in closed)}")
+        lines.append(f"Closed: {', '.join(str(p) for p in closed)}")
     await notify.broadcast(
         "port_change",
-        "Portas mudaram",
+        "Ports changed",
         lines,
         emoji="🔌",
         tags=["electric_plug"],
@@ -518,7 +518,7 @@ async def _report_risky_ports(
     listing = ", ".join(f"{p} — {reason}" for p, reason in hits)
     await _log_event(
         session,
-        f"{device.display_name} abriu uma porta sensível: {listing}",
+        f"{device.display_name} opened a sensitive port: {listing}",
         level=EventLevel.alert,
         category="security",
         device_id=device.id,
@@ -528,9 +528,9 @@ async def _report_risky_ports(
         return
     await notify.broadcast(
         "risky_port",
-        "Porta sensível aberta",
+        "Sensitive port opened",
         [
-            f"Dispositivo: {device.display_name}",
+            f"Device: {device.display_name}",
             f"IP: {host.ip}",
             "",
             *[f"{p} — {reason}" for p, reason in hits],
@@ -577,8 +577,8 @@ async def _check_fingerprint(
 
     await _log_event(
         session,
-        f"{device.display_name} mudou de sistema: {old_os} → {new_os} "
-        f"(mesmo MAC {host.mac})",
+        f"{device.display_name} changed OS: {old_os} → {new_os} "
+        f"(same MAC {host.mac})",
         level=EventLevel.warning,
         category="security",
         device_id=device.id,
@@ -588,13 +588,13 @@ async def _check_fingerprint(
         return
     await notify.broadcast(
         "fingerprint_change",
-        "Fingerprint de um dispositivo mudou",
+        "A device's fingerprint changed",
         [
-            f"Dispositivo: {device.display_name}",
+            f"Device: {device.display_name}",
             f"MAC: {host.mac}",
-            f"Sistema: {old_os} → {new_os}",
+            f"OS: {old_os} → {new_os}",
             "",
-            "O mesmo endereço de hardware está a responder como outro sistema.",
+            "The same hardware address is now responding as a different OS.",
         ],
         emoji="🕵️",
         tags=["detective"],
@@ -611,10 +611,10 @@ async def _report_ip_takeover(
     """The same IP moving between devices is normal after a DHCP lease expires,
     and is also what ARP spoofing looks like. Record it either way."""
     previous = await session.get(Device, previous_owner)
-    previous_name = previous.display_name if previous else f"dispositivo {previous_owner}"
+    previous_name = previous.display_name if previous else f"device {previous_owner}"
     await _log_event(
         session,
-        f"{host.ip} passou de {previous_name} para {device.display_name}",
+        f"{host.ip} moved from {previous_name} to {device.display_name}",
         level=EventLevel.warning,
         category="security",
         device_id=device.id,
@@ -624,13 +624,13 @@ async def _report_ip_takeover(
         return
     await notify.broadcast(
         "arp_anomaly",
-        "Endereço IP mudou de dispositivo",
+        "IP address moved to a different device",
         [
             f"IP: {host.ip}",
-            f"Antes: {previous_name}",
-            f"Agora: {device.display_name} ({host.mac})",
+            f"Before: {previous_name}",
+            f"Now: {device.display_name} ({host.mac})",
             "",
-            "Normal após uma renovação de DHCP; suspeito se for repetido.",
+            "Normal after a DHCP lease renewal; suspicious if it repeats.",
         ],
         emoji="🛑",
         tags=["rotating_light"],
@@ -643,7 +643,7 @@ async def _reconcile_new_device_notice(
 ) -> None:
     await _log_event(
         session,
-        f"Novo dispositivo detetado: {device.display_name} "
+        f"New device detected: {device.display_name} "
         f"({host.ip} / {host.mac}){' — ' + device.vendor if device.vendor else ''}",
         level=EventLevel.warning,
         category="discovery",
@@ -651,19 +651,19 @@ async def _reconcile_new_device_notice(
     )
     _publish("device_new", {"id": device.id})
     lines = [
-        f"Nome: {device.display_name}",
+        f"Name: {device.display_name}",
         f"IP: {host.ip}",
         f"MAC: {host.mac}",
     ]
     if device.vendor:
-        lines.append(f"Fabricante: {device.vendor}")
-    lines.append(f"Tipo (estimado): {device.device_type.value}")
+        lines.append(f"Vendor: {device.vendor}")
+    lines.append(f"Type (estimated): {device.device_type.value}")
     lines.append("")
-    lines.append("Aprova ou ignora este dispositivo no Cherubyte.")
+    lines.append("Approve or ignore this device in Cherubyte.")
     if _notify_allowed("device_new", device.id):
         await notify.broadcast(
             "device_new",
-            "Novo dispositivo na rede",
+            "New device on the network",
             lines,
             emoji="🆕",
             tags=["new"],
@@ -690,7 +690,7 @@ async def _expire_offline(session: AsyncSession) -> None:
         )
         await _log_event(
             session,
-            f"{device.display_name} saiu da rede",
+            f"{device.display_name} left the network",
             level=EventLevel.warning,
             category="presence",
             device_id=device.id,
@@ -701,8 +701,8 @@ async def _expire_offline(session: AsyncSession) -> None:
         await _device_notify(
             "device_offline",
             device,
-            "Dispositivo saiu da rede",
-            [f"Nome: {device.display_name}", f"MAC: {last_mac or '—'}"],
+            "Device left the network",
+            [f"Name: {device.display_name}", f"MAC: {last_mac or '—'}"],
             emoji="📴",
             tags=["arrow_left"],
             prio=3,
@@ -716,8 +716,8 @@ async def _expire_offline(session: AsyncSession) -> None:
         ):
             await notify.broadcast(
                 "device_left",
-                "Dispositivo não aprovado saiu da rede",
-                [f"Nome: {device.display_name}", f"MAC: {last_mac or '—'}"],
+                "Unapproved device left the network",
+                [f"Name: {device.display_name}", f"MAC: {last_mac or '—'}"],
                 emoji="⚠️",
                 tags=["warning"],
                 prio=4,
@@ -755,7 +755,7 @@ def _approval_actions(device_id: int) -> list[dict]:
             f"?t={action_tokens.make(verb, device_id)}",
             "clear": True,
         }
-        for verb, label in (("approve", "Aprovar"), ("ignore", "Ignorar"))
+        for verb, label in (("approve", "Approve"), ("ignore", "Ignore"))
     ]
 
 
@@ -798,7 +798,7 @@ async def _check_dhcp_servers(servers, gateways: set[str]) -> None:
             continue
         logger.warning("unexpected DHCP server %s (%s)", ip, mac or "?")
         await log_event_standalone(
-            f"Servidor DHCP não autorizado a responder na rede: {ip}"
+            f"Unauthorized DHCP server responding on the network: {ip}"
             + (f" ({mac})" if mac else ""),
             level=EventLevel.alert,
             category="security",
@@ -806,14 +806,15 @@ async def _check_dhcp_servers(servers, gateways: set[str]) -> None:
         _publish("rogue_dhcp", {"ip": ip, "mac": mac or None})
         await notify.broadcast(
             "rogue_dhcp",
-            "Servidor DHCP não autorizado",
+            "Unauthorized DHCP server",
             [
                 f"IP: {ip}",
                 f"MAC: {mac or '—'}",
                 "",
-                "Não é o gateway conhecido nem está na lista de permitidos.",
-                "Um segundo servidor DHCP entrega configuração de rede a quem "
-                "responder primeiro — pode ser um router a mais ou um ataque.",
+                "Not the known gateway, and not on the allowlist.",
+                "A second DHCP server hands out network configuration to "
+                "whichever client responds first — could be an extra router "
+                "or an attack.",
             ],
             emoji="🛑",
             tags=["rotating_light"],
@@ -833,20 +834,20 @@ async def _check_gateway_mac(
             continue
         logger.warning("gateway %s changed MAC %s -> %s", host.ip, previous, host.mac)
         await log_event_standalone(
-            f"O MAC do gateway {host.ip} mudou de {previous} para {host.mac}",
+            f"Gateway {host.ip} MAC changed from {previous} to {host.mac}",
             level=EventLevel.alert,
             category="security",
         )
         _publish("arp_anomaly", {"ip": host.ip, "mac": host.mac})
         await notify.broadcast(
             "arp_anomaly",
-            "MAC do gateway mudou",
+            "Gateway MAC changed",
             [
                 f"Gateway: {host.ip}",
-                f"Antes: {previous}",
-                f"Agora: {host.mac}",
+                f"Before: {previous}",
+                f"Now: {host.mac}",
                 "",
-                "Se não trocaste de router, isto pode ser ARP spoofing.",
+                "If you didn't replace your router, this could be ARP spoofing.",
             ],
             emoji="🛑",
             tags=["rotating_light"],
@@ -951,22 +952,22 @@ async def ingest_report(
             async with SessionLocal() as session:
                 await _log_event(
                     session,
-                    f"O agente {agent_name} não encontrou nenhum dispositivo — "
-                    "verifica a interface de rede e as permissões. "
-                    "Estado dos dispositivos mantido.",
+                    f"Agent {agent_name} found no devices at all — "
+                    "check the network interface and permissions. "
+                    "Device state was kept unchanged.",
                     level=EventLevel.alert,
                     category="scan",
                 )
                 await session.commit()
             await notify.broadcast(
                 "scan_degraded",
-                "Scan não encontrou nenhum dispositivo",
+                "Scan found no devices",
                 [
-                    f"Agente: {agent_name}",
-                    "Nem sequer a própria máquina do agente respondeu.",
-                    "Verifica a interface de rede e as permissões (CAP_NET_RAW).",
+                    f"Agent: {agent_name}",
+                    "Not even the agent's own machine responded.",
+                    "Check the network interface and permissions (CAP_NET_RAW).",
                     "",
-                    "O estado dos dispositivos foi mantido.",
+                    "Device state was kept unchanged.",
                 ],
                 emoji="🛑",
                 tags=["rotating_light"],

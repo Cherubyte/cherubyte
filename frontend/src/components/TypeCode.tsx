@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "../api/client";
 import type { Device, DeviceType } from "../api/types";
-import { TYPE_CODE } from "../lib/format";
+import { DeviceTypeIcon } from "./Glyph";
 
 /* ── logo maps ────────────────────────────────────────────────────────── */
 function useLogoMap(kind: "brands" | "os") {
@@ -39,7 +39,7 @@ function DevicePhoto({ src }: { src: string }) {
   );
 }
 
-/* ── the glyph: photo | brand logo | 2-letter code ─────────────────────── */
+/* ── the glyph: photo | brand logo | device-type icon ──────────────────── */
 export function TypeCode({
   device,
   logos,
@@ -64,25 +64,22 @@ export function TypeCode({
       ) : logo ? (
         <img src={logo} alt="" className="h-full w-full object-contain" />
       ) : (
-        <span
-          className="mono grid h-full w-full place-items-center bg-fg/[0.06] font-medium leading-none text-fg-3"
-          style={{ fontSize: Math.round(size * 0.34) }}
-        >
-          {TYPE_CODE[device.device_type]}
+        <span className="grid h-full w-full place-items-center bg-fg/[0.06] text-fg-3">
+          <DeviceTypeIcon type={device.device_type} size={Math.round(size * 0.5)} />
         </span>
       )}
     </div>
   );
 }
 
-/** bare 2-letter code in a filled block */
+/** bare device-type glyph in a filled block */
 export function TypeMark({ type, size = 22 }: { type: DeviceType; size?: number }) {
   return (
     <span
-      className="mono inline-grid shrink-0 place-items-center rounded-[10px] bg-surface-2 leading-none text-fg-2"
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}
+      className="inline-grid shrink-0 place-items-center rounded-[10px] bg-surface-2 text-fg-2"
+      style={{ width: size, height: size }}
     >
-      {TYPE_CODE[type]}
+      <DeviceTypeIcon type={type} size={Math.round(size * 0.5)} />
     </span>
   );
 }

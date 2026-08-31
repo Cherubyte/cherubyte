@@ -123,6 +123,7 @@ export function DeviceDetail() {
   const facts: [string, React.ReactNode][] = [
     [t("device.fact.ip"), primaryIp],
     [t("device.fact.mac"), d.macs[0]?.address ?? "—"],
+    [t("device.fact.hostname"), d.hostname ?? "—"],
     [t("device.fact.type"), deviceTypeLabel(d.device_type)],
     [t("device.fact.system"), d.os_family ?? "—"],
     [t("device.fact.owner"), d.user?.name ?? "—"],

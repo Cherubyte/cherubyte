@@ -118,7 +118,7 @@ def test_buttons_carry_a_token_bound_to_the_device(monkeypatch):
     monkeypatch.setattr(monitor.settings, "public_base_url", "http://192.168.1.9:1001/")
     buttons = monitor._approval_actions(42)
 
-    assert [b["label"] for b in buttons] == ["Aprovar", "Ignorar"]
+    assert [b["label"] for b in buttons] == ["Approve", "Ignore"]
     for button in buttons:
         assert button["url"].startswith("http://192.168.1.9:1001/api/actions/")
         assert "/42?t=" in button["url"]

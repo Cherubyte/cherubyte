@@ -249,7 +249,7 @@ async def approve_device(device_id: int, session: AsyncSession = Depends(get_ses
     device.approval_status = ApprovalStatus.approved
     session.add(
         Event(
-            message=f"{device.display_name} aprovado",
+            message=f"{device.display_name} approved",
             level=EventLevel.success,
             category="approval",
             device_id=device.id,
@@ -265,7 +265,7 @@ async def ignore_device(device_id: int, session: AsyncSession = Depends(get_sess
     device.approval_status = ApprovalStatus.ignored
     session.add(
         Event(
-            message=f"{device.display_name} marcado como ignorado",
+            message=f"{device.display_name} marked as ignored",
             level=EventLevel.info,
             category="approval",
             device_id=device.id,
@@ -368,7 +368,7 @@ async def merge_devices(
     merged = await _get(session, device_id)
     session.add(
         Event(
-            message=f"{n} dispositivo(s) fundido(s) em {merged.display_name}",
+            message=f"{n} device(s) merged into {merged.display_name}",
             level=EventLevel.info,
             category="merge",
             device_id=device_id,
@@ -394,7 +394,7 @@ async def wake_device(device_id: int, session: AsyncSession = Depends(get_sessio
         raise HTTPException(422, f"Not a usable MAC address: {target.address}")
     session.add(
         Event(
-            message=f"Wake-on-LAN enviado a {device.display_name}",
+            message=f"Wake-on-LAN sent to {device.display_name}",
             level=EventLevel.info,
             category="presence",
             device_id=device.id,
@@ -436,7 +436,7 @@ async def absorb_mac(
     merged = await _get(session, device_id)
     session.add(
         Event(
-            message=f"MAC {addr} fundido em {merged.display_name}",
+            message=f"MAC {addr} merged into {merged.display_name}",
             level=EventLevel.info,
             category="merge",
             device_id=device_id,
