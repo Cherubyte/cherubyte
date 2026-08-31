@@ -1,10 +1,6 @@
 <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NetScan">
-  <!-- CHART: a plotted position — concentric rings on a graticule cross, one contact in carmine -->
-  <rect width="120" height="120" rx="10" fill="#f4efe4"/>
-  <g stroke="#1b2b33" fill="none">
-    <path d="M60 14v92M14 60h92" stroke-width="1.5" opacity="0.35"/>
-    <circle cx="60" cy="60" r="34" stroke-width="3"/>
-    <circle cx="60" cy="60" r="19" stroke-width="3"/>
-  </g>
-  <circle cx="60" cy="60" r="7.5" fill="#c8102e"/>
+  <!-- STUDIO: a quiet monochrome mark — a ring watched from one point -->
+  <rect width="120" height="120" rx="26" fill="#171717"/>
+  <circle cx="60" cy="60" r="30" fill="none" stroke="#fafafa" stroke-width="7"/>
+  <circle cx="60" cy="60" r="11" fill="#fafafa"/>
 </svg>

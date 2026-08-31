@@ -32,21 +32,21 @@ never leaves your network.
 ## Screens
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="NetScan dashboard — the host register plotted like a chart, with the plan title-block above it" width="880">
+  <img src="docs/screenshots/dashboard.png" alt="NetScan dashboard — an overview strip above the list of every device on the network" width="880">
 </p>
 
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/device.png" alt="Device detail — identity, network, connection history"><br><sub><b>Device detail</b> — rename it, set its owner and type, see every IP and MAC folded in, and its join/leave history.</sub></td>
-    <td width="50%"><img src="docs/screenshots/people.png" alt="People &amp; presence — a chart-recorder strip of when each person was home"><br><sub><b>People &amp; presence</b> — link devices to people; a strip-chart of when they were home, drawn to the minute.</sub></td>
+    <td width="50%"><img src="docs/screenshots/people.png" alt="People &amp; presence — a per-minute strip of when each person was home"><br><sub><b>People &amp; presence</b> — link devices to people; a per-minute strip of when they were home.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/log.png" alt="Event log in the dark ECDIS-night theme — a filterable timeline of joins, leaves, ports and alerts"><br><sub><b>Event log</b> (dark theme) — every join, leave, port change and alert, filterable by level and category.</sub></td>
+    <td width="50%"><img src="docs/screenshots/log.png" alt="Activity in the dark theme — a filterable timeline of joins, leaves, ports and alerts"><br><sub><b>Activity</b> (dark theme) — every join, leave, port change and alert, filterable by level and category.</sub></td>
     <td width="50%"><img src="docs/screenshots/stats.png" alt="Statistics — new devices over time, breakdown by type, brand and OS"><br><sub><b>Statistics</b> — new devices over time, and the network broken down by type, brand and OS.</sub></td>
   </tr>
 </table>
 
-<sub>Screens show a demo network with generic device and people names. Light chart-sheet by default, ECDIS-night as the dark theme; English or Portuguese.</sub>
+<sub>Screens show a demo network with generic device and people names. Light by default, dark theme on a tap; English or Portuguese.</sub>
 
 ---
 
