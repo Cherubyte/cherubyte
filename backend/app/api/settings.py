@@ -55,6 +55,7 @@ _BOOL_KEYS = (
     "wan_enabled",
     "weekly_summary_enabled",
     "metrics_enabled",
+    "enable_snmp",
 )
 
 _PERSISTED = (
@@ -83,6 +84,7 @@ _PERSISTED = (
     "mqtt_discovery_prefix",
     "wan_target",
     "metrics_token",
+    "snmp_community",
 )
 
 
@@ -190,6 +192,8 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         metrics_enabled=cfg.metrics_enabled,
         metrics_token_set=bool(cfg.metrics_token),
         metrics_path="/api/metrics",
+        enable_snmp=cfg.enable_snmp,
+        snmp_community=cfg.snmp_community or "public",
         weekly_summary_enabled=cfg.weekly_summary_enabled,
         weekly_summary_weekday=cfg.weekly_summary_weekday,
         weekly_summary_hour=cfg.weekly_summary_hour,
@@ -324,6 +328,13 @@ async def update_settings(
     if "metrics_token" in data:
         cfg.metrics_token = (data["metrics_token"] or "").strip()
         await _set(session, "metrics_token", cfg.metrics_token)
+
+    if "enable_snmp" in data and data["enable_snmp"] is not None:
+        cfg.enable_snmp = bool(data["enable_snmp"])
+        await _set(session, "enable_snmp", "true" if cfg.enable_snmp else "false")
+    if "snmp_community" in data:
+        cfg.snmp_community = (data["snmp_community"] or "").strip() or "public"
+        await _set(session, "snmp_community", cfg.snmp_community)
 
     digest_touched = False
     if "weekly_summary_enabled" in data and data["weekly_summary_enabled"] is not None:

@@ -221,6 +221,8 @@ export function Settings() {
     wan_interval_seconds: 60,
     metrics_enabled: true,
     metrics_token: "",
+    enable_snmp: false,
+    snmp_community: "public",
     weekly_summary_enabled: false,
     weekly_summary_weekday: 0,
     weekly_summary_hour: 9,
@@ -273,6 +275,8 @@ export function Settings() {
         wan_target: settings.data.wan_target,
         wan_interval_seconds: settings.data.wan_interval_seconds,
         metrics_enabled: settings.data.metrics_enabled,
+        enable_snmp: settings.data.enable_snmp,
+        snmp_community: settings.data.snmp_community,
         weekly_summary_enabled: settings.data.weekly_summary_enabled,
         weekly_summary_weekday: settings.data.weekly_summary_weekday,
         weekly_summary_hour: settings.data.weekly_summary_hour,
@@ -315,6 +319,8 @@ export function Settings() {
         wan_target: form.wan_target,
         wan_interval_seconds: form.wan_interval_seconds,
         metrics_enabled: form.metrics_enabled,
+        enable_snmp: form.enable_snmp,
+        snmp_community: form.snmp_community,
         ...(form.metrics_token ? { metrics_token: form.metrics_token } : {}),
         weekly_summary_enabled: form.weekly_summary_enabled,
         weekly_summary_weekday: form.weekly_summary_weekday,
@@ -962,6 +968,33 @@ export function Settings() {
           </Button>
           <p className="mono text-[11px] text-fg-3">{t("settings.fingerbank.testHint")}</p>
         </div>
+      </section>
+      </div>
+
+      {/* ── SNMP · topology ───────────────────────────────────────── */}
+      <div hidden={cat !== "integrations"}>
+      <section className="panel mb-3 p-4">
+        <SectionHeader
+          title={t("settings.section.snmp")}
+          sub={t("settings.snmp.sub")}
+          actions={
+            <Toggle
+              label={t("settings.snmp.enable")}
+              checked={form.enable_snmp}
+              onChange={(v) => set("enable_snmp", v)}
+            />
+          }
+        />
+        {form.enable_snmp && (
+          <Field label={t("settings.snmp.community")} hint={t("settings.snmp.communityHint")}>
+            <input
+              className="input mono"
+              placeholder="public"
+              value={form.snmp_community}
+              onChange={(e) => set("snmp_community", e.target.value)}
+            />
+          </Field>
+        )}
       </section>
       </div>
 

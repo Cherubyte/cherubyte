@@ -10,8 +10,9 @@ FROM python:3.11-slim AS runtime
 
 # iputils-ping -> the ICMP sweep and the internet probe shell out to `ping`
 # iproute2     -> the kernel neighbour table is read with `ip -4 neigh show`
+# snmp         -> optional SNMP reads (sysDescr, LLDP-MIB) shell out to snmpget/snmpwalk
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends iputils-ping iproute2 tzdata \
+    && apt-get install -y --no-install-recommends iputils-ping iproute2 snmp tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

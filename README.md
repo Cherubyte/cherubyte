@@ -83,9 +83,11 @@ If you'd rather own the whole thing, run NetScan.
   Runs on a schedule you set in the panel.
 - **Automatic identification** — reverse DNS, mDNS / DNS-SD, SSDP / UPnP,
   NetBIOS, HTTP banners, TCP port fingerprinting, MAC vendor (OUI), passive DHCP
-  fingerprinting, optional [Fingerbank](https://fingerbank.org/) lookup, and OS
-  guessing by TTL. Devices are classified as phone, laptop, TV, console, camera,
-  printer, NAS, IoT, router, and so on.
+  fingerprinting, optional [Fingerbank](https://fingerbank.org/) lookup, OS
+  guessing by TTL, and — opt-in — an SNMP read of `sysDescr` (names managed
+  switches and routers) and the LLDP-MIB (the links between them). Devices are
+  classified as phone, laptop, TV, console, camera, printer, NAS, IoT, router,
+  and so on.
 - **One device, many addresses** — merge multiple IPs and MACs (including
   randomised MACs) into a single device.
 - **People & presence** — link devices to people and get a GitHub-style activity
@@ -131,6 +133,8 @@ If you'd rather own the whole thing, run NetScan.
 - The agent needs `CAP_NET_RAW` for the ARP sweep and DHCP sniffer; the panel
   needs `CAP_NET_BIND_SERVICE` for port 1001. Both systemd units grant these
   without running as root — `setup.sh` and the install scripts wire them up.
+- Optional: `snmp` (net-snmp) on the agent's host if you turn on SNMP queries —
+  bundled in the Docker image, `apt install snmp` otherwise.
 
 ## Quick start
 
@@ -402,8 +406,10 @@ integration) is pulled in with the rest of `requirements.txt`.
 
 ### Ideas
 
-- Network topology map — worth it only with managed switches (LLDP/CDP or SNMP);
-  on a flat LAN the picture is always "everything hangs off the router"
+- Network topology **map** — the edges are already collected (SNMP LLDP-MIB, at
+  `/api/topology`); what's missing is a view that draws them. Worth it only with
+  managed switches — on a flat LAN the picture is always "everything hangs off
+  the router".
 - Wake-on-LAN and per-device actions
 - CSV / report export
 - Passive discovery (sniffing) alongside the active ARP sweep

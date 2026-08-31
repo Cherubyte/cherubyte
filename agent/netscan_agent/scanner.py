@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from .config import settings
-from . import dhcp_sniffer, discovery
+from . import dhcp_sniffer, discovery, snmp
 
 logger = logging.getLogger("netscan.scanner")
 
@@ -90,6 +90,9 @@ class Host:
     dhcp_param_list: str = ""
     dhcp_vendor_class: str | None = None
     dhcp_hostname: str | None = None
+    snmp_sysname: str | None = None
+    snmp_sysdescr: str | None = None
+    lldp_neighbors: list = field(default_factory=list)
     os_guess: str | None = None
     # True when this sweep fully probed the host; False on a discovery-only
     # cycle, where the absence of a signal means nothing was asked.
@@ -420,6 +423,12 @@ def _probe_host(host: Host) -> Host:
                 host.http_title = banner.names[0]
 
     host.ttl_os = discovery.ttl_os_hint(host.ip)
+
+    if settings.enable_snmp:
+        community = settings.snmp_community or "public"
+        host.snmp_sysname, host.snmp_sysdescr = snmp.sys_info(host.ip, community)
+        if host.snmp_sysdescr or host.snmp_sysname:
+            host.lldp_neighbors = snmp.lldp_neighbors(host.ip, community)
 
     fp = dhcp_sniffer.get(host.mac)
     if fp:
