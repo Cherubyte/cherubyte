@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 import { hm } from "../lib/format";
 import { en } from "../i18n/en";
 import { translate } from "../i18n/translate";
@@ -38,14 +39,24 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={push}>
       {children}
       {createPortal(
-        <div className="pointer-events-none fixed bottom-0 left-0 z-[100] flex flex-col gap-2 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4">
+        <div
+          className={clsx(
+            "pointer-events-none fixed inset-x-0 z-[100] flex flex-col gap-2 p-3",
+            // Mobile: clears the fixed bottom tab bar (54px + its own safe-area
+            // padding) instead of stacking underneath it.
+            "bottom-[calc(70px+env(safe-area-inset-bottom))]",
+            // Desktop: bottom-right, clear of the sidebar's own footer
+            // (Scan button, account, version) which lives bottom-left.
+            "sm:inset-x-auto sm:right-0 sm:bottom-0 sm:p-4 sm:pb-[calc(1rem+env(safe-area-inset-bottom))]",
+          )}
+        >
           <AnimatePresence>
             {items.map((t) => (
               <motion.button
                 key={t.id}
                 initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={reduced ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                exit={reduced ? { opacity: 0 } : { opacity: 0, x: 16 }}
                 transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                 onClick={() => dismiss(t.id)}
                 className="pointer-events-auto flex w-[min(360px,calc(100vw-1.5rem))] items-stretch gap-3 overflow-hidden rounded-2xl bg-surface py-2.5 pl-0 pr-3.5 text-left shadow-e3"
