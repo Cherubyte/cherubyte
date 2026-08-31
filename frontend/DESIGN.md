@@ -45,7 +45,7 @@ colour now reads as ink. `signal-bg` / `signal-fg` = ink fill / surface text.
 `--grid` is unused (the graticule is gone). Per-person colours still come from
 `PERSON_COLORS` in `lib/format.ts`.
 
-### Type — Inter (`index.html`, Google Fonts) + system fallback
+### Type — Inter (self-hosted `@font-face`, `public/fonts/`) + system fallback
 
 - **Inter** — the whole UI. `font-sans`, `font-display` (weight 600, `-0.021em`
   tracking for titles / big figures), `font-display-lt` (500). `.key` is 11px
