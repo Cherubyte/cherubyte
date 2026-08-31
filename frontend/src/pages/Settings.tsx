@@ -104,8 +104,8 @@ function SettingsNav({
     (c) => (!c.adminOnly || isAdmin) && (!c.writeOnly || canWrite),
   );
   return (
-    <nav className="panel flex gap-1 overflow-x-auto p-1.5 lg:sticky lg:top-1 lg:flex-col lg:gap-0 lg:self-start lg:overflow-visible lg:p-2">
-      <span className="key hidden px-2 pb-2 pt-1 lg:block">{t("settings.sections")}</span>
+    <nav className="panel flex gap-1 overflow-x-auto p-1.5 lg:sticky lg:top-4 lg:flex-col lg:gap-0.5 lg:self-start lg:overflow-visible lg:p-2">
+      <span className="key hidden px-2 pb-1.5 pt-1 lg:block">{t("settings.sections")}</span>
       {items.map((c) => {
         const on = c.k === cat;
         return (
@@ -113,33 +113,12 @@ function SettingsNav({
             key={c.k}
             onClick={() => setCat(c.k)}
             className={clsx(
-              "group relative flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[2px] py-[7px] pl-2.5 pr-2 text-left text-[12.5px] transition-colors",
-              on ? "bg-surface-2 text-fg lg:bg-transparent" : "text-fg-2 hover:text-fg",
+              "group flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-left text-[12.5px] transition-colors",
+              on ? "bg-surface-2 text-fg" : "text-fg-2 hover:bg-surface-2/60 hover:text-fg",
             )}
           >
-            {/* held-sheet leader tick — left on desktop, underline on mobile */}
-            <span
-              className={clsx(
-                "absolute left-0 top-1/2 hidden h-[13px] w-[2px] -translate-y-1/2 lg:block",
-                on ? "bg-signal" : "bg-transparent",
-              )}
-            />
-            <span
-              className={clsx(
-                "absolute inset-x-1 bottom-0 h-[2px] lg:hidden",
-                on ? "bg-signal" : "bg-transparent",
-              )}
-            />
-            <span
-              className={clsx(
-                "mono text-[9.5px] tabular-nums",
-                on ? "text-signal" : "text-fg-3",
-              )}
-            >
-              {c.code}
-            </span>
-            <c.Icon size={14} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
-            <span className={clsx("font-medium", on && "font-semibold")}>{t(c.labelKey)}</span>
+            <c.Icon size={15} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
+            <span className={clsx(on ? "font-medium" : "font-normal")}>{t(c.labelKey)}</span>
           </button>
         );
       })}
@@ -169,7 +148,7 @@ function InterfaceSection() {
             ))}
           </select>
         </Field>
-        <div className="flex items-center justify-between border-t border-edge-2 pt-3">
+        <div className="flex items-center justify-between border-t border-fg/10 pt-3">
           <span className="label text-fg-3">{t("settings.iface.darkMode")}</span>
           <Toggle
             label={t("settings.iface.darkMode")}
@@ -347,7 +326,7 @@ export function Settings() {
       toast(
         r.ok
           ? { tone: "success", title: "telegram.sent" }
-          : { tone: "error", title: "telegram.failed", desc: t("toast.telegramFailedDesc") },
+          : { tone: "error", title: "telegram.failed", desc: "toast.telegramFailedDesc" },
       ),
   });
   const purge = useMutation({
@@ -363,7 +342,7 @@ export function Settings() {
       toast(
         r.ok
           ? { tone: "success", title: "digest.sent" }
-          : { tone: "error", title: "digest.failed", desc: t("toast.digestFailedDesc") },
+          : { tone: "error", title: "digest.failed", desc: "toast.digestFailedDesc" },
       ),
   });
   const testNtfy = useMutation({
@@ -372,7 +351,7 @@ export function Settings() {
       toast(
         r.ok
           ? { tone: "success", title: "ntfy.sent" }
-          : { tone: "error", title: "ntfy.failed", desc: t("toast.ntfyFailedDesc") },
+          : { tone: "error", title: "ntfy.failed", desc: "toast.ntfyFailedDesc" },
       ),
   });
   const testFb = useMutation({
@@ -399,7 +378,7 @@ export function Settings() {
   const panelOrigin = typeof window === "undefined" ? "" : window.location.origin;
 
   return (
-    <div className="grid max-w-5xl gap-4 lg:grid-cols-[206px_1fr] lg:items-start">
+    <div className="grid max-w-5xl gap-5 lg:grid-cols-[220px_1fr] lg:items-start">
       <SettingsNav cat={cat} setCat={setCat} isAdmin={isAdmin} canWrite={canWrite} />
 
       <div className="min-w-0">
@@ -673,7 +652,7 @@ export function Settings() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[420px] text-left">
               <thead>
-                <tr className="label border-b border-edge-2 text-fg-3">
+                <tr className="label border-b border-fg/10 text-fg-3">
                   <th className="pb-2 font-normal">{t("settings.alerts.col.event")}</th>
                   <th className="pb-2 font-normal">{t("settings.alerts.col.on")}</th>
                   <th className="pb-2 font-normal">Telegram</th>
@@ -894,7 +873,7 @@ export function Settings() {
               />
             </Field>
           </div>
-          <div className="flex items-center justify-between border-t border-edge-2 pt-3">
+          <div className="flex items-center justify-between border-t border-fg/10 pt-3">
             <span className="label text-fg-3">{t("settings.digest.title")}</span>
             <Toggle
               label={t("settings.digest.title")}
@@ -1045,7 +1024,7 @@ export function Settings() {
       </div>
 
       {canWrite && FORM_CATS.has(cat) && (
-        <div className="sticky bottom-0 mt-3 pt-1">
+        <div className="sticky bottom-0 -mx-1 mt-3 rounded-t-xl bg-bg/80 px-1 py-3 backdrop-blur-md">
           <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
             {t("settings.save")}
           </Button>
@@ -1111,7 +1090,7 @@ function AgentsSection() {
       />
 
       {token && (
-        <div className="mb-4 rounded-[3px] border border-signal/40 bg-signal-bg/40 p-3">
+        <div className="mb-4 rounded-xl bg-surface-2 p-4">
           <div className="label mb-1.5 text-fg-2">{t("agents.token.title")}</div>
           <div className="flex flex-wrap items-center gap-2">
             <code className="mono flex-1 break-all text-[12px]">{token}</code>
@@ -1134,7 +1113,7 @@ function AgentsSection() {
           <div className="mt-3 space-y-2">
             <div>
               <span className="label text-fg-3">{t("agents.install.docker")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-[3px] bg-canvas p-2 text-[11px]">
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
 {`docker run -d --name netscan-agent --network host \\
   --cap-add NET_RAW --cap-add NET_ADMIN \\
   -v netscan-agent:/var/lib/netscan-agent \\
@@ -1145,13 +1124,13 @@ function AgentsSection() {
             </div>
             <div>
               <span className="label text-fg-3">{t("agents.install.linux")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-[3px] bg-canvas p-2 text-[11px]">
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
 {`./scripts/install-agent-service.sh ${panelUrl} ${token}`}
               </pre>
             </div>
             <div>
               <span className="label text-fg-3">{t("agents.install.windows")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-[3px] bg-canvas p-2 text-[11px]">
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
 {`.\\install-service.ps1 -PanelUrl ${panelUrl} -EnrolToken ${token}`}
               </pre>
             </div>
@@ -1235,17 +1214,17 @@ function Channel({
       : { tone: "alert" as const, label: t("settings.channel.setup") };
 
   return (
-    <div className="border border-edge-2">
-      <div className="flex items-center gap-3 px-3.5 py-3">
+    <div className="overflow-hidden rounded-xl bg-surface-2">
+      <div className="flex items-center gap-3 px-4 py-3">
         <span className="text-fg-2">{icon}</span>
-        <span className="font-display text-[14px] tracking-tight text-fg">{name}</span>
+        <span className="font-display text-[14px] text-fg">{name}</span>
         <Badge tone={status.tone}>{status.label}</Badge>
         <span className="ml-auto">
           <Toggle checked={enabled} onChange={onToggle} label={name} />
         </span>
       </div>
       {enabled && (
-        <div className="space-y-4 border-t border-edge-2 bg-surface-2 px-3.5 py-4">{children}</div>
+        <div className="space-y-4 bg-surface px-4 py-4 shadow-[inset_0_1px_0_rgba(0,0,0,0.04)]">{children}</div>
       )}
     </div>
   );
@@ -1373,7 +1352,7 @@ function AccountsCard() {
       <SectionHeader title={t("auth.accounts.title")} sub={t("auth.accounts.sub")} />
       <div className="space-y-2">
         {(accounts.data ?? []).map((a) => (
-          <div key={a.id} className="flex items-center gap-2 bg-surface-2 px-3 py-2">
+          <div key={a.id} className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
             <span className="flex-1 truncate text-[12px] text-fg-2">{a.username}</span>
             <select
               className="input mono h-[26px] w-28 py-0 text-[11px]"
@@ -1401,7 +1380,7 @@ function AccountsCard() {
           </div>
         ))}
       </div>
-      <div className="mt-4 space-y-3 border-t border-edge-2 pt-3">
+      <div className="mt-4 space-y-3 border-t border-fg/10 pt-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t("auth.field.username")}>
             <input
@@ -1531,7 +1510,7 @@ function ApiTokensCard() {
       <SectionHeader title={t("auth.tokens.title")} sub={t("auth.tokens.sub")} />
 
       {fresh && (
-        <div className="mb-3 border border-signal/40 bg-surface-2 p-3">
+        <div className="mb-3 rounded-xl bg-surface-2 p-4">
           <p className="label text-fg-3">{t("auth.tokens.once")}</p>
           <div className="mt-1 flex items-center gap-2">
             <code className="mono flex-1 truncate text-[12px]">{fresh}</code>
@@ -1561,7 +1540,7 @@ function ApiTokensCard() {
 
       <div className="space-y-2">
         {(tokens.data ?? []).map((tk) => (
-          <div key={tk.id} className="flex items-center gap-2 bg-surface-2 px-3 py-2">
+          <div key={tk.id} className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
             <span className="flex-1 truncate text-[12px] text-fg-2">{tk.name}</span>
             <span className="mono shrink-0 text-[11px] text-fg-3">
               {tk.last_used_at ? timeAgo(tk.last_used_at) : t("auth.tokens.neverUsed")}
@@ -1580,7 +1559,7 @@ function ApiTokensCard() {
         )}
       </div>
 
-      <div className="mt-4 flex items-end gap-3 border-t border-edge-2 pt-3">
+      <div className="mt-4 flex items-end gap-3 border-t border-fg/10 pt-3">
         <Field label={t("auth.tokens.name")} className="flex-1">
           <input
             className="input"

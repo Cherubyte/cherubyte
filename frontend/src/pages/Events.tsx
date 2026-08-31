@@ -29,8 +29,6 @@ const LEVELS: { k: EventLevel | "all"; labelKey: MessageKey }[] = [
 
 type IconType = (p: { size?: number; className?: string }) => JSX.Element;
 
-/** Icon + label per backend event category. Unlisted categories fall back to a
- *  neutral mark and the raw category string. */
 const CATEGORIES: { k: string; Icon: IconType; labelKey: MessageKey }[] = [
   { k: "discovery", Icon: Radar, labelKey: "events.cat.discovery" },
   { k: "presence", Icon: Wave, labelKey: "events.cat.presence" },
@@ -44,7 +42,7 @@ const CATEGORIES: { k: string; Icon: IconType; labelKey: MessageKey }[] = [
 
 const LEVEL_MARK: Record<EventLevel, string> = {
   info: "bg-fg-3",
-  success: "bg-water",
+  success: "bg-fg",
   warning: "bg-alert",
   alert: "bg-alert",
 };
@@ -79,20 +77,22 @@ export function Events() {
   }, [events.data, t]);
 
   return (
-    <div className="space-y-4">
-      <Chips
-        options={LEVELS.map((l) => ({ k: l.k, label: t(l.labelKey) }))}
-        value={level}
-        onChange={(k) => setLevel(k as EventLevel | "all")}
-      />
-      <Chips
-        options={[
-          { k: "all", label: t("events.cat.all") },
-          ...CATEGORIES.map((c) => ({ k: c.k, label: t(c.labelKey) })),
-        ]}
-        value={category}
-        onChange={setCategory}
-      />
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-2">
+        <Chips
+          options={LEVELS.map((l) => ({ k: l.k, label: t(l.labelKey) }))}
+          value={level}
+          onChange={(k) => setLevel(k as EventLevel | "all")}
+        />
+        <Chips
+          options={[
+            { k: "all", label: t("events.cat.all") },
+            ...CATEGORIES.map((c) => ({ k: c.k, label: t(c.labelKey) })),
+          ]}
+          value={category}
+          onChange={setCategory}
+        />
+      </div>
 
       {events.isLoading && <SkeletonRows rows={8} />}
 
@@ -100,12 +100,12 @@ export function Events() {
 
       {groups.map(([day, items]) => (
         <section key={day}>
-          <div className="mb-2 flex items-center gap-3">
+          <div className="mb-2.5 flex items-center gap-3">
             <span className="key">{day}</span>
-            <span className="h-[2px] flex-1 bg-edge" />
+            <span className="h-px flex-1 bg-edge" />
             <span className="key">{items.length}</span>
           </div>
-          <div className="relative ml-[7px] border-l border-edge-2 pl-4">
+          <div className="panel divide-y divide-edge overflow-hidden">
             {items.map((e) => (
               <Row key={e.id} e={e} />
             ))}
@@ -126,15 +126,14 @@ function Chips({
   onChange: (k: string) => void;
 }) {
   return (
-    <div className="flex gap-px overflow-x-auto rounded-[3px] border border-edge-2 text-[12px] font-medium">
-      {options.map((o, i) => (
+    <div className="flex gap-0.5 overflow-x-auto rounded-[10px] bg-fg/[0.06] p-0.5 text-[12.5px] font-medium">
+      {options.map((o) => (
         <button
           key={o.k}
           onClick={() => onChange(o.k)}
           className={clsx(
-            "shrink-0 px-3 py-2 transition-colors",
-            i > 0 && "border-l border-edge-2",
-            value === o.k ? "bg-fg text-surface" : "text-fg-2 hover:text-fg",
+            "shrink-0 rounded-[7px] px-3 py-1.5 transition-colors",
+            value === o.k ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:text-fg",
           )}
         >
           {o.label}
@@ -149,19 +148,13 @@ function Row({ e }: { e: EventItem }) {
   const meta = CATEGORIES.find((c) => c.k === e.category);
   const Icon = meta?.Icon;
   return (
-    <div className="relative flex items-start gap-3 py-2.5">
-      {/* marker on the rail */}
-      <span
-        className={clsx(
-          "absolute -left-[calc(1rem+4.5px)] top-[15px] h-2 w-2 rounded-full ring-2 ring-bg",
-          LEVEL_MARK[e.level],
-        )}
-      />
+    <div className="flex items-start gap-3 px-4 py-3">
+      <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", LEVEL_MARK[e.level])} />
       <span className="mt-px flex w-16 shrink-0 items-center gap-1.5 text-fg-3">
         {Icon ? <Icon size={12} /> : <span className="h-[12px] w-[12px]" />}
         <span className="mono text-[10.5px] tabular-nums">{hms(e.timestamp)}</span>
       </span>
-      <span className="key hidden w-24 shrink-0 pt-0.5 !text-[9px] sm:block">
+      <span className="key hidden w-24 shrink-0 pt-0.5 !text-[10px] sm:block">
         {meta ? t(meta.labelKey) : e.category}
       </span>
       <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-fg">{e.message}</span>
@@ -169,7 +162,7 @@ function Row({ e }: { e: EventItem }) {
         <Link
           to={`/devices/${e.device_id}`}
           title={t("events.openHost")}
-          className="flex shrink-0 items-center pt-px text-fg-3 transition-colors hover:text-signal"
+          className="flex shrink-0 items-center pt-px text-fg-3 transition-colors hover:text-fg"
         >
           <CornerDown size={12} />
         </Link>

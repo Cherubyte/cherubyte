@@ -95,39 +95,36 @@ export function UserDetail() {
         </div>
       </div>
 
-      <div className="panel flex items-center gap-3 px-5 py-4">
+      <div className="panel flex items-center gap-4 px-5 py-4">
         <Avatar name={u.name} size={44} />
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-title leading-none tracking-tight text-fg">{u.name}</h1>
+            <h1 className="font-display text-[28px] leading-tight text-fg">{u.name}</h1>
             {u.is_guest && <Badge tone="neutral">{t("person.guest")}</Badge>}
           </div>
-          <div className="mt-2">
+          <div className="mt-1.5">
             <StatusPill online={u.is_present} />
           </div>
         </div>
       </div>
 
-      <section className="panel p-4">
+      <section className="panel p-5">
         <SectionHeader title={t("person.presence")} sub={t("person.presenceSub")} />
         <PresenceHeatmap userId={userId} days={10} cell={isMobile ? 12 : 16} />
       </section>
 
-      <section className="panel p-4">
+      <section className="panel p-5">
         <SectionHeader title={t("person.devices")} sub={String(devices.length)} />
         {devices.length === 0 ? (
-          <EmptyState
-            title={t("person.empty.title")}
-            description={t("person.empty.desc")}
-          />
+          <EmptyState title={t("person.empty.title")} description={t("person.empty.desc")} />
         ) : (
-          <div className="space-y-px">
+          <div className="space-y-1">
             {devices.map((d) => (
               <DeviceRow key={d.id} d={d} onToggle={(on) => togglePresence.mutate({ deviceId: d.id, on })} />
             ))}
           </div>
         )}
-        <p className="mono mt-3 text-[10px] leading-relaxed text-fg-3">{t("person.presenceHint")}</p>
+        <p className="mt-3 text-[11px] leading-relaxed text-fg-3">{t("person.presenceHint")}</p>
       </section>
     </div>
   );
@@ -136,22 +133,22 @@ export function UserDetail() {
 function DeviceRow({ d, onToggle }: { d: UserDeviceMini; onToggle: (on: boolean) => void }) {
   const t = useT();
   return (
-    <div className="flex items-center gap-3 bg-surface-2 px-3 py-3">
+    <div className="flex items-center gap-3 rounded-lg bg-surface-2 px-3 py-2.5">
       {d.primary_image ? (
         <img
           src={d.primary_image}
           alt=""
-          className="h-9 w-9 shrink-0 rounded-[3px] border border-edge object-cover"
+          className="h-9 w-9 shrink-0 rounded-[10px] object-contain"
         />
       ) : (
-        <TypeMark type={d.device_type} size={24} />
+        <TypeMark type={d.device_type} size={26} />
       )}
       <Link to={`/devices/${d.id}`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span
-            className={"h-[7px] w-[7px] shrink-0 rounded-full " + (d.is_online ? "bg-fg" : "border border-edge-2")}
+            className={"h-[7px] w-[7px] shrink-0 rounded-full " + (d.is_online ? "bg-fg" : "bg-fg/20")}
           />
-          <span className="font-display truncate text-[13px] tracking-tight text-fg hover:text-signal">
+          <span className="font-display truncate text-[13px] text-fg hover:underline">
             {d.display_name}
           </span>
         </div>

@@ -10,8 +10,13 @@ import { useNow } from "../hooks/useNow";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
 import { hms } from "../lib/format";
-import { ChartMark } from "./Glyph";
+import { AppMark, Moon, Sun } from "./Glyph";
+import { motion, useReducedMotion, snappy, fade } from "../lib/motion";
 import { useT, type MessageKey } from "../i18n";
+import { translate } from "../i18n/translate";
+
+/** Toast confirmations are always in English, regardless of the UI locale. */
+const enT = (k: MessageKey, vars?: Record<string, string | number>) => translate("en", k, vars);
 import {
   HostsIcon,
   ReviewIcon,
@@ -21,25 +26,24 @@ import {
   StatsIcon,
 } from "./Glyph";
 
-/** shown in the margin / mobile drawer — single source is package.json */
+/** shown in the sidebar foot — single source is package.json */
 const APP_VERSION = `v${__APP_VERSION__}`;
 
-/* ── the routes — each is a sheet in the chart folio ────────────────── */
+/* ── the routes ────────────────────────────────────────────────────── */
 type Route = {
   to: string;
-  code: string;
   labelKey: MessageKey;
   titleKey: MessageKey;
   end?: boolean;
   Icon: (p: { size?: number; className?: string }) => JSX.Element;
 };
 const ROUTES: Route[] = [
-  { to: "/", code: "01", labelKey: "nav.hosts", titleKey: "title.hosts", end: true, Icon: HostsIcon },
-  { to: "/approvals", code: "02", labelKey: "nav.review", titleKey: "title.review", Icon: ReviewIcon },
-  { to: "/users", code: "03", labelKey: "nav.people", titleKey: "title.people", Icon: PeopleIcon },
-  { to: "/distribution", code: "04", labelKey: "nav.stats", titleKey: "title.stats", Icon: StatsIcon },
-  { to: "/events", code: "05", labelKey: "nav.log", titleKey: "title.log", Icon: LogIcon },
-  { to: "/settings", code: "06", labelKey: "nav.config", titleKey: "title.config", Icon: ConfigIcon },
+  { to: "/", labelKey: "nav.hosts", titleKey: "title.hosts", end: true, Icon: HostsIcon },
+  { to: "/approvals", labelKey: "nav.review", titleKey: "title.review", Icon: ReviewIcon },
+  { to: "/users", labelKey: "nav.people", titleKey: "title.people", Icon: PeopleIcon },
+  { to: "/distribution", labelKey: "nav.stats", titleKey: "title.stats", Icon: StatsIcon },
+  { to: "/events", labelKey: "nav.log", titleKey: "title.log", Icon: LogIcon },
+  { to: "/settings", labelKey: "nav.config", titleKey: "title.config", Icon: ConfigIcon },
 ];
 
 function titleKeyOf(pathname: string): MessageKey {
@@ -59,7 +63,6 @@ function activeKey(pathname: string): string {
 function useScan() {
   const qc = useQueryClient();
   const toast = useToast();
-  const t = useT();
   const [running, setRunning] = useState(false);
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["devices"] });
@@ -73,23 +76,23 @@ function useScan() {
       // and the response says what actually happened.
       if (data.status === "no-agents") {
         setRunning(false);
-        toast({ tone: "error", title: t("scan.noAgents"), desc: t("scan.noAgentsDesc") });
+        toast({ tone: "error", title: enT("scan.noAgents"), desc: enT("scan.noAgentsDesc") });
         return;
       }
       if (data.status === "stale") {
         setRunning(false);
-        toast({ tone: "error", title: t("scan.staleTitle"), desc: t("scan.staleDesc") });
+        toast({ tone: "error", title: enT("scan.staleTitle"), desc: enT("scan.staleDesc") });
         void refresh();
         return;
       }
       if (data.status === "queued") {
         setRunning(false);
-        toast({ tone: "info", title: t("scan.queued") });
+        toast({ tone: "info", title: enT("scan.queued") });
         void refresh();
         return;
       }
       // triggered: give the agent a moment to sweep and report back
-      toast({ tone: "success", title: t("scan.triggered", { n: data.triggered }) });
+      toast({ tone: "success", title: enT("scan.triggered", { n: data.triggered }) });
       setTimeout(async () => {
         setRunning(false);
         await refresh();
@@ -97,7 +100,7 @@ function useScan() {
     },
     onError: () => {
       setRunning(false);
-      toast({ tone: "error", title: t("scan.failed") });
+      toast({ tone: "error", title: enT("scan.failed") });
     },
   });
   return { run: () => mut.mutate(), running: running || mut.isPending };
@@ -132,18 +135,37 @@ function useLogout() {
   });
 }
 
-/* ── the chart's title block — mark + wordmark ─────────────────────── */
-function TitleBlock({ compact }: { compact?: boolean }) {
+/* ── quick theme toggle — sun / moon ─────────────────────────────── */
+function ThemeToggle({ className }: { className?: string }) {
+  const { light, toggle } = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={light ? "Switch to dark" : "Switch to light"}
+      title={light ? "Dark" : "Light"}
+      className={clsx(
+        "grid h-7 w-7 place-items-center rounded-lg text-fg-3 transition-colors hover:bg-fg/[0.06] hover:text-fg",
+        className,
+      )}
+    >
+      {light ? <Moon size={15} /> : <Sun size={15} />}
+    </button>
+  );
+}
+
+/* ── mark + wordmark ─────────────────────────────────────────────── */
+function Wordmark({ compact }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
-      <ChartMark size={compact ? 20 : 24} />
+      <AppMark size={compact ? 20 : 22} className="text-fg" />
       <span
         className={clsx(
-          "font-display leading-none tracking-[0.06em] text-fg",
-          compact ? "text-[16px]" : "text-[18px]",
+          "font-display leading-none text-fg",
+          compact ? "text-[15px]" : "text-[16px]",
         )}
       >
-        NETSCAN
+        NetScan
       </span>
     </span>
   );
@@ -156,10 +178,34 @@ export function Shell() {
   return isMobile ? <MobileShell /> : <DesktopShell />;
 }
 
+/* ── the animated page body, shared by both shells ─────────────────── */
+function PageBody({
+  pathname,
+  className,
+  children,
+}: {
+  pathname: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const reduced = useReducedMotion();
+  return (
+    <motion.div
+      key={pathname}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduced ? fade : snappy}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 /* ── DESKTOP ───────────────────────────────────────────────────────── */
 function DesktopShell() {
   const { pathname } = useLocation();
-  useTheme(); // keeps the persisted theme class applied; controlled in Config
+  useTheme();
   const { run, running } = useScan();
   const { s, iv } = useVitals();
   const now = useNow();
@@ -171,15 +217,13 @@ function DesktopShell() {
 
   return (
     <div className="flex h-screen bg-bg">
-      {/* left margin — the chart folio */}
-      <aside className="flex w-[212px] shrink-0 flex-col border-r border-edge-2 bg-surface/70">
-        <div className="flex h-[52px] items-center px-4">
-          <TitleBlock />
+      {/* sidebar — sits on the grey ground, no divider */}
+      <aside className="flex w-[228px] shrink-0 flex-col">
+        <div className="flex h-[60px] items-center px-6">
+          <Wordmark />
         </div>
-        <div className="mx-4 border-t border-edge-2" />
 
-        <nav className="flex flex-1 flex-col px-2 py-2.5">
-          <span className="key px-2.5 pb-2 pt-1">{t("nav.folio")}</span>
+        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
           {ROUTES.map((r) => {
             const on = r.to === active;
             const pend = r.to === "/approvals" && (s?.pending ?? 0) > 0;
@@ -189,36 +233,22 @@ function DesktopShell() {
                 to={r.to}
                 end={r.end}
                 className={clsx(
-                  "group relative flex items-center gap-2.5 py-[7px] pl-2.5 pr-2 text-[12.5px] transition-colors",
-                  on ? "text-fg" : "text-fg-2 hover:text-fg",
+                  "group relative flex items-center gap-3 rounded-[10px] px-3 py-[7px] text-[13.5px] transition-colors",
+                  on ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:bg-fg/[0.05] hover:text-fg",
                 )}
               >
-                {/* leader tick — carmine only on the held sheet */}
-                <span
-                  className={clsx(
-                    "absolute left-0 top-1/2 h-[13px] w-[2px] -translate-y-1/2",
-                    on ? "bg-signal" : "bg-transparent",
-                  )}
-                />
-                <span
-                  className={clsx(
-                    "mono text-[9.5px] tabular-nums",
-                    on ? "text-signal" : "text-fg-3",
-                  )}
-                >
-                  {r.code}
-                </span>
-                <r.Icon size={14} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
-                <span className={clsx("font-medium", on && "font-semibold")}>{t(r.labelKey)}</span>
+                <r.Icon size={16} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
+                <span className={clsx(on ? "font-medium" : "font-normal")}>{t(r.labelKey)}</span>
                 {pend && (
-                  <span className="tag tag-alert ml-auto !h-[15px] !px-1.5 !text-[9px]">{s?.pending}</span>
+                  <span className="ml-auto grid h-[18px] min-w-[18px] place-items-center rounded-full bg-alert px-1 text-[10px] font-medium tabular-nums text-alert-fg">
+                    {s?.pending}
+                  </span>
                 )}
               </NavLink>
             );
           })}
         </nav>
 
-        <div className="mx-4 border-t border-edge-2" />
         <div className="p-3.5">
           {canWrite && (
             <button onClick={run} disabled={running} className="btn btn-primary w-full">
@@ -228,8 +258,8 @@ function DesktopShell() {
           {account && (
             <div className={clsx("flex items-center justify-between gap-2", canWrite && "mt-3")}>
               <span className="min-w-0 truncate">
-                <span className="text-[12px] text-fg-2">{account.username}</span>
-                <span className="mono ml-1.5 text-[9px] uppercase tracking-[0.1em] text-fg-3">
+                <span className="text-[12.5px] text-fg-2">{account.username}</span>
+                <span className="ml-1.5 text-[10.5px] text-fg-3">
                   {t(`auth.role.${account.role}` as MessageKey)}
                 </span>
               </span>
@@ -241,41 +271,35 @@ function DesktopShell() {
               </button>
             </div>
           )}
-          <div className="mt-2.5 flex items-center gap-2">
-            <span className="key text-fg-3/80">{t("shell.edition")}</span>
-            <span className="label tabular-nums">{APP_VERSION}</span>
+          <div className="mt-2.5 flex items-center justify-between">
+            <span className="label">{APP_VERSION}</span>
+            <ThemeToggle className="-mr-1" />
           </div>
         </div>
       </aside>
 
       {/* content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* margin strip — chart marginalia */}
-        <header className="flex h-[44px] shrink-0 items-center gap-6 border-b border-edge-2 bg-surface/70 px-6">
-          <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
-          <Vital k={t("shell.vital.held")} v={s ? `${s.online} / ${s.total}` : "—"} big />
-          <Vital k={t("shell.vital.sweep")} v={cadence(iv)} />
-          <Vital
-            k={t("shell.vital.last")}
-            v={running ? "surveying" : lastSweep(s?.last_report ?? s?.last_scan ?? null, now)}
-            tone={running ? "signal" : s?.agents_stale ? "alert" : undefined}
-          />
-          <Vital k={t("shell.vital.epoch")} v={hms(new Date(now))} className="ml-auto" />
+        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-6 bg-bg/70 px-8 backdrop-blur-xl">
+          <h1 className="font-display text-[15px] text-fg">{t(titleKeyOf(pathname))}</h1>
+          <div className="ml-auto flex items-center gap-5 text-[12px] text-fg-3">
+            <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
+            <Vital k={t("shell.vital.online")} v={s ? `${s.online} / ${s.total}` : "—"} strong />
+            <Vital
+              k={t("shell.vital.last")}
+              v={running ? t("shell.sweeping") : lastSweep(s?.last_report ?? s?.last_scan ?? null, now)}
+              tone={s?.agents_stale ? "alert" : undefined}
+            />
+            <Vital k={t("shell.vital.sweep")} v={cadence(iv)} />
+            <span className="mono tnum text-fg-2">{hms(new Date(now))}</span>
+          </div>
+          {running && <div className="scan-bar" />}
         </header>
 
         <main className="relative min-h-0 flex-1 overflow-y-auto">
-          {running && (
-            <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-              <div className="sweep-line" />
-            </div>
-          )}
-          <div key={pathname} className="view-in mx-auto w-full max-w-[1320px] px-8 py-7">
-            <p className="key mb-6 flex items-center gap-2.5 text-fg-2">
-              <span className="h-[11px] w-[2px] bg-signal" />
-              {t(titleKeyOf(pathname))}
-            </p>
+          <PageBody pathname={pathname} className="mx-auto w-full max-w-[1240px] px-8 py-8">
             <Outlet />
-          </div>
+          </PageBody>
         </main>
       </div>
     </div>
@@ -285,30 +309,21 @@ function DesktopShell() {
 function Vital({
   k,
   v,
-  big,
+  strong,
   tone,
-  className,
 }: {
   k: string;
   v: string;
-  big?: boolean;
-  tone?: "signal" | "alert";
-  className?: string;
+  strong?: boolean;
+  tone?: "alert";
 }) {
   return (
-    <span className={clsx("flex items-baseline gap-2 whitespace-nowrap", className)}>
-      <span className="key">{k}</span>
+    <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+      <span className="text-[10.5px] uppercase tracking-[0.04em] text-fg-3">{k}</span>
       <span
         className={clsx(
           "mono tnum",
-          big ? "text-[13px] text-fg" : "text-[12px]",
-          tone === "signal"
-            ? "text-signal"
-            : tone === "alert"
-              ? "text-alert"
-              : big
-                ? "text-fg"
-                : "text-fg-2",
+          tone === "alert" ? "text-alert" : strong ? "text-fg" : "text-fg-2",
         )}
       >
         {v}
@@ -331,13 +346,14 @@ function MobileShell() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-40 shrink-0 border-b border-edge-2 bg-surface">
-        <div className="flex h-[48px] items-center gap-2.5 px-4">
-          <TitleBlock compact />
+      <header className="sticky top-0 z-40 shrink-0 bg-bg/80 shadow-[0_1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+        <div className="flex h-[52px] items-center gap-2.5 px-4">
+          <Wordmark compact />
           <span className="mono ml-1 text-[13px] tnum text-fg">
             {s ? `${s.online}/${s.total}` : "—"}
           </span>
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
             <button onClick={() => logout.mutate()} className="label">
               {t("auth.logout")}
             </button>
@@ -348,35 +364,28 @@ function MobileShell() {
             )}
           </div>
         </div>
-        <div className="mono flex items-center gap-x-3 overflow-x-auto border-t border-edge px-4 py-1.5 text-[10.5px] text-fg-3">
+        <div className="mono flex items-center gap-x-3 overflow-x-auto px-4 pb-2 text-[10.5px] text-fg-3">
           <span>{s?.subnet ?? "—"}</span>
           <span className="text-fg-2">{s ? t("shell.onlineCount", { n: s.online }) : "—"}</span>
-          <span>sweep {cadence(iv)}</span>
+          <span>{cadence(iv)}</span>
           <span>
             {running
               ? t("shell.sweepingShort")
               : t("shell.lastShort", { ago: lastSweep(s?.last_scan ?? null, now) })}
           </span>
         </div>
+        {running && <div className="scan-bar" />}
       </header>
 
       <main className="relative min-h-0 flex-1">
-        {running && (
-          <div className="pointer-events-none sticky top-0 z-20 h-0 overflow-visible">
-            <div className="sweep-line" />
-          </div>
-        )}
-        <div key={pathname} className="view-in px-4 py-4 pb-24">
-          <p className="key mb-3.5 flex items-center gap-2.5 text-fg-2">
-            <span className="h-[11px] w-[2px] bg-signal" />
-            {t(titleKeyOf(pathname))}
-          </p>
+        <PageBody pathname={pathname} className="px-4 py-4 pb-24">
+          <p className="font-display mb-3.5 text-[15px] text-fg">{t(titleKeyOf(pathname))}</p>
           <Outlet />
-        </div>
+        </PageBody>
       </main>
 
       {/* bottom tabs */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-edge-2 bg-surface pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch bg-bg/85 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
         {ROUTES.map((r) => {
           const on = r.to === active;
           return (
@@ -384,13 +393,12 @@ function MobileShell() {
               key={r.to}
               to={r.to}
               end={r.end}
-              className="relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 py-2"
+              className="relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-1 py-2"
             >
-              <span className={clsx("absolute inset-x-3 top-0 h-[2px]", on ? "bg-signal" : "bg-transparent")} />
               <span className="relative">
-                <r.Icon size={17} className={on ? "text-fg" : "text-fg-3"} />
+                <r.Icon size={19} className={on ? "text-fg" : "text-fg-3"} />
                 {r.to === "/approvals" && (s?.pending ?? 0) > 0 && (
-                  <span className="absolute -right-2 -top-1.5 grid h-[13px] min-w-[13px] place-items-center bg-alert px-[3px] text-[8px] leading-none text-alert-fg">
+                  <span className="absolute -right-2.5 -top-1.5 grid h-[14px] min-w-[14px] place-items-center rounded-full bg-alert px-[3px] text-[8px] leading-none text-alert-fg">
                     {s?.pending}
                   </span>
                 )}

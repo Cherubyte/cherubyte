@@ -49,10 +49,10 @@ export function DeviceTypePicker({
                       onClick={() => pick(ty)}
                       aria-pressed={active}
                       className={clsx(
-                        "flex flex-col items-center gap-1.5 border p-2.5 text-center transition-colors",
+                        "flex flex-col items-center gap-1.5 rounded-xl p-2.5 text-center transition-colors",
                         active
-                          ? "border-signal bg-signal/10 text-signal"
-                          : "border-edge text-fg-2 hover:border-edge-2 hover:text-fg",
+                          ? "bg-fg text-surface"
+                          : "bg-fg/[0.05] text-fg-2 hover:bg-fg/10 hover:text-fg",
                       )}
                     >
                       <DeviceTypeIcon type={ty} size={20} />

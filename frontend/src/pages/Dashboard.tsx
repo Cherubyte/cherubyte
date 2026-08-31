@@ -78,20 +78,20 @@ export function Dashboard() {
   const blind = !!s?.agents_stale && (s?.agents_configured ?? 0) > 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {blind && (
         <Link
           to="/settings"
           className="panel panel-ruled flex items-start gap-3 p-4 transition-colors hover:bg-surface-2"
         >
-          <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-signal" />
+          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-alert" />
           <span className="min-w-0">
-            <span className="font-display block text-[15px] leading-tight text-fg">
+            <span className="font-display block text-[14px] leading-tight text-fg">
               {t("agents.blind", {
                 ago: s?.last_report ? timeAgo(s.last_report, true) : "—",
               })}
             </span>
-            <span className="mono mt-1 block text-[11px] leading-relaxed text-fg-2">
+            <span className="mt-1 block text-[12px] leading-relaxed text-fg-2">
               {t("agents.blindDesc")}
             </span>
           </span>
@@ -102,43 +102,39 @@ export function Dashboard() {
         </Link>
       )}
 
-      {/* the plan's title block — the survey particulars, boxed in the corner */}
-      <div className="panel overflow-hidden">
-        <div className="flex items-center justify-between border-b border-edge px-4 py-2">
-          <span className="key text-fg-2">{t("dash.plan")}</span>
+      {/* overview */}
+      <div className="panel p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="key">{t("dash.plan")}</span>
           <span className="mono text-[11px] text-fg-3">{s?.subnet ?? "—"}</span>
         </div>
-        <div className="flex flex-wrap items-stretch">
-          <div className="flex-[1.5] basis-52 px-4 py-3.5">
-            <Readout
-              value={s?.online ?? "—"}
-              unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
-              caption={t("dash.onlineNow")}
-              size="xl"
-            />
-          </div>
-          <div className="flex-1 basis-24 border-l border-edge px-4 py-3.5">
-            <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" />
-          </div>
-          <div className="flex-1 basis-24 border-l border-edge px-4 py-3.5">
-            <Readout
-              value={newToday}
-              caption={t("dash.newToday")}
-              size="sm"
-              tone={newToday > 0 ? "signal" : "default"}
-            />
-          </div>
-          <div className="flex-[1.5] basis-60 border-l border-edge px-4 py-3.5">
+        <div className="flex flex-wrap items-stretch gap-x-10 gap-y-5">
+          <Readout
+            value={s?.online ?? "—"}
+            unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
+            caption={t("dash.onlineNow")}
+            size="xl"
+            className="min-w-[160px]"
+          />
+          <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" className="min-w-[90px]" />
+          <Readout
+            value={newToday}
+            caption={t("dash.newToday")}
+            size="sm"
+            tone={newToday > 0 ? "signal" : "default"}
+            className="min-w-[90px]"
+          />
+          <div className="min-w-[200px]">
             <WanReadout />
           </div>
           {(s?.pending ?? 0) > 0 && (
             <Link
               to="/approvals"
-              className="group flex flex-1 basis-40 items-center gap-2.5 border-l border-edge bg-alert px-4 text-alert-fg transition-opacity hover:opacity-90"
+              className="group ml-auto flex items-center gap-2.5 self-center rounded-xl bg-alert/10 px-4 py-3 text-alert transition-colors hover:bg-alert/15"
             >
-              <span className="font-display text-[26px] leading-none tnum">{s?.pending}</span>
-              <span className="key text-current">{t("dash.review")}</span>
-              <ArrowRight size={12} />
+              <span className="font-display text-[22px] leading-none tnum">{s?.pending}</span>
+              <span className="text-[12.5px] font-medium">{t("dash.review")}</span>
+              <ArrowRight size={13} />
             </Link>
           )}
         </div>
@@ -146,7 +142,7 @@ export function Dashboard() {
 
       {/* subnet tabs */}
       {subnets.length > 0 && (
-        <div className="-mb-1 flex gap-1 overflow-x-auto border-b border-edge">
+        <div className="flex gap-1.5 overflow-x-auto">
           {[
             { k: "all", label: t("dash.tab.all") },
             ...subnets.map((sn) => ({ k: sn.cidr, label: sn.label || sn.cidr })),
@@ -156,10 +152,10 @@ export function Dashboard() {
               key={tab.k}
               onClick={() => setSubnetTab(tab.k)}
               className={clsx(
-                "shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-[12px] font-medium transition-colors",
+                "shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors",
                 subnetTab === tab.k
-                  ? "border-signal text-fg"
-                  : "border-transparent text-fg-3 hover:text-fg",
+                  ? "bg-fg text-surface"
+                  : "bg-fg/[0.06] text-fg-2 hover:bg-fg/10 hover:text-fg",
               )}
             >
               {tab.label}
@@ -172,14 +168,14 @@ export function Dashboard() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
           <Search
-            size={13}
+            size={14}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-3"
           />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={isMobile ? t("dash.searchShort") : t("dash.search")}
-            className="input mono pl-9"
+            className="input pl-9"
           />
         </div>
         {isMobile ? (
@@ -205,7 +201,7 @@ export function Dashboard() {
       />
 
       <Sheet open={filterSheet} onClose={() => setFilterSheet(false)} title={t("dash.filterSheet")}>
-        <div className="space-y-px">
+        <div className="space-y-1">
           {FILTERS.map((f) => (
             <button
               key={f.k}
@@ -214,12 +210,12 @@ export function Dashboard() {
                 setFilterSheet(false);
               }}
               className={clsx(
-                "flex w-full items-center justify-between bg-surface-2 px-3 py-3.5 text-left",
-                filter === f.k ? "text-fg" : "text-fg-3",
+                "flex w-full items-center justify-between rounded-lg px-3 py-3.5 text-left",
+                filter === f.k ? "bg-surface-2 text-fg" : "text-fg-3",
               )}
             >
-              <span className="font-display text-[15px] tracking-tight">{t(f.labelKey)}</span>
-              {filter === f.k && <span className="h-2.5 w-2.5 bg-signal" />}
+              <span className="font-display text-[14px]">{t(f.labelKey)}</span>
+              {filter === f.k && <span className="h-2 w-2 rounded-full bg-fg" />}
             </button>
           ))}
         </div>
@@ -242,18 +238,17 @@ export function Segmented({
   return (
     <div
       className={clsx(
-        "flex shrink-0 overflow-hidden rounded-[8px] border border-edge-2 bg-surface-2 text-[12px] font-medium leading-none shadow-e1",
+        "flex shrink-0 gap-0.5 rounded-[10px] bg-fg/[0.06] p-0.5 text-[12.5px] font-medium leading-none",
         className,
       )}
     >
-      {options.map((o, i) => (
+      {options.map((o) => (
         <button
           key={o.k}
           onClick={() => onChange(o.k)}
           className={clsx(
-            "px-3.5 py-2 transition-colors",
-            i > 0 && "border-l border-edge-2",
-            value === o.k ? "bg-fg text-surface" : "text-fg-2 hover:text-fg",
+            "rounded-md px-3 py-1.5 transition-colors",
+            value === o.k ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:text-fg",
           )}
         >
           {o.label}
@@ -263,9 +258,7 @@ export function Segmented({
   );
 }
 
-
-/** Internet reachability: current state, uptime, and a latency sparkline.
- *  Drawn by hand in SVG with the same tokens as the charts in Distribution. */
+/** Internet reachability: current state, uptime, and a latency sparkline. */
 function WanReadout() {
   const t = useT();
   const wan = useQuery({
@@ -314,7 +307,6 @@ function Sparkline({ points }: { points: WanStatus["points"] }) {
   const x = (i: number) => (i / Math.max(1, points.length - 1)) * W;
   const y = (ms: number) => H - (ms / max) * (H - 3) - 1;
 
-  // one segment per run of reachable samples, so an outage leaves a visible gap
   const paths: string[] = [];
   let current = "";
   points.forEach((p, i) => {
@@ -336,7 +328,7 @@ function Sparkline({ points }: { points: WanStatus["points"] }) {
     >
       {points.map((p, i) =>
         p.ok ? null : (
-          <rect key={i} x={x(i)} y={0} width={Math.max(1, W / points.length)} height={H} fill="rgb(var(--alert))" opacity={0.25} />
+          <rect key={i} x={x(i)} y={0} width={Math.max(1, W / points.length)} height={H} fill="rgb(var(--alert))" opacity={0.22} />
         ),
       )}
       {paths.map((dPath, i) => (

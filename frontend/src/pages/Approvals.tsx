@@ -5,7 +5,7 @@ import { TypeCode, useBrandLogos, useOsLogos } from "../components/TypeCode";
 import { Badge, Button, EmptyState, Readout, SectionHeader, SkeletonRows } from "../components/ui";
 import { Check, Close, Merge, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
-import { deviceTypeLabel, hostRef, timeAgo } from "../lib/format";
+import { deviceTypeLabel, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import { useNow } from "../hooks/useNow";
 
@@ -60,7 +60,7 @@ export function Approvals() {
   if (pending.isLoading) return <SkeletonRows rows={3} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="panel px-5 py-4">
         <Readout
           value={list.length}
@@ -71,31 +71,28 @@ export function Approvals() {
       </div>
 
       {(suggestions.data ?? []).length > 0 && (
-        <section className="panel p-4">
-          <SectionHeader
-            title={t("approvals.dupes.title")}
-            sub={t("approvals.dupes.sub")}
-          />
+        <section className="panel p-5">
+          <SectionHeader title={t("approvals.dupes.title")} sub={t("approvals.dupes.sub")} />
           <div className="space-y-3">
-            {(suggestions.data ?? []).map((s) => (
+            {(suggestions.data ?? []).map((sg) => (
               <div
-                key={s.target.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-b border-edge/60 pb-3 last:border-0 last:pb-0"
+                key={sg.target.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-edge pb-3 last:border-0 last:pb-0"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Link to={`/devices/${s.target.id}`} className="font-medium hover:underline">
-                      {s.target.name}
+                    <Link to={`/devices/${sg.target.id}`} className="font-medium hover:underline">
+                      {sg.target.name}
                     </Link>
                     <span className="mono text-[11px] text-fg-3">
-                      {t("approvals.dupes.absorbs", { n: s.duplicates.length })}
+                      {t("approvals.dupes.absorbs", { n: sg.duplicates.length })}
                     </span>
-                    <Badge tone={s.confidence === "alta" ? "signal" : "neutral"}>
-                      {t("approvals.dupes.confidence", { level: confidenceLabel(t, s.confidence) })}
+                    <Badge tone={sg.confidence === "alta" ? "signal" : "neutral"}>
+                      {t("approvals.dupes.confidence", { level: confidenceLabel(t, sg.confidence) })}
                     </Badge>
                   </div>
                   <div className="mono mt-1 text-[11px] text-fg-3">
-                    {s.reason} · {s.duplicates.map((d) => d.name).join(", ")}
+                    {sg.reason} · {sg.duplicates.map((d) => d.name).join(", ")}
                   </div>
                 </div>
                 <Button
@@ -105,8 +102,8 @@ export function Approvals() {
                   loading={merge.isPending}
                   onClick={() =>
                     merge.mutate({
-                      targetId: s.target.id,
-                      sourceIds: s.duplicates.map((d) => d.id),
+                      targetId: sg.target.id,
+                      sourceIds: sg.duplicates.map((d) => d.id),
                     })
                   }
                 >
@@ -124,24 +121,19 @@ export function Approvals() {
           description={t("approvals.empty.desc")}
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {list.map((d) => {
-            const ref = hostRef((d.ips.find((x) => x.is_primary) ?? d.ips[0])?.address);
             const mac = d.macs[0];
             return (
               <div
                 key={d.id}
-                className="panel relative flex flex-col gap-3 py-4 pl-5 pr-4 sm:flex-row sm:items-center"
+                className="panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
               >
-                <span className="absolute left-0 top-0 h-full w-[2px] bg-signal" />
-                <span className="mono hidden shrink-0 self-start pt-1 text-[10px] text-fg-3 sm:block">
-                  {ref}
-                </span>
-                <TypeCode device={d} logos={logos} osLogos={osLogos} size={38} />
+                <TypeCode device={d} logos={logos} osLogos={osLogos} size={40} />
                 <div className="min-w-0 flex-1">
                   <Link
                     to={`/devices/${d.id}`}
-                    className="font-display text-[15px] tracking-tight text-fg hover:text-signal"
+                    className="font-display text-[14px] text-fg hover:underline"
                   >
                     {d.display_name}
                   </Link>

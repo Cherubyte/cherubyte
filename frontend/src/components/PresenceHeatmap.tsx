@@ -37,7 +37,7 @@ export function PresenceHeatmap({
 
   if (grid.isError)
     return (
-      <div className="border-y-2 border-alert bg-surface px-2 py-2">
+      <div className="rounded-lg bg-alert/10 px-3 py-2">
         <span className="key text-alert">{t("common.signalLost")}</span>
       </div>
     );

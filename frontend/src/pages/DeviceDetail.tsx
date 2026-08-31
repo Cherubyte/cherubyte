@@ -21,7 +21,7 @@ import {
 } from "../components/ui";
 import { ArrowLeft, ArrowUpRight, Check, Close, Image, Merge, Plus, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
-import { deviceTypeLabel, dateTime, hostRef, timeAgo } from "../lib/format";
+import { deviceTypeLabel, dateTime, timeAgo } from "../lib/format";
 import { useT } from "../i18n";
 import { copyText, downloadRdp, portAction } from "../lib/ports";
 const OS_OPTIONS = [
@@ -99,13 +99,14 @@ export function DeviceDetail() {
     );
 
   const d = device.data;
+  const primaryIp = (d.ips.find((i) => i.is_primary) ?? d.ips[0])?.address ?? "—";
   const val = <K extends keyof DevicePatch>(k: K): DevicePatch[K] =>
     draft[k] !== undefined ? draft[k] : (d[k as keyof typeof d] as DevicePatch[K]);
   const dirty = Object.keys(draft).length > 0;
   const osLogo = d.os_family ? osLogos.get(d.os_family.toLowerCase()) : undefined;
 
   const facts: [string, React.ReactNode][] = [
-    [t("device.fact.ip"), (d.ips.find((i) => i.is_primary) ?? d.ips[0])?.address ?? "—"],
+    [t("device.fact.ip"), primaryIp],
     [t("device.fact.mac"), d.macs[0]?.address ?? "—"],
     [t("device.fact.type"), deviceTypeLabel(d.device_type)],
     [t("device.fact.system"), d.os_family ?? "—"],
@@ -131,7 +132,7 @@ export function DeviceDetail() {
       <div className="space-y-4">
         <Field label={t("device.field.nickname")} hint={t("device.field.nicknameHint", { label: d.default_label })}>
           <input
-            className="input font-display text-[15px] tracking-tight"
+            className="input font-display text-[15px]"
             value={(val("name") as string) ?? ""}
             placeholder={d.default_label}
             onChange={(e) => setDraft((s) => ({ ...s, name: e.target.value }))}
@@ -180,10 +181,10 @@ export function DeviceDetail() {
         <Field label={t("device.field.notes")}>
           <textarea className="input" value={(val("notes") as string) ?? ""} onChange={(e) => setDraft((s) => ({ ...s, notes: e.target.value }))} />
         </Field>
-        <div className="flex items-center justify-between bg-surface-2 px-3 py-2.5">
+        <div className="flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-3">
           <div>
-            <p className="text-[12px] text-fg">{t("device.countsForPresence")}</p>
-            <p className="mono text-[10px] text-fg-3">{t("device.countsForPresenceHint")}</p>
+            <p className="text-[13px] text-fg">{t("device.countsForPresence")}</p>
+            <p className="text-[11.5px] text-fg-3">{t("device.countsForPresenceHint")}</p>
           </div>
           <Toggle
             checked={(val("counts_for_presence") as boolean) ?? d.counts_for_presence}
@@ -216,9 +217,9 @@ export function DeviceDetail() {
       <div className="space-y-5">
         <div>
           <p className="label mb-2">{t("device.ipAddresses")}</p>
-          <div className="space-y-px">
+          <div className="space-y-1">
             {d.ips.map((ip) => (
-              <div key={ip.address} className="flex items-center justify-between bg-surface-2 px-3 py-2">
+              <div key={ip.address} className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2">
                 <span className="mono text-[12px] text-fg-2">
                   {ip.address}
                   {ip.is_primary && <span className="ml-2 text-[10px] text-fg-3">{t("device.primary")}</span>}
@@ -230,9 +231,9 @@ export function DeviceDetail() {
         </div>
         <div>
           <p className="label mb-2">{t("device.macAddresses")}</p>
-          <div className="space-y-px">
+          <div className="space-y-1">
             {d.macs.map((m) => (
-              <div key={m.address} className="flex items-center gap-2 bg-surface-2 px-3 py-2">
+              <div key={m.address} className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2">
                 <span className="mono flex-1 text-[12px] text-fg-2">{m.address}</span>
                 <span className="mono text-[10px] text-fg-3">
                   {m.is_random ? t("device.macRandom") : m.vendor ?? "—"}
@@ -254,14 +255,14 @@ export function DeviceDetail() {
             }}
           >
             <input
-              className="input mono h-[28px] py-0 text-[11px]"
+              className="input mono h-[30px] py-0 text-[11px]"
               placeholder="aa:bb:cc:dd:ee:ff"
               value={newMac}
               onChange={(e) => setNewMac(e.target.value)}
             />
             <Button size="sm" variant="secondary" icon={<Plus size={12} />} className="shrink-0" />
           </form>
-          <p className="mono mt-1.5 text-[10px] text-fg-3">{t("device.macAbsorbHint")}</p>
+          <p className="mt-1.5 text-[11px] text-fg-3">{t("device.macAbsorbHint")}</p>
         </div>
         {d.open_ports.length > 0 && (
           <div>
@@ -281,7 +282,7 @@ export function DeviceDetail() {
                     <span
                       key={p.port}
                       title={risk ?? undefined}
-                      className={risk ? "tag tag-signal" : "tag tag-neutral"}
+                      className={risk ? "tag tag-alert" : "tag tag-neutral"}
                     >
                       {inner}
                     </span>
@@ -289,32 +290,19 @@ export function DeviceDetail() {
                 const act = portAction(ip, p.port, p.service);
                 const hint = risk ? `${t(act.hint)} · ${risk}` : t(act.hint);
                 const cls = clsx(
-                  "tag inline-flex items-center gap-1 transition-colors hover:border-signal hover:text-signal",
-                  risk ? "tag-signal" : "tag-neutral",
+                  "tag inline-flex items-center gap-1 transition-colors hover:text-fg",
+                  risk ? "tag-alert" : "tag-neutral",
                 );
                 if (act.kind === "web" || act.kind === "scheme")
                   return (
-                    <a
-                      key={p.port}
-                      href={act.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      title={hint}
-                      className={cls}
-                    >
+                    <a key={p.port} href={act.href} target="_blank" rel="noreferrer" title={hint} className={cls}>
                       {inner}
                       <ArrowUpRight size={9} />
                     </a>
                   );
                 if (act.kind === "rdp")
                   return (
-                    <button
-                      key={p.port}
-                      type="button"
-                      title={hint}
-                      onClick={() => downloadRdp(act.host)}
-                      className={cls}
-                    >
+                    <button key={p.port} type="button" title={hint} onClick={() => downloadRdp(act.host)} className={cls}>
                       {inner}
                       <ArrowUpRight size={9} />
                     </button>
@@ -368,11 +356,11 @@ export function DeviceDetail() {
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {d.images.map((img) => (
-            <div key={img.id} className="group relative aspect-square overflow-hidden border border-edge bg-surface-2">
+            <div key={img.id} className="group relative aspect-square overflow-hidden rounded-xl">
               <img src={img.url} alt="" className="h-full w-full object-contain" />
               <button
                 onClick={() => delImage.mutate(img.id)}
-                className="absolute right-1 top-1 grid h-6 w-6 place-items-center bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-md bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Trash size={11} />
               </button>
@@ -389,11 +377,11 @@ export function DeviceDetail() {
       {(history.data ?? []).length === 0 ? (
         <EmptyState title={t("device.history.empty")} />
       ) : (
-        <div className="space-y-px">
+        <div className="space-y-1">
           {history.data!.slice(0, 30).map((h) => (
-            <div key={h.id} className="flex items-center gap-3 bg-surface-2 py-2 pl-0 pr-3 text-[11.5px]">
-              <span className={"h-full w-[2px] shrink-0 self-stretch " + (h.event === "join" ? "bg-water" : "bg-signal")} />
-              <span className={"mono w-12 shrink-0 " + (h.event === "join" ? "text-fg-2" : "text-signal")}>
+            <div key={h.id} className="flex items-center gap-3 rounded-lg bg-surface-2 px-3 py-2 text-[11.5px]">
+              <span className={"h-1.5 w-1.5 shrink-0 rounded-full " + (h.event === "join" ? "bg-fg" : "bg-fg-3")} />
+              <span className={"mono w-12 shrink-0 " + (h.event === "join" ? "text-fg-2" : "text-fg-3")}>
                 {h.event === "join" ? "JOIN" : "LEAVE"}
               </span>
               <span className="mono text-fg-3">{dateTime(h.timestamp)}</span>
@@ -436,19 +424,17 @@ export function DeviceDetail() {
         <TypeCode device={d} logos={logos} osLogos={osLogos} size={isMobile ? 46 : 56} />
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
-            <span className="tag tag-neutral">
-              HOST {hostRef((d.ips.find((i) => i.is_primary) ?? d.ips[0])?.address)}
-            </span>
+            <span className="mono text-[11px] text-fg-3">{primaryIp}</span>
             <StatusPill online={d.is_online} />
             {!d.is_online && <span className="mono text-[10px] text-fg-3">{t("device.seenAgo", { ago: timeAgo(d.last_seen) })}</span>}
             <ApprovalTag status={d.approval_status} />
           </div>
-          <h1 className="font-display truncate text-title leading-none tracking-tight text-fg sm:text-[38px]">
+          <h1 className="font-display truncate text-[28px] leading-tight text-fg sm:text-[34px]">
             {d.display_name}
           </h1>
-          <dl className="mt-4 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+          <dl className="core mt-4 grid grid-cols-1 gap-x-8 gap-y-2 px-3.5 py-3 sm:grid-cols-2">
             {facts.map(([k, v]) => (
-              <div key={k} className="flex items-baseline gap-2 border-b border-edge py-2">
+              <div key={k} className="flex items-baseline gap-2">
                 <dt className="label shrink-0">{k}</dt>
                 <span className="h-px flex-1" />
                 <dd className="mono truncate text-right text-[11.5px] text-fg-2">{v}</dd>
@@ -479,7 +465,7 @@ export function DeviceDetail() {
       )}
 
       {isMobile && (
-        <div className="sticky bottom-16 -mx-4 flex gap-2 border-t border-edge bg-surface px-4 py-3">
+        <div className="sticky bottom-16 -mx-4 flex gap-2 bg-bg/85 px-4 py-3 shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
           {d.approval_status !== "approved" && (
             <Button variant="primary" className="flex-1" icon={<Check size={13} />} onClick={() => approve.mutate()}>{t("common.approve")}</Button>
           )}
