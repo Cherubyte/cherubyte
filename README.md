@@ -422,7 +422,6 @@ it is — each entry anchored to the failure that produced it.
 
 ## License
 
-[MIT](LICENSE). The bundled fonts (`frontend/public/fonts/`) — Hanken Grotesk and
-Spline Sans Mono under the SIL Open Font License 1.1, Clash Display under the
-Fontshare Free License — self-hosted, with their license files sitting next to
-them. NetScan makes no external font requests.
+[MIT](LICENSE). The UI font is [Inter](https://rsms.me/inter/) under the SIL Open
+Font License 1.1, self-hosted in `frontend/public/fonts/` with its license file
+next to it. NetScan makes no external font requests.
