@@ -96,10 +96,17 @@ class Settings(BaseSettings):
     enable_reverse_dns: bool = True
     enable_port_probe: bool = True
     enable_dhcp_sniffer: bool = True
+    # Passive ARP listening on the agent, alongside the active sweep — catches
+    # a host that answers someone else's ARP but missed ours.
+    enable_passive_arp: bool = True
     # SNMP (opt-in): names managed gear from sysDescr and draws switch links
     # from the LLDP-MIB. Needs a read community and something that answers it.
     enable_snmp: bool = False
     snmp_community: str = "public"
+    # Shows the Topology nav item / page. Off by default: on a flat LAN there
+    # is nothing to draw (LLDP edges only exist behind SNMP-enabled gear), so
+    # most installs would just see an empty page cluttering the nav.
+    topology_enabled: bool = False
     fingerbank_api_key: str = ""
 
     # Telegram notifications

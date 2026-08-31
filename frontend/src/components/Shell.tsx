@@ -26,6 +26,7 @@ import {
   LogIcon,
   ConfigIcon,
   StatsIcon,
+  Radar,
 } from "./Glyph";
 
 /** shown in the sidebar foot — single source is package.json */
@@ -45,8 +46,20 @@ const ROUTES: Route[] = [
   { to: "/users", labelKey: "nav.people", titleKey: "title.people", Icon: PeopleIcon },
   { to: "/distribution", labelKey: "nav.stats", titleKey: "title.stats", Icon: StatsIcon },
   { to: "/events", labelKey: "nav.log", titleKey: "title.log", Icon: LogIcon },
+  { to: "/topology", labelKey: "nav.topology", titleKey: "title.topology", Icon: Radar },
   { to: "/settings", labelKey: "nav.config", titleKey: "title.config", Icon: ConfigIcon },
 ];
+
+/** Settings ▸ Network ▸ SNMP gates this — most installs have nothing LLDP
+ *  would draw, so it stays out of the nav until switched on. */
+function useTopologyEnabled(): boolean {
+  const q = useQuery({ queryKey: ["settings"], queryFn: api.settings, staleTime: 60000 });
+  return q.data?.topology_enabled ?? false;
+}
+
+function visibleRoutes(topologyEnabled: boolean): Route[] {
+  return topologyEnabled ? ROUTES : ROUTES.filter((r) => r.to !== "/topology");
+}
 
 function titleKeyOf(pathname: string): MessageKey {
   if (pathname.startsWith("/devices/")) return "title.hostDetail";
@@ -254,6 +267,7 @@ function DesktopShell() {
   const { account } = useAuth();
   const canWrite = useCanWrite();
   const logout = useLogout();
+  const routes = visibleRoutes(useTopologyEnabled());
 
   return (
     <div className="flex h-screen bg-bg">
@@ -264,7 +278,7 @@ function DesktopShell() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-          {ROUTES.map((r) => {
+          {routes.map((r) => {
             const on = r.to === active;
             const pend = r.to === "/approvals" && (s?.pending ?? 0) > 0;
             return (
@@ -401,6 +415,7 @@ function MobileShell() {
   const net = subnetVital(s?.subnet);
   const canWrite = useCanWrite();
   const logout = useLogout();
+  const routes = visibleRoutes(useTopologyEnabled());
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
@@ -445,7 +460,7 @@ function MobileShell() {
 
       {/* bottom tabs */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch bg-bg/85 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
-        {ROUTES.map((r) => {
+        {routes.map((r) => {
           const on = r.to === active;
           return (
             <NavLink

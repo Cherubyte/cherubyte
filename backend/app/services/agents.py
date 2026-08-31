@@ -144,6 +144,7 @@ def desired_config() -> AgentConfig:
         enable_reverse_dns=settings.enable_reverse_dns,
         enable_port_probe=settings.enable_port_probe,
         enable_dhcp_sniffer=settings.enable_dhcp_sniffer,
+        enable_passive_arp=settings.enable_passive_arp,
         enable_snmp=settings.enable_snmp,
         snmp_community=settings.snmp_community or "public",
         wan_enabled=settings.wan_enabled,

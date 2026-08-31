@@ -18,6 +18,7 @@ import {
   HostsIcon,
   LogIcon,
   PeopleIcon,
+  Radar,
   ReviewIcon,
   Search,
   StatsIcon,
@@ -38,6 +39,7 @@ const PAGES: { to: string; labelKey: MessageKey; Icon: (p: { size?: number }) =>
   { to: "/users", labelKey: "title.people", Icon: PeopleIcon },
   { to: "/distribution", labelKey: "title.stats", Icon: StatsIcon },
   { to: "/events", labelKey: "title.log", Icon: LogIcon },
+  { to: "/topology", labelKey: "title.topology", Icon: Radar },
   { to: "/settings", labelKey: "title.config", Icon: ConfigIcon },
 ];
 
@@ -88,12 +90,14 @@ export function CommandPalette() {
 
   const devices = useQuery({ queryKey: ["devices"], queryFn: () => api.devices(), enabled: open });
   const users = useQuery({ queryKey: ["users"], queryFn: api.users, enabled: open });
+  const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings, enabled: open, staleTime: 60000 });
 
   const items = useMemo<Item[]>(() => {
     const n = q.toLowerCase().trim();
     const out: Item[] = [];
 
     for (const p of PAGES) {
+      if (p.to === "/topology" && !settings.data?.topology_enabled) continue;
       const label = t(p.labelKey);
       if (!n || label.toLowerCase().includes(n))
         out.push({ key: `p${p.to}`, kind: "page", label, to: p.to, icon: <p.Icon size={15} /> });
@@ -134,7 +138,7 @@ export function CommandPalette() {
     }
 
     return out;
-  }, [q, devices.data, users.data, t]);
+  }, [q, devices.data, users.data, settings.data, t]);
 
   useEffect(() => setActive(0), [q]);
 

@@ -18,6 +18,7 @@ import type {
   PresenceData,
   Stats,
   Timeline,
+  Topology,
   TypeCount,
   MergeSuggestion,
   UpdateStatus,
@@ -204,6 +205,8 @@ export const api = {
 
   testFingerbank: () =>
     req<FingerbankTest>("/settings/fingerbank/test", { method: "POST" }),
+
+  topology: () => req<Topology>("/topology"),
 
   updateStatus: () => req<UpdateStatus>("/settings/update"),
   checkForUpdate: () => req<UpdateStatus>("/settings/update/check", { method: "POST" }),
