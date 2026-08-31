@@ -13,6 +13,7 @@ from . import (
     settings,
     stats,
     stream,
+    topology,
     users,
     wan,
 )
@@ -31,6 +32,6 @@ api_router.include_router(metrics.router)
 
 # Everything else requires a login; writes require at least an `editor`.
 _protected = APIRouter(dependencies=[Depends(enforce_access)])
-for _module in (devices, events, users, brands, os_logos, stats, settings, scan, stream, wan):
+for _module in (devices, events, users, brands, os_logos, stats, settings, scan, stream, topology, wan):
     _protected.include_router(_module.router)
 api_router.include_router(_protected)

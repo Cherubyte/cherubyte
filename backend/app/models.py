@@ -489,6 +489,29 @@ class Event(Base):
     )
 
 
+class TopologyEdge(Base):
+    """One link an LLDP-MIB read reported: a local device's port connects to a
+    neighbour's port. Refreshed whole per agent on each report that carries
+    LLDP data, so a link that goes away simply stops being re-inserted.
+    """
+
+    __tablename__ = "topology_edges"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agents.id", ondelete="CASCADE"), index=True
+    )
+    # The device the LLDP table was read from, when we could match it to one.
+    local_device_id: Mapped[int | None] = mapped_column(
+        ForeignKey("devices.id", ondelete="SET NULL")
+    )
+    local_label: Mapped[str] = mapped_column(String(255), default="")
+    local_port: Mapped[str | None] = mapped_column(String(120))
+    remote_label: Mapped[str] = mapped_column(String(255), default="")
+    remote_port: Mapped[str | None] = mapped_column(String(120))
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Brand(Base):
     """A manufacturer, keyed by its normalised short name, with an optional logo."""
 

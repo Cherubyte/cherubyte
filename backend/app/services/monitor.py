@@ -76,6 +76,57 @@ def _resolve_os(
     return "Linux / Unix"
 
 
+_SYSDESCR_OS: tuple[tuple[str, str], ...] = (
+    ("mikrotik", "RouterOS"),
+    ("routeros", "RouterOS"),
+    ("cisco ios xe", "Cisco IOS XE"),
+    ("cisco ios", "Cisco IOS"),
+    ("cisco nx-os", "Cisco NX-OS"),
+    ("nx-os", "Cisco NX-OS"),
+    ("junos", "JunOS"),
+    ("juniper", "JunOS"),
+    ("arubaos", "ArubaOS"),
+    ("edgeos", "EdgeOS"),
+    ("edgeswitch", "EdgeSwitch"),
+    ("unifi", "UniFi OS"),
+    ("ubiquiti", "UniFi OS"),
+    ("fortios", "FortiOS"),
+    ("pfsense", "pfSense"),
+    ("opnsense", "OPNsense"),
+    ("openwrt", "OpenWrt"),
+    ("dd-wrt", "DD-WRT"),
+    ("sonicos", "SonicOS"),
+    ("procurve", "HP ProCurve"),
+    ("aruba", "ArubaOS"),
+    ("synology", "DSM"),
+    ("qnap", "QTS"),
+    ("truenas", "TrueNAS"),
+    ("windows", "Windows"),
+    ("darwin", "macOS"),
+    ("ubuntu", "Linux"),
+    ("debian", "Linux"),
+    ("raspbian", "Linux"),
+    ("linux", "Linux"),
+)
+
+
+def _os_from_sysdescr(desc: str | None) -> str | None:
+    if not desc:
+        return None
+    low = desc.lower()
+    for needle, name in _SYSDESCR_OS:
+        if needle in low:
+            return name
+    return None
+
+
+def _clean_snmp_name(name: str | None) -> str | None:
+    if not name:
+        return None
+    n = name.strip().rstrip(".")
+    return n or None
+
+
 def _os_from_vendor_class(vci: str | None) -> str | None:
     if not vci:
         return None
@@ -243,11 +294,13 @@ async def _reconcile_host(
     eff_name = (
         best_name(host)
         or _from_dhcp_hostname(host.dhcp_hostname)
+        or _clean_snmp_name(host.snmp_sysname)
         or (device.hostname if device else None)
     )
     os_guess = _resolve_os(
         host.ttl_os, eff_vendor, host.mdns_services, f"{eff_name or ''} {eff_model or ''}"
     )
+    os_guess = _os_from_sysdescr(host.snmp_sysdescr) or os_guess
 
     # Fingerbank (optional) — richest signal when a DHCP fingerprint is available
     if host.dhcp_param_list and fingerbank.is_enabled():
@@ -841,7 +894,41 @@ def reset_scan_health() -> None:
     _scan_health["consecutive_empty"] = 0
 
 
-async def ingest_report(report: AgentReport, agent_name: str = "agent") -> dict:
+async def _refresh_topology(
+    session: AsyncSession, agent_id: int | None, hosts: list[HostObservation]
+) -> None:
+    """Replace this agent's LLDP-derived edges wholesale. A link that is no
+    longer reported simply is not re-inserted."""
+    from ..models import TopologyEdge
+
+    await session.execute(
+        TopologyEdge.__table__.delete().where(TopologyEdge.agent_id == agent_id)
+    )
+    for host in hosts:
+        if not host.lldp_neighbors:
+            continue
+        device = await _find_device_by_mac(session, host.mac.lower())
+        local_label = (
+            device.display_name
+            if device
+            else (host.snmp_sysname or host.hostname or host.ip)
+        )
+        for n in host.lldp_neighbors:
+            session.add(
+                TopologyEdge(
+                    agent_id=agent_id,
+                    local_device_id=device.id if device else None,
+                    local_label=local_label or "",
+                    local_port=n.local_port,
+                    remote_label=(n.remote_name or n.remote_chassis or "") or "",
+                    remote_port=n.remote_port,
+                )
+            )
+
+
+async def ingest_report(
+    report: AgentReport, agent_name: str = "agent", agent_id: int | None = None
+) -> dict:
     """Reconcile one agent report into the database.
 
     This is what `run_scan_cycle` used to be, with the sweep taken out: the
@@ -906,6 +993,8 @@ async def ingest_report(report: AgentReport, agent_name: str = "agent") -> dict:
             for host in report.hosts:
                 await _reconcile_host(session, host, host.ip in gateways)
             await _expire_offline(session)
+            if any(h.lldp_neighbors for h in report.hosts):
+                await _refresh_topology(session, agent_id, report.hosts)
             await session.commit()
             await _publish_mqtt_state(session)
 

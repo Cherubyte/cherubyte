@@ -240,6 +240,9 @@ class SettingsOut(BaseModel):
     metrics_enabled: bool = True
     metrics_token_set: bool = False
     metrics_path: str = "/api/metrics"
+    # snmp
+    enable_snmp: bool = False
+    snmp_community: str = "public"
     # weekly digest
     weekly_summary_enabled: bool = False
     weekly_summary_weekday: int = 0
@@ -282,6 +285,8 @@ class SettingsIn(BaseModel):
     wan_interval_seconds: int | None = None
     metrics_enabled: bool | None = None
     metrics_token: str | None = None
+    enable_snmp: bool | None = None
+    snmp_community: str | None = None
     weekly_summary_enabled: bool | None = None
     weekly_summary_weekday: int | None = None
     weekly_summary_hour: int | None = None

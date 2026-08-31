@@ -105,7 +105,7 @@ async def receive_report(
     await wan.record(report.wan)
 
     note_report()
-    result = await ingest_report(report, agent_name=agent.name)
+    result = await ingest_report(report, agent_name=agent.name, agent_id=agent.id)
     # The ack carries the configuration the agent should be running, so an
     # install needs nothing but a panel URL and a token.
     return ReportAck(

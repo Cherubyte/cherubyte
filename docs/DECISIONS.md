@@ -229,3 +229,22 @@ visible in both logs; a silent partial read is visible in neither.
 If agent and panel ever ship on separate cadences, this is the decision to
 revisit — accept `<= PROTOCOL_VERSION` and lean on the fields all being
 optional.
+
+## `snmp_sysdescr` stopped being hypothetical
+
+The wire-contract section above used `snmp_sysdescr` as its example of a signal
+the scanner might grow — the contract test even fails by that name if you add it
+to `Host` without adding it to the protocol. v3 makes it real: `snmp_sysname`,
+`snmp_sysdescr` and `lldp_neighbors` on `HostObservation`, all optional, behind
+an opt-in `enable_snmp`.
+
+The agent shells out to `snmpget` / `snmpwalk` rather than importing pysnmp — the
+same choice as `ping` and `ip neigh`. A missing binary degrades to "no SNMP
+data", logged once; it is never a hard dependency, because most LANs have
+nothing that answers SNMP at all.
+
+Only the panel interprets it: `sysDescr` feeds the OS guess ("Cisco IOS
+Software…" → `Cisco IOS`), and the LLDP neighbour table becomes rows in
+`topology_edges`, refreshed whole per agent so a link that goes away just stops
+being re-inserted. `/api/topology` serves the edges; drawing them is still
+future work.

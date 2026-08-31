@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     enable_reverse_dns: bool = True
     enable_port_probe: bool = True
     enable_dhcp_sniffer: bool = True
+    enable_snmp: bool = False
+    snmp_community: str = "public"
 
     # Internet reachability probe, reported alongside the sweep.
     wan_enabled: bool = True

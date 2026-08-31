@@ -44,6 +44,9 @@ def to_observation(host: Host) -> HostObservation:
         dhcp_param_list=host.dhcp_param_list,
         dhcp_vendor_class=host.dhcp_vendor_class,
         dhcp_hostname=host.dhcp_hostname,
+        snmp_sysname=host.snmp_sysname,
+        snmp_sysdescr=host.snmp_sysdescr,
+        lldp_neighbors=list(host.lldp_neighbors),
     )
 
 

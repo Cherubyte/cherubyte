@@ -25,7 +25,10 @@ from pydantic import BaseModel, Field
 #:
 #: v2: adds `AgentReport.dhcp_servers` — the DHCP servers the passive sniffer
 #:     saw answering on the LAN, so the panel can flag an unexpected one.
-PROTOCOL_VERSION = 2
+#: v3: adds `HostObservation.snmp_sysname` / `snmp_sysdescr` and
+#:     `HostObservation.lldp_neighbors` — optional SNMP / LLDP-MIB reads, so the
+#:     panel can name managed gear and draw the links between switches.
+PROTOCOL_VERSION = 3
 
 __all__ = [
     "PROTOCOL_VERSION",
@@ -37,7 +40,19 @@ __all__ = [
     "HostObservation",
     "WanObservation",
     "DhcpServerObservation",
+    "LldpNeighbor",
 ]
+
+
+class LldpNeighbor(BaseModel):
+    """A link this host's LLDP-MIB reports: `local_port` of this host connects to
+    `remote_port` of the device identified by `remote_chassis` / `remote_name`.
+    """
+
+    local_port: str | None = None
+    remote_chassis: str | None = None
+    remote_port: str | None = None
+    remote_name: str | None = None
 
 
 class HostObservation(BaseModel):
@@ -68,6 +83,13 @@ class HostObservation(BaseModel):
     dhcp_param_list: str = ""
     dhcp_vendor_class: str | None = None
     dhcp_hostname: str | None = None
+    # SNMP (opt-in, community read). sysDescr is a strong OS / vendor signal for
+    # managed gear ("Cisco IOS Software…", "RouterOS…", "Ubuntu…").
+    snmp_sysname: str | None = None
+    snmp_sysdescr: str | None = None
+    # LLDP-MIB neighbours walked from this host over SNMP — the raw material for
+    # a topology map when there are managed switches to ask.
+    lldp_neighbors: list[LldpNeighbor] = Field(default_factory=list)
 
 
 class DhcpServerObservation(BaseModel):
@@ -140,6 +162,10 @@ class AgentConfig(BaseModel):
     enable_reverse_dns: bool = True
     enable_port_probe: bool = True
     enable_dhcp_sniffer: bool = True
+    # SNMP is off unless asked for — it needs a community string and most LANs
+    # have nothing that answers it.
+    enable_snmp: bool = False
+    snmp_community: str = "public"
     wan_enabled: bool = True
     wan_target: str = "1.1.1.1"
     # Empty means "work it out from the interface".

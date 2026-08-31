@@ -272,6 +272,8 @@ export interface AppSettings {
   /** True when a scrape token is stored; the token itself is never returned. */
   metrics_token_set: boolean;
   metrics_path: string;
+  enable_snmp: boolean;
+  snmp_community: string;
   weekly_summary_enabled: boolean;
   weekly_summary_weekday: number;
   weekly_summary_hour: number;

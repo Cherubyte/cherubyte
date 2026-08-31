@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     enable_reverse_dns: bool = True
     enable_port_probe: bool = True
     enable_dhcp_sniffer: bool = True
+    # SNMP (opt-in): names managed gear from sysDescr and draws switch links
+    # from the LLDP-MIB. Needs a read community and something that answers it.
+    enable_snmp: bool = False
+    snmp_community: str = "public"
     fingerbank_api_key: str = ""
 
     # Telegram notifications

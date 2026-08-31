@@ -7,7 +7,13 @@ release, with both sides still reporting success.
 
 from datetime import datetime, timezone
 
-from netscan_protocol import PROTOCOL_VERSION, AgentReport, HostObservation, WanObservation
+from netscan_protocol import (
+    PROTOCOL_VERSION,
+    AgentReport,
+    HostObservation,
+    LldpNeighbor,
+    WanObservation,
+)
 
 from netscan_agent.collector import to_observation
 from netscan_agent.scanner import Host
@@ -33,6 +39,11 @@ def a_host() -> Host:
     host.dhcp_param_list = "1,3,6,15"
     host.dhcp_vendor_class = "MSFT 5.0"
     host.dhcp_hostname = "portatil"
+    host.snmp_sysname = "core-sw"
+    host.snmp_sysdescr = "Cisco IOS Software"
+    host.lldp_neighbors = [
+        LldpNeighbor(local_port="1", remote_name="edge-sw", remote_port="24")
+    ]
     return host
 
 
