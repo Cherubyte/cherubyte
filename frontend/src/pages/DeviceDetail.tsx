@@ -116,6 +116,8 @@ export function DeviceDetail() {
     draft[k] !== undefined ? draft[k] : (d[k as keyof typeof d] as DevicePatch[K]);
   const dirty = Object.keys(draft).length > 0;
   const osLogo = d.os_family ? osLogos.get(d.os_family.toLowerCase()) : undefined;
+  // Wake-on-LAN needs the device offline and at least one non-randomised MAC.
+  const canWake = !d.is_online && d.macs.some((m) => !m.is_random);
 
   const upRatio = uptime.data?.ratio;
   const facts: [string, React.ReactNode][] = [
@@ -427,7 +429,7 @@ export function DeviceDetail() {
           <Button variant="secondary" size="sm" icon={<Merge size={12} />} onClick={() => setMergeOpen(true)}>
             {isMobile ? t("device.merge") : t("device.mergeWith")}
           </Button>
-          {!d.is_online && d.macs.length > 0 && !d.macs[0].is_random && (
+          {canWake && (
             <Button variant="secondary" size="sm" icon={<Power size={12} />} loading={wake.isPending} onClick={() => wake.mutate()}>
               {t("device.wake")}
             </Button>
@@ -502,7 +504,7 @@ export function DeviceDetail() {
 
       {isMobile && (
         <div className="sticky bottom-16 -mx-4 flex gap-2 bg-bg/85 px-4 py-3 shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
-          {!d.is_online && d.macs.length > 0 && !d.macs[0].is_random ? (
+          {canWake ? (
             <Button variant="primary" className="flex-1" icon={<Power size={13} />} loading={wake.isPending} onClick={() => wake.mutate()}>
               {t("device.wake")}
             </Button>

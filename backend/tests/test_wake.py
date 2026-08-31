@@ -67,6 +67,24 @@ async def test_random_mac_is_refused(session):
 
 
 @pytest.mark.asyncio
+async def test_wake_uses_the_first_stable_mac_when_the_primary_is_random(session):
+    # a phone-like device: rotating MAC first, real MAC second
+    d = Device(
+        device_type=DeviceType.laptop,
+        approval_status="approved",
+        is_online=False,
+        macs=[
+            MacAddress(address="7a:11:22:33:44:55", is_random=True),
+            MacAddress(address="a4:83:e7:1c:2d:9f", is_random=False),
+        ],
+    )
+    session.add(d)
+    await session.flush()
+    out = await wake_device(d.id, session=session)
+    assert out == {"ok": True, "mac": "a4:83:e7:1c:2d:9f"}
+
+
+@pytest.mark.asyncio
 async def test_no_mac_is_refused(session):
     d = Device(device_type=DeviceType.unknown, approval_status="approved", is_online=False)
     session.add(d)

@@ -383,14 +383,15 @@ async def wake_device(device_id: int, session: AsyncSession = Depends(get_sessio
     """Queue a Wake-on-LAN for this device. The agents send the magic packet on
     their next check-in; the panel can't reach the network itself."""
     device = await _get(session, device_id)
-    primary = device.macs[0] if device.macs else None
-    if primary is None:
+    if not device.macs:
         raise HTTPException(422, "Device has no MAC address to wake")
-    if primary.is_random:
+    # phones and laptops often rotate their MAC — pick the first stable one
+    target = next((m for m in device.macs if not m.is_random), None)
+    if target is None:
         raise HTTPException(422, "A randomised MAC can't be used for Wake-on-LAN")
-    norm = await wol.queue(session, primary.address, device.id)
+    norm = await wol.queue(session, target.address, device.id)
     if norm is None:
-        raise HTTPException(422, f"Not a usable MAC address: {mac}")
+        raise HTTPException(422, f"Not a usable MAC address: {target.address}")
     session.add(
         Event(
             message=f"Wake-on-LAN enviado a {device.display_name}",

@@ -9,6 +9,7 @@ import { useIsMobile } from "../hooks/useMediaQuery";
 import { useNow } from "../hooks/useNow";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
+import { RollingValue } from "./ui";
 import { CommandPalette } from "./CommandPalette";
 import { hms } from "../lib/format";
 import { AppMark, Moon, Search, Sun } from "./Glyph";
@@ -238,6 +239,7 @@ function DesktopShell() {
   const { s, iv } = useVitals();
   const now = useNow();
   const t = useT();
+  const reduced = useReducedMotion();
   const active = activeKey(pathname);
   const { account } = useAuth();
   const canWrite = useCanWrite();
@@ -262,13 +264,23 @@ function DesktopShell() {
                 end={r.end}
                 className={clsx(
                   "group relative flex items-center gap-3 rounded-[10px] px-3 py-[7px] text-[13.5px] transition-colors",
-                  on ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:bg-fg/[0.05] hover:text-fg",
+                  on ? "text-fg" : "text-fg-2 hover:bg-fg/[0.05] hover:text-fg",
                 )}
               >
-                <r.Icon size={16} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
-                <span className={clsx(on ? "font-medium" : "font-normal")}>{t(r.labelKey)}</span>
+                {on && (
+                  <motion.span
+                    layoutId="nav-active-desktop"
+                    className="absolute inset-0 rounded-[10px] bg-surface shadow-e1"
+                    transition={reduced ? { duration: 0 } : snappy}
+                  />
+                )}
+                <r.Icon
+                  size={16}
+                  className={clsx("relative z-[1]", on ? "text-fg" : "text-fg-3 group-hover:text-fg-2")}
+                />
+                <span className={clsx("relative z-[1]", on ? "font-medium" : "font-normal")}>{t(r.labelKey)}</span>
                 {pend && (
-                  <span className="ml-auto grid h-[18px] min-w-[18px] place-items-center rounded-full bg-alert px-1 text-[10px] font-medium tabular-nums text-alert-fg">
+                  <span className="relative z-[1] ml-auto grid h-[18px] min-w-[18px] place-items-center rounded-full bg-alert px-1 text-[10px] font-medium tabular-nums text-alert-fg">
                     {s?.pending}
                   </span>
                 )}
@@ -313,7 +325,7 @@ function DesktopShell() {
           <CmdKButton />
           <div className="ml-auto flex items-center gap-5 text-[12px] text-fg-3">
             <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
-            <Vital k={t("shell.vital.online")} v={s ? `${s.online} / ${s.total}` : "—"} strong />
+            <Vital k={t("shell.vital.online")} v={s ? `${s.online} / ${s.total}` : "—"} strong roll />
             <Vital
               k={t("shell.vital.last")}
               v={running ? t("shell.sweeping") : lastSweep(s?.last_report ?? s?.last_scan ?? null, now)}
@@ -340,11 +352,14 @@ function Vital({
   v,
   strong,
   tone,
+  roll,
 }: {
   k: string;
   v: string;
   strong?: boolean;
   tone?: "alert";
+  /** flip the figure on change — only for values that tick rarely, not the clock */
+  roll?: boolean;
 }) {
   return (
     <span className="flex items-baseline gap-1.5 whitespace-nowrap">
@@ -355,7 +370,7 @@ function Vital({
           tone === "alert" ? "text-alert" : strong ? "text-fg" : "text-fg-2",
         )}
       >
-        {v}
+        {roll ? <RollingValue>{v}</RollingValue> : v}
       </span>
     </span>
   );
@@ -369,6 +384,7 @@ function MobileShell() {
   const { s, iv } = useVitals();
   const now = useNow();
   const t = useT();
+  const reduced = useReducedMotion();
   const active = activeKey(pathname);
   const canWrite = useCanWrite();
   const logout = useLogout();
@@ -379,7 +395,7 @@ function MobileShell() {
         <div className="flex h-[52px] items-center gap-2.5 px-4">
           <Wordmark compact />
           <span className="mono ml-1 text-[13px] tnum text-fg">
-            {s ? `${s.online}/${s.total}` : "—"}
+            <RollingValue>{s ? `${s.online}/${s.total}` : "—"}</RollingValue>
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             <CmdKButton compact />
@@ -425,7 +441,14 @@ function MobileShell() {
               end={r.end}
               className="relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-1 py-2"
             >
-              <span className="relative">
+              {on && (
+                <motion.span
+                  layoutId="nav-active-mobile"
+                  className="absolute inset-x-2 inset-y-1.5 rounded-xl bg-fg/[0.06]"
+                  transition={reduced ? { duration: 0 } : snappy}
+                />
+              )}
+              <span className="relative z-[1]">
                 <r.Icon size={19} className={on ? "text-fg" : "text-fg-3"} />
                 {r.to === "/approvals" && (s?.pending ?? 0) > 0 && (
                   <span className="absolute -right-2.5 -top-1.5 grid h-[14px] min-w-[14px] place-items-center rounded-full bg-alert px-[3px] text-[8px] leading-none text-alert-fg">
@@ -433,7 +456,7 @@ function MobileShell() {
                   </span>
                 )}
               </span>
-              <span className={clsx("text-[9.5px] font-medium", on ? "text-fg" : "text-fg-3")}>
+              <span className={clsx("relative z-[1] text-[9.5px] font-medium", on ? "text-fg" : "text-fg-3")}>
                 {t(r.labelKey)}
               </span>
             </NavLink>
