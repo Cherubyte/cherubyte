@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { api } from "../api/client";
 import type { Device, DeviceType } from "../api/types";
 import { TYPE_CODE } from "../lib/format";
@@ -17,7 +18,28 @@ function useLogoMap(kind: "brands" | "os") {
 export const useBrandLogos = () => useLogoMap("brands");
 export const useOsLogos = () => useLogoMap("os");
 
-/* ── the glyph: a solid block carrying photo | logo | 2-letter code ──── */
+/** A device photo: fills the square when it's ~1:1, otherwise sits contained with
+ *  a little padding so nothing is cropped. Aspect is measured on load. */
+function DevicePhoto({ src }: { src: string }) {
+  const [fit, setFit] = useState<"cover" | "pad">("cover");
+  return (
+    <img
+      src={src}
+      alt=""
+      onLoad={(e) => {
+        const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+        if (w && h) setFit(Math.abs(w - h) / Math.max(w, h) > 0.06 ? "pad" : "cover");
+      }}
+      className={
+        fit === "cover"
+          ? "h-full w-full object-cover"
+          : "h-full w-full object-contain p-[6%]"
+      }
+    />
+  );
+}
+
+/* ── the glyph: photo | brand logo | 2-letter code ─────────────────────── */
 export function TypeCode({
   device,
   logos,
@@ -38,7 +60,7 @@ export function TypeCode({
       style={{ width: size, height: size }}
     >
       {photo ? (
-        <img src={photo} alt="" className="h-full w-full object-cover" />
+        <DevicePhoto src={photo} />
       ) : logo ? (
         <img src={logo} alt="" className="h-full w-full object-contain" />
       ) : (

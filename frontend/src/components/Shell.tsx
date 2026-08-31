@@ -10,7 +10,7 @@ import { useNow } from "../hooks/useNow";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
 import { hms } from "../lib/format";
-import { AppMark } from "./Glyph";
+import { AppMark, Moon, Sun } from "./Glyph";
 import { motion, useReducedMotion, snappy, fade } from "../lib/motion";
 import { useT, type MessageKey } from "../i18n";
 import { translate } from "../i18n/translate";
@@ -135,6 +135,25 @@ function useLogout() {
   });
 }
 
+/* ── quick theme toggle — sun / moon ─────────────────────────────── */
+function ThemeToggle({ className }: { className?: string }) {
+  const { light, toggle } = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={light ? "Switch to dark" : "Switch to light"}
+      title={light ? "Dark" : "Light"}
+      className={clsx(
+        "grid h-7 w-7 place-items-center rounded-lg text-fg-3 transition-colors hover:bg-fg/[0.06] hover:text-fg",
+        className,
+      )}
+    >
+      {light ? <Moon size={15} /> : <Sun size={15} />}
+    </button>
+  );
+}
+
 /* ── mark + wordmark ─────────────────────────────────────────────── */
 function Wordmark({ compact }: { compact?: boolean }) {
   return (
@@ -252,7 +271,10 @@ function DesktopShell() {
               </button>
             </div>
           )}
-          <div className="mt-2.5 label">{APP_VERSION}</div>
+          <div className="mt-2.5 flex items-center justify-between">
+            <span className="label">{APP_VERSION}</span>
+            <ThemeToggle className="-mr-1" />
+          </div>
         </div>
       </aside>
 
@@ -330,7 +352,8 @@ function MobileShell() {
           <span className="mono ml-1 text-[13px] tnum text-fg">
             {s ? `${s.online}/${s.total}` : "—"}
           </span>
-          <div className="ml-auto flex items-center gap-2.5">
+          <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
             <button onClick={() => logout.mutate()} className="label">
               {t("auth.logout")}
             </button>

@@ -55,9 +55,9 @@
 
   --paper: 0 0 0;
   --bg: 0 0 0;
-  --surface: 28 28 30;        /* elevated card on true-black ground */
-  --surface-2: 44 44 46;      /* fill: input · secondary button · chip */
-  --surface-3: 58 58 60;      /* row hover · skeleton */
+  --surface: 32 32 35;        /* elevated card on true-black ground */
+  --surface-2: 48 48 51;      /* fill: input · secondary button · chip */
+  --surface-3: 62 62 66;      /* row hover · skeleton */
 
   --fg: 245 245 245;
   --fg-2: 174 174 178;
@@ -76,10 +76,10 @@
 
   --grid: 245 245 245;
 
-  /* dark: elevation is a faint top-edge highlight (a material catching light) + depth */
-  --e1: inset 0 0 0 1px rgb(255 255 255 / .04);
-  --e2: inset 0 0 0 1px rgb(255 255 255 / .05), 0 4px 16px -4px rgb(0 0 0 / .5);
-  --e3: inset 0 0 0 1px rgb(255 255 255 / .07), 0 16px 48px -12px rgb(0 0 0 / .7);
+  /* dark: elevation is a hairline of light catching the material edge + depth */
+  --e1: inset 0 0 0 1px rgb(255 255 255 / .06);
+  --e2: inset 0 0 0 1px rgb(255 255 255 / .09), 0 6px 20px -6px rgb(0 0 0 / .6);
+  --e3: inset 0 0 0 1px rgb(255 255 255 / .12), 0 20px 56px -14px rgb(0 0 0 / .8);
   --ring-focus: 0 0 0 3px rgb(var(--fg) / .22);
 }
 
