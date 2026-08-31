@@ -382,6 +382,7 @@ export const pt: Record<keyof typeof en, string> = {
   "alert.port_change": "Portas de um dispositivo mudaram",
   "alert.arp_anomaly": "Anomalia na camada ARP",
   "alert.rogue_dhcp": "Servidor DHCP inesperado",
+  "alert.fingerprint_change": "Fingerprint de dispositivo mudou",
   "alert.wan_down": "Internet em baixo",
   "alert.wan_up": "Internet recuperou",
   "alert.scan_degraded": "Scan não encontrou nada",

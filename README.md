@@ -110,8 +110,10 @@ If you'd rather own the whole thing, run NetScan.
 - **Configurable alerts** — ARP anomalies (the gateway's MAC changing, an IP
   hopping between devices), a **rogue DHCP server** answering on the LAN (the
   passive sniffer sees the OFFER; anything but the gateway or an allowlisted
-  server alerts), a per-device open-port diary (what opened or closed), merge
-  suggestions for phones that rotate their MAC, and a weekly digest.
+  server alerts), a **fingerprint change** (a known MAC that starts presenting a
+  different OS — what a spoofed address looks like), a per-device open-port diary
+  (what opened or closed), merge suggestions for phones that rotate their MAC,
+  and a weekly digest.
 - **Statistics** — new devices per day, breakdown by type, by brand, by OS, with
   logos you can assign.
 - **Multiple subnets** — scan several CIDRs; each gets its own tab.

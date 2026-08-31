@@ -194,6 +194,11 @@ class Device(Base):
     # The scan reconciler must never overwrite a field listed here.
     overrides: Mapped[str | None] = mapped_column(String(255))
 
+    # Last identity fingerprint the reconciler computed (JSON: os family, open
+    # ports). Compared on each identified cycle so a known MAC that starts
+    # presenting as a different OS raises an alert.
+    fingerprint: Mapped[str | None] = mapped_column(Text)
+
     approval_status: Mapped[ApprovalStatus] = mapped_column(
         Enum(ApprovalStatus), default=ApprovalStatus.pending, index=True
     )
