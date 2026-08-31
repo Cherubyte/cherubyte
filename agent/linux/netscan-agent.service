@@ -20,11 +20,13 @@ EnvironmentFile=-/etc/netscan-agent/agent.env
 Restart=always
 RestartSec=3
 
-# Raw sockets for the ARP sweep (scapy) and the DHCP sniffer. Running as root
-# but dropping everything else: the agent reads no files it did not write and
-# makes only outbound HTTP.
-AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
-CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+# Raw sockets for the ARP sweep (scapy) and the DHCP sniffer, and
+# CAP_NET_BIND_SERVICE for the health endpoint — port 1002 is below 1024, so
+# without it uvicorn dies at startup with EACCES and systemd restarts it
+# forever. Everything else is dropped: the agent reads no files it did not
+# write and makes only outbound HTTP.
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
