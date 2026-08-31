@@ -8,7 +8,7 @@ import { useIsMobile } from "../hooks/useMediaQuery";
 import { Avatar, Badge, Button, EmptyState, Readout, Skeleton, StatusPill } from "../components/ui";
 import { ArrowRight, Plus, Trash } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
-import { stringHsl } from "../lib/format";
+import { stringHsl, timeAgo } from "../lib/format";
 import { useT } from "../i18n";
 
 export function Users() {
@@ -46,6 +46,11 @@ export function Users() {
             {u.name}
           </span>
           <StatusPill online={u.is_present} />
+          {!u.is_present && u.last_seen && (
+            <span className="mono shrink-0 text-[10px] text-fg-3">
+              {t("common.seenAgo", { ago: timeAgo(u.last_seen) })}
+            </span>
+          )}
           <span className="mono shrink-0 text-[10px] text-fg-3">{t("users.devicesShort", { n: u.device_count })}</span>
           <ArrowRight size={12} className="ml-auto shrink-0 text-fg-3" />
         </Link>

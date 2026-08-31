@@ -29,12 +29,12 @@ async def run_action(
     session: AsyncSession = Depends(get_session),
 ):
     if action not in _STATUS:
-        raise HTTPException(404, "Ação desconhecida")
+        raise HTTPException(404, "Unknown action")
     if not action_tokens.verify(action, device_id, t):
-        raise HTTPException(403, "Token inválido ou expirado")
+        raise HTTPException(403, "Invalid or expired token")
     device = await session.get(Device, device_id)
     if device is None:
-        raise HTTPException(404, "Dispositivo não encontrado")
+        raise HTTPException(404, "Device not found")
     device.approval_status = _STATUS[action]
     await session.commit()
     return {"ok": True, "device": device.display_name, "status": device.approval_status.value}

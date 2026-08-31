@@ -29,19 +29,19 @@ class AlertKind:
 
 
 KINDS: tuple[AlertKind, ...] = (
-    AlertKind("device_new", "Dispositivo novo na rede"),
-    AlertKind("device_left", "Dispositivo não aprovado saiu"),
-    AlertKind("device_online", "Dispositivo conhecido entrou", default_on=False),
-    AlertKind("device_offline", "Dispositivo conhecido saiu", default_on=False),
-    AlertKind("port_change", "Portas de um dispositivo mudaram"),
-    AlertKind("arp_anomaly", "Anomalia na camada ARP", urgent=True),
-    AlertKind("rogue_dhcp", "Servidor DHCP não autorizado", urgent=True),
-    AlertKind("fingerprint_change", "Fingerprint de um dispositivo mudou"),
-    AlertKind("risky_port", "Porta sensível aberta num dispositivo"),
-    AlertKind("wan_down", "Internet em baixo", urgent=True),
-    AlertKind("wan_up", "Internet recuperou"),
-    AlertKind("scan_degraded", "Scan não encontrou nada", urgent=True),
-    AlertKind("weekly_summary", "Resumo semanal", default_on=False),
+    AlertKind("device_new", "New device on the network"),
+    AlertKind("device_left", "Unapproved device left"),
+    AlertKind("device_online", "Known device joined", default_on=False),
+    AlertKind("device_offline", "Known device left", default_on=False),
+    AlertKind("port_change", "A device's ports changed"),
+    AlertKind("arp_anomaly", "ARP-layer anomaly", urgent=True),
+    AlertKind("rogue_dhcp", "Unauthorized DHCP server", urgent=True),
+    AlertKind("fingerprint_change", "Device fingerprint changed"),
+    AlertKind("risky_port", "Sensitive port opened on a device"),
+    AlertKind("wan_down", "Internet down", urgent=True),
+    AlertKind("wan_up", "Internet recovered"),
+    AlertKind("scan_degraded", "Scan found nothing", urgent=True),
+    AlertKind("weekly_summary", "Weekly digest", default_on=False),
 )
 
 _BY_KEY = {k.key: k for k in KINDS}

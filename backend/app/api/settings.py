@@ -369,7 +369,7 @@ async def update_settings(
 
 @router.post("/telegram/test")
 async def test_telegram():
-    ok = await telegram.send("✅ Cherubyte: teste de notificação Telegram.")
+    ok = await telegram.send("✅ Cherubyte: Telegram test notification.")
     return {"ok": ok}
 
 
@@ -389,7 +389,7 @@ async def test_digest(session: AsyncSession = Depends(get_session)):
     data = await digest.collect(session)
     sent = await notify.broadcast(
         "weekly_summary",
-        "Resumo semanal do Cherubyte",
+        "Cherubyte weekly digest",
         digest.format_lines(data),
         emoji="📊",
         tags=["bar_chart"],
@@ -407,7 +407,7 @@ async def test_fingerbank():
 @router.post("/ntfy/test")
 async def test_ntfy():
     ok = await ntfy.send(
-        "Teste de notificação ntfy — se recebeste isto, está tudo a funcionar.",
+        "ntfy test notification — if you got this, everything is working.",
         title="✅ Cherubyte",
         tags=["white_check_mark"],
     )

@@ -89,29 +89,29 @@ async def _announce(transition: str, target: str, latency: float | None) -> None
 
     if transition == "down":
         await log_event_standalone(
-            f"Internet inacessível ({target} não responde)",
+            f"Internet unreachable ({target} not responding)",
             level=EventLevel.alert,
             category="wan",
         )
         await broadcast(
             "wan_down",
-            "Internet em baixo",
-            [f"{target} deixou de responder."],
+            "Internet down",
+            [f"{target} stopped responding."],
             emoji="🌐",
             tags=["warning"],
             prio=5,
         )
     else:
-        detail = f"{latency:.0f} ms" if latency is not None else "acessível"
+        detail = f"{latency:.0f} ms" if latency is not None else "reachable"
         await log_event_standalone(
-            f"Internet recuperou ({target}, {detail})",
+            f"Internet recovered ({target}, {detail})",
             level=EventLevel.success,
             category="wan",
         )
         await broadcast(
             "wan_up",
-            "Internet recuperou",
-            [f"{target} responde outra vez ({detail})."],
+            "Internet recovered",
+            [f"{target} is responding again ({detail})."],
             emoji="✅",
             tags=["white_check_mark"],
         )

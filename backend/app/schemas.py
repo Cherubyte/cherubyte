@@ -149,6 +149,7 @@ class UserOut(ORMModel):
     is_guest: bool = False
     is_present: bool = False
     device_count: int = 0
+    last_seen: AwareUtc | None = None
 
 
 class UserIn(BaseModel):
