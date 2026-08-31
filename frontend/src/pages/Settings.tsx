@@ -209,6 +209,7 @@ export function Settings() {
     metrics_token: "",
     enable_snmp: false,
     snmp_community: "public",
+    topology_enabled: false,
     weekly_summary_enabled: false,
     weekly_summary_weekday: 0,
     weekly_summary_hour: 9,
@@ -263,6 +264,7 @@ export function Settings() {
         metrics_enabled: settings.data.metrics_enabled,
         enable_snmp: settings.data.enable_snmp,
         snmp_community: settings.data.snmp_community,
+        topology_enabled: settings.data.topology_enabled,
         weekly_summary_enabled: settings.data.weekly_summary_enabled,
         weekly_summary_weekday: settings.data.weekly_summary_weekday,
         weekly_summary_hour: settings.data.weekly_summary_hour,
@@ -307,6 +309,7 @@ export function Settings() {
         metrics_enabled: form.metrics_enabled,
         enable_snmp: form.enable_snmp,
         snmp_community: form.snmp_community,
+        topology_enabled: form.topology_enabled,
         ...(form.metrics_token ? { metrics_token: form.metrics_token } : {}),
         weekly_summary_enabled: form.weekly_summary_enabled,
         weekly_summary_weekday: form.weekly_summary_weekday,
@@ -987,6 +990,13 @@ export function Settings() {
             />
           </Field>
         )}
+        <div className="mt-4 flex items-center justify-between rounded-lg bg-surface-2 px-3.5 py-3">
+          <div>
+            <p className="text-[13px] text-fg">{t("settings.topology.enable")}</p>
+            <p className="text-[11.5px] text-fg-3">{t("settings.topology.enableHint")}</p>
+          </div>
+          <Toggle checked={form.topology_enabled} onChange={(v) => set("topology_enabled", v)} />
+        </div>
       </section>
       </div>
 

@@ -17,6 +17,7 @@ import { Distribution } from "./pages/Distribution";
 import { Events } from "./pages/Events";
 import { Login } from "./pages/Login";
 import { Settings } from "./pages/Settings";
+import { Topology } from "./pages/Topology";
 import { UserDetail } from "./pages/UserDetail";
 import { Users } from "./pages/Users";
 
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
       { path: "users", element: <Users /> },
       { path: "users/:id", element: <UserDetail /> },
       { path: "events", element: <Events /> },
+      { path: "topology", element: <Topology /> },
       { path: "settings", element: <Settings /> },
     ],
   },

@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from .config import settings
-from . import dhcp_sniffer, discovery, snmp
+from . import arp_sniffer, dhcp_sniffer, discovery, snmp
 
 logger = logging.getLogger("cherubyte.scanner")
 
@@ -205,6 +205,22 @@ def _detect_subnet() -> tuple[str, str | None]:
     return str(net), str(iface)
 
 
+def _merge_passive_hosts(
+    hosts: dict[str, Host], targets: list[tuple[str, str | None]]
+) -> None:
+    """Fold in anything arp_sniffer overheard that this cycle's active sweep
+    didn't already find — same identity, just observed rather than solicited."""
+    if not settings.enable_passive_arp:
+        return
+    for mac, seen in arp_sniffer.all_hosts().items():
+        if mac in hosts:
+            continue
+        cidr = next((c for c, _ in targets if _in_subnet(seen.ip, c)), None)
+        if cidr is None:
+            continue
+        hosts[mac] = Host(mac=mac, ip=seen.ip, subnet=cidr)
+
+
 def _arp_scan(full_sweep: bool = True) -> list[Host]:
     from scapy.all import ARP, Ether, srp
 
@@ -249,6 +265,10 @@ def _arp_scan(full_sweep: bool = True) -> list[Host]:
         if cidr is None:
             continue
         _tag(mac, ip, cidr)
+
+    # 4) merge whatever the passive ARP sniffer has overheard — a host that
+    #    answered someone else's "who has" rather than ours this cycle
+    _merge_passive_hosts(hosts, targets)
 
     # ARP never sees the host we're running on — add it explicitly.
     me = _local_host(targets[0][1] if targets else None)

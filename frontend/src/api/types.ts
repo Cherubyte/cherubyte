@@ -82,6 +82,20 @@ export interface UpdateStatus {
   apply: UpdateApplyStatus;
 }
 
+export interface TopologyLink {
+  local: string;
+  local_device_id: number | null;
+  local_port: string | null;
+  remote: string;
+  remote_port: string | null;
+  seen_at: string;
+}
+
+export interface Topology {
+  nodes: string[];
+  edges: TopologyLink[];
+}
+
 export interface Mac {
   address: string;
   vendor: string | null;
@@ -296,6 +310,7 @@ export interface AppSettings {
   metrics_path: string;
   enable_snmp: boolean;
   snmp_community: string;
+  topology_enabled: boolean;
   weekly_summary_enabled: boolean;
   weekly_summary_weekday: number;
   weekly_summary_hour: number;

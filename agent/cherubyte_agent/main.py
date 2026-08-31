@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from . import dhcp_sniffer, reporter, wol
+from . import arp_sniffer, dhcp_sniffer, reporter, wol
 from .collector import collect
 from .config import apply_config, settings
 
@@ -111,11 +111,14 @@ async def _loop() -> None:
 async def lifespan(app: FastAPI):
     if settings.enable_dhcp_sniffer:
         dhcp_sniffer.start()
+    if settings.enable_passive_arp:
+        arp_sniffer.start()
     task = asyncio.create_task(_loop())
     logger.info("Cherubyte agent up; panel=%s", reporter.panel_base())
     yield
     task.cancel()
     dhcp_sniffer.stop()
+    arp_sniffer.stop()
 
 
 app = FastAPI(title="Cherubyte agent", version=reporter.AGENT_VERSION, lifespan=lifespan)
