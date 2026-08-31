@@ -1,60 +1,138 @@
 import { useEffect, useState } from "react";
 
 /**
- * Light / dark theme. `:root` is the light chart sheet; the `.dark` class opts
- * into the ECDIS-night palette. The choice is persisted per browser and shared
- * across every consumer (module-level store), so the toggle in Config ▸
- * Interface and any other reader stay in sync. Default is light.
+ * Light / dark theme, following the operating system by default.
  *
- * The public API keeps a `light` flag (and `setLight` / `toggle`) so callers
- * read as "is the light sheet showing?".
+ * `:root` is the light chart sheet; the `.dark` class opts into the
+ * ECDIS-night palette. Three states, not two:
+ *
+ *   system  — follow `prefers-color-scheme`, and keep following it when the OS
+ *             flips (many desktops do that on a schedule)
+ *   light   — pinned, whatever the OS says
+ *   dark    — pinned
+ *
+ * The choice is persisted per browser and shared across every consumer through
+ * a module-level store, so the toggle in the header and the control in
+ * Config ▸ Interface stay in sync.
+ *
+ * The `light` / `setLight` / `toggle` half of the API is the *resolved* theme,
+ * so callers that only ask "is the light sheet showing?" keep working.
  */
-function readLight(): boolean {
+
+export type ThemePref = "system" | "light" | "dark";
+
+const KEY = "netscan-theme-pref";
+
+/**
+ * The old key, deliberately not migrated.
+ *
+ * The previous implementation wrote `netscan-theme` on *every* page load,
+ * before anyone had touched a control — so a stored value there is not evidence
+ * that anybody chose anything. Honouring it would pin every existing visitor to
+ * a theme they never picked, which is exactly the bug this change exists to fix.
+ * Someone who did choose deliberately gets moved to `system` and re-picks with
+ * one click; the alternative silently ignores the OS for everybody.
+ */
+const LEGACY_KEY = "netscan-theme";
+
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+function media(): MediaQueryList | null {
   try {
-    // default (unset) is the light chart sheet
-    return localStorage.getItem("netscan-theme") !== "dark";
+    return window.matchMedia(DARK_QUERY);
   } catch {
-    return true;
+    // no matchMedia (very old browser, or a non-DOM test environment)
+    return null;
   }
 }
 
-let light = readLight();
-let animate = false;
-const subs = new Set<(v: boolean) => void>();
-
-function apply() {
-  const r = document.documentElement;
-  r.classList.toggle("dark", !light);
+function readPref(): ThemePref {
   try {
-    localStorage.setItem("netscan-theme", light ? "light" : "dark");
+    const stored = localStorage.getItem(KEY);
+    if (stored === "light" || stored === "dark" || stored === "system") return stored;
   } catch {
     /* private mode */
   }
+  return "system";
+}
+
+function systemIsDark(): boolean {
+  return media()?.matches ?? false;
+}
+
+/** Whether the light sheet should show, for a given preference. */
+export function resolve(p: ThemePref): boolean {
+  return p === "system" ? !systemIsDark() : p === "light";
+}
+
+let pref = readPref();
+let light = resolve(pref);
+let animate = false;
+const subs = new Set<() => void>();
+
+function apply() {
+  const root = document.documentElement;
+  root.classList.toggle("dark", !light);
   if (animate) {
-    r.classList.add("theme-anim");
-    setTimeout(() => r.classList.remove("theme-anim"), 180);
+    root.classList.add("theme-anim");
+    setTimeout(() => root.classList.remove("theme-anim"), 180);
   }
 }
 
-function setLight(v: boolean) {
-  if (v === light) return;
-  light = v;
-  animate = true;
-  apply();
-  subs.forEach((fn) => fn(light));
+function persist() {
+  try {
+    localStorage.setItem(KEY, pref);
+    // the old key is meaningless now, and leaving it invites a future reader to
+    // trust it
+    localStorage.removeItem(LEGACY_KEY);
+  } catch {
+    /* private mode */
+  }
 }
 
-// apply the persisted choice on first import, without the cross-fade
+function update(next: ThemePref, { store = true } = {}) {
+  const wasLight = light;
+  pref = next;
+  light = resolve(pref);
+  if (store) persist();
+  if (light !== wasLight) {
+    animate = true;
+    apply();
+  }
+  subs.forEach((fn) => fn());
+}
+
+export function setPref(next: ThemePref) {
+  if (next !== pref) update(next);
+}
+
+/** Pin the theme. Used by the two-state controls. */
+export function setLight(v: boolean) {
+  setPref(v ? "light" : "dark");
+}
+
+/** Flip to the opposite of what is currently showing, and pin it. */
+export function toggle() {
+  setLight(!light);
+}
+
+// Apply the resolved theme on first import, without the cross-fade, and without
+// writing anything: a visitor who has never chosen must stay on `system`.
 apply();
 
+// Follow the OS while the preference is `system`.
+media()?.addEventListener?.("change", () => {
+  if (pref === "system") update("system", { store: false });
+});
+
 export function useTheme() {
-  const [value, setValue] = useState(light);
+  const [, force] = useState(0);
   useEffect(() => {
-    const fn = (v: boolean) => setValue(v);
+    const fn = () => force((n) => n + 1);
     subs.add(fn);
     return () => {
       subs.delete(fn);
     };
   }, []);
-  return { light: value, setLight, toggle: () => setLight(!light) };
+  return { light, pref, setLight, setPref, toggle };
 }

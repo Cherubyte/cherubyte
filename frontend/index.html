@@ -18,6 +18,30 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23171717'/%3E%3Ccircle cx='16' cy='16' r='8.5' fill='none' stroke='%23fafaf9' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23fafaf9'/%3E%3C/svg%3E"
     />
     <title>NetScan</title>
+    <script>
+      /*
+        Set the theme before the first paint. The React module does the same
+        thing, but it only runs once the bundle has been fetched and executed —
+        so without this a dark-mode visitor gets a white flash on every load,
+        and the flash gets worse the more the app follows the OS.
+
+        Mirrors readPref()/resolve() in src/hooks/useTheme.ts. Kept tiny on
+        purpose: the module re-applies immediately after, so any divergence
+        costs a flicker rather than a wrong theme.
+      */
+      (function () {
+        try {
+          var p = localStorage.getItem("netscan-theme-pref");
+          var dark =
+            p === "dark" ||
+            ((p !== "light") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {
+          /* private mode, or no matchMedia — fall through to the light sheet */
+        }
+      })();
+    </script>
   </head>
   <body>
     <!--
