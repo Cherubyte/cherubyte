@@ -51,6 +51,10 @@ export function DeviceDetail() {
     queryKey: ["device", deviceId, "history"],
     queryFn: () => api.deviceHistory(deviceId),
   });
+  const uptime = useQuery({
+    queryKey: ["device", deviceId, "uptime"],
+    queryFn: () => api.deviceUptime(deviceId, 30),
+  });
   const users = useQuery({ queryKey: ["users"], queryFn: api.users });
 
   const [draft, setDraft] = useState<DevicePatch>({});
@@ -110,6 +114,7 @@ export function DeviceDetail() {
   const dirty = Object.keys(draft).length > 0;
   const osLogo = d.os_family ? osLogos.get(d.os_family.toLowerCase()) : undefined;
 
+  const upRatio = uptime.data?.ratio;
   const facts: [string, React.ReactNode][] = [
     [t("device.fact.ip"), primaryIp],
     [t("device.fact.mac"), d.macs[0]?.address ?? "—"],
@@ -117,6 +122,9 @@ export function DeviceDetail() {
     [t("device.fact.system"), d.os_family ?? "—"],
     [t("device.fact.owner"), d.user?.name ?? "—"],
     [t("device.fact.firstSeen"), dateTime(d.first_seen)],
+    ...(upRatio != null
+      ? ([[t("device.fact.uptime"), `${(upRatio * 100).toFixed(1)}% · ${t("device.fact.uptimeDays", { n: 30 })}`]] as [string, React.ReactNode][])
+      : []),
   ];
 
   const identity = (

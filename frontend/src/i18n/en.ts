@@ -181,6 +181,8 @@ export const en = {
   "device.fact.system": "System",
   "device.fact.owner": "Owner",
   "device.fact.firstSeen": "First seen",
+  "device.fact.uptime": "Online",
+  "device.fact.uptimeDays": "{n}d",
   "device.seenAgo": "seen {ago}",
   "device.section.identity": "Identity",
   "device.field.nickname": "Nickname",
