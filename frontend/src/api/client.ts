@@ -68,6 +68,7 @@ export interface DevicePatch {
   user_id?: number | null;
   counts_for_presence?: boolean;
   notify_policy?: NotifyPolicy;
+  tags?: string[];
 }
 
 export const api = {
@@ -94,6 +95,7 @@ export const api = {
       `/devices/${id}/uptime?days=${days}`,
     ),
   devicesCsvUrl: () => BASE + "/devices/export.csv",
+  deviceTags: () => req<string[]>("/devices/tags"),
   mergeDevices: (targetId: number, sourceIds: number[]) =>
     req<Device>(`/devices/${targetId}/merge`, {
       method: "POST",

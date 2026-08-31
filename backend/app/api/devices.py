@@ -117,6 +117,26 @@ async def merge_suggestions(session: AsyncSession = Depends(get_session)):
     ]
 
 
+@router.get("/tags")
+async def list_tags(session: AsyncSession = Depends(get_session)):
+    """Every distinct tag in use, most common first — for the filter and the
+    add-a-tag autocomplete. Declared before `/{device_id}`."""
+    rows = (
+        await session.execute(select(Device.tags).where(Device.tags.is_not(None)))
+    ).scalars().all()
+    counts: dict[str, int] = {}
+    display: dict[str, str] = {}
+    for raw in rows:
+        for t in (raw or "").split(","):
+            if not t:
+                continue
+            k = t.lower()
+            counts[k] = counts.get(k, 0) + 1
+            display.setdefault(k, t)
+    ordered = sorted(counts, key=lambda k: (-counts[k], k))
+    return [display[k] for k in ordered]
+
+
 @router.get("/export.csv")
 async def export_devices_csv(session: AsyncSession = Depends(get_session)):
     """The whole device inventory as CSV. Declared before `/{device_id}` so the
@@ -128,7 +148,7 @@ async def export_devices_csv(session: AsyncSession = Depends(get_session)):
     w = csv.writer(buf)
     w.writerow(
         ["id", "name", "type", "vendor", "model", "os", "approval", "online",
-         "primary_ip", "ips", "macs", "owner", "first_seen", "last_seen"]
+         "primary_ip", "ips", "macs", "owner", "tags", "first_seen", "last_seen"]
     )
     for d in devices:
         primary = next((i.address for i in d.ips if i.is_primary), None)
@@ -147,6 +167,7 @@ async def export_devices_csv(session: AsyncSession = Depends(get_session)):
             " ".join(i.address for i in d.ips),
             " ".join(m.address for m in d.macs),
             d.user.name if d.user else "",
+            " ".join(d.tag_list),
             iso_utc(d.first_seen) or "",
             iso_utc(d.last_seen) or "",
         ])
@@ -185,6 +206,7 @@ async def list_devices(
                 or any(needle in i.address.lower() for i in d.ips)
                 or any(needle in m.address.lower() for m in d.macs)
                 or needle in (d.vendor or "").lower()
+                or needle in (d.tags or "").lower()
             )
         devices = [d for d in devices if match(d)]
     return devices
@@ -208,6 +230,9 @@ async def update_device(
     data = payload.model_dump(exclude_unset=True)
     locked = device.locked_fields
     for key, value in data.items():
+        if key == "tags":
+            device.set_tags(value or [])
+            continue
         if isinstance(value, str):
             value = value.strip() or None
         setattr(device, key, value)

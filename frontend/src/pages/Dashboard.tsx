@@ -35,6 +35,7 @@ export function Dashboard() {
   const [q, setQ] = useState("");
   const [filterSheet, setFilterSheet] = useState(false);
   const [subnetTab, setSubnetTab] = useState("all");
+  const [tag, setTag] = useState<string | null>(null);
 
   const stats = useQuery({ queryKey: ["stats"], queryFn: api.stats });
   const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings });
@@ -53,10 +54,17 @@ export function Dashboard() {
     subnets.length > 0 &&
     all.some((d) => !subnets.some((sn) => ipInCidr(primaryIp(d), sn.cidr)));
 
+  const tags = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const d of all) for (const g of d.tags) c.set(g, (c.get(g) ?? 0) + 1);
+    return [...c.keys()].sort((a, b) => (c.get(b)! - c.get(a)!) || a.localeCompare(b));
+  }, [all]);
+
   const rows = useMemo(() => {
     let list = all;
     if (filter === "online") list = list.filter((d) => d.is_online);
     if (filter === "pending") list = list.filter((d) => d.approval_status === "pending");
+    if (tag) list = list.filter((d) => d.tags.some((g) => g.toLowerCase() === tag.toLowerCase()));
     if (subnets.length > 0 && subnetTab !== "all") {
       list =
         subnetTab === "other"
@@ -71,10 +79,11 @@ export function Dashboard() {
           (d.vendor ?? "").toLowerCase().includes(n) ||
           (d.os_family ?? "").toLowerCase().includes(n) ||
           d.ips.some((i) => i.address.includes(n)) ||
-          d.macs.some((m) => m.address.toLowerCase().includes(n)),
+          d.macs.some((m) => m.address.toLowerCase().includes(n)) ||
+          d.tags.some((g) => g.toLowerCase().includes(n)),
       );
     return list;
-  }, [all, filter, q, subnets, subnetTab]);
+  }, [all, filter, q, subnets, subnetTab, tag]);
 
   const blind = !!s?.agents_stale && (s?.agents_configured ?? 0) > 0;
 
@@ -162,6 +171,27 @@ export function Dashboard() {
               {tab.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* tag filter */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {tags.map((g) => {
+            const on = tag?.toLowerCase() === g.toLowerCase();
+            return (
+              <button
+                key={g}
+                onClick={() => setTag(on ? null : g)}
+                className={clsx(
+                  "shrink-0 rounded-full px-3 py-1 text-[12px] font-medium transition-colors",
+                  on ? "bg-fg text-surface" : "bg-fg/[0.06] text-fg-2 hover:bg-fg/10 hover:text-fg",
+                )}
+              >
+                {g}
+              </button>
+            );
+          })}
         </div>
       )}
 

@@ -200,6 +200,11 @@ function Row({
               {t("list.unreviewed")}
             </span>
           )}
+          {d.tags.slice(0, 2).map((g) => (
+            <span key={g} className="hidden shrink-0 rounded bg-fg/[0.07] px-1.5 py-0.5 text-[10px] text-fg-3 sm:inline">
+              {g}
+            </span>
+          ))}
         </div>
         <div className="mono mt-0.5 truncate text-[10.5px] text-fg-3 sm:hidden">
           {ip} · {deviceTypeLabel(d.device_type)}

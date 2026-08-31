@@ -216,6 +216,10 @@ class Device(Base):
     # join/leave regardless of them, "mute" silences this device entirely.
     notify_policy: Mapped[str] = mapped_column(String(16), default="default")
 
+    # Free-text labels the user attaches — a room, a purpose, a person's kit.
+    # Comma-separated on the column; `tag_list` / `set_tags` do the parsing.
+    tags: Mapped[str | None] = mapped_column(String(255))
+
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     user: Mapped[User | None] = relationship(back_populates="devices")
 
@@ -245,6 +249,18 @@ class Device(Base):
     @property
     def locked_fields(self) -> set[str]:
         return {f for f in (self.overrides or "").split(",") if f}
+
+    @property
+    def tag_list(self) -> list[str]:
+        return [t for t in (self.tags or "").split(",") if t]
+
+    def set_tags(self, values: list[str]) -> None:
+        seen: dict[str, str] = {}
+        for raw in values:
+            t = " ".join(raw.split()).strip(" #").strip()[:32]
+            if t and t.lower() not in seen:
+                seen[t.lower()] = t
+        self.tags = ",".join(seen.values()) or None
 
     @property
     def default_label(self) -> str:
