@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,6 +8,20 @@ DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+def _read_app_version() -> str:
+    """`frontend/package.json`'s `version` is the single source of truth for the
+    app (see docs/RELEASING.md) — the frontend build reads the same file. Both a
+    git checkout and the Docker image keep it at `<repo root>/frontend/package.json`."""
+    pkg = BASE_DIR.parent / "frontend" / "package.json"
+    try:
+        return json.loads(pkg.read_text())["version"]
+    except (OSError, ValueError, KeyError):
+        return "0.0.0"
+
+
+APP_VERSION = _read_app_version()
 
 
 def _migrate_legacy_db() -> None:
