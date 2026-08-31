@@ -2,9 +2,12 @@
 
 The NetScan panel as a calm, near-monochrome instrument — in the spirit of an
 Apple system app and [curated.supply](https://www.curated.supply/). Near-black ink
-on a warm off-white ground, hairline rules, generous rhythm, restraint. Weight and
-space carry the hierarchy; **no accent hue** — red is held back for a real alert or
-a destructive action. Fluid, interruptible spring motion, all of it optional under
+on a soft grey ground, generous rhythm, restraint. **Depth is elevation, not a
+stroke**: white cards float on the grey ground with a soft shadow, controls are
+filled greys, chips and secondary buttons have no outline. The one hairline kept
+is the inset separator inside a grouped list. Weight and space carry the
+hierarchy; **no accent hue** — red is held back for a real alert or a destructive
+action. Fluid, interruptible spring motion, all of it optional under
 `prefers-reduced-motion`.
 
 This supersedes v8 "CHART" (hydrographic-chart metaphor: buff paper, a ruled
@@ -21,16 +24,20 @@ toggles `.dark`, default light).
 
 | Token | Light | Dark | Role |
 |---|---|---|---|
-| `--bg` / `--paper` | `250 250 249` | `12 12 12` | the page — warm off-white, no texture |
-| `--surface` | `255 255 255` | `24 24 24` | a card (`.panel`) |
-| `--surface-2` | `245 245 243` | `33 33 33` | input · row hover · sunken cell (`.core`) |
-| `--surface-3` | `236 236 233` | `44 44 44` | skeleton |
+| `--bg` / `--paper` | `242 242 245` | `0 0 0` | the page — soft grey ground / true black |
+| `--surface` | `255 255 255` | `28 28 30` | a card (`.panel`) — floats on the ground, no stroke |
+| `--surface-2` | `240 240 243` | `44 44 46` | fill: sunken cell (`.core`), thumbnails, chip tracks |
+| `--surface-3` | `230 230 234` | `58 58 60` | row hover · skeleton |
 | `--fg` | `23 23 23` | `245 245 245` | primary ink — near-black |
-| `--fg-2` | `82 82 82` | `168 168 168` | secondary |
-| `--fg-3` | `140 140 137` | `115 115 115` | muted · `.label` / `.key` · meta |
-| `--edge` | `231 231 228` | `38 38 38` | hairline |
-| `--edge-2` | `214 214 210` | `58 58 58` | control border |
+| `--fg-2` | `92 92 96` | `174 174 178` | secondary |
+| `--fg-3` | `142 142 147` | `122 122 128` | muted · `.label` / `.key` · meta |
+| `--edge` / `--edge-2` | `226 · 210` grey | `56 · 72` grey | the one hairline: inset list separators |
 | `--alert` | `200 38 38` | `248 113 113` | error · destructive · needs-action |
+
+Filled controls (`.input`, `.btn-secondary`, `.tag-neutral`, segmented tracks) use
+`rgb(var(--fg) / .05–.11)` — a translucent grey that adapts to whatever surface it
+sits on. Elevation: `--e2` is a soft drop shadow in light, a faint inset top-edge
+highlight + depth in dark. `--e3` (modals/toasts) is shadow only, no ring.
 
 **Legacy tokens kept, remapped:** `--signal` and `--water` both resolve to `--fg`,
 so every "active / selected / online" state that older classes expressed as a spot
@@ -48,19 +55,20 @@ colour now reads as ink. `signal-bg` / `signal-fg` = ink fill / surface text.
 
 ### Depth & shape
 
-`--e1` a hairline ring; `--e2` a hairline + `0 1px 2px` lift (`.panel`); `--e3`
-(modals) a soft `0 24px 60px`. Radii: cards `12px`, controls `8px`, chips `6px`,
-marks / avatars full. Focus ring: `0 0 0 3px rgb(--fg / .14)` + ink border.
+`--e2` a soft drop shadow (`.panel`); `--e3` (modals/toasts) a deeper shadow, no
+ring. Radii: cards `14px`, controls `8–10px`, chips `6px`, thumbnails `10px`,
+marks / avatars full. Focus ring: `0 0 0 3px rgb(--fg / .14)`, no border.
 
 ## Chrome — `components/Shell.tsx`
 
-**Desktop:** a `232px` sidebar on `--surface` — `AppMark` + `NetScan` wordmark,
-then the nav as rounded items with a `--surface-2` selection fill behind the
-active one (no number codes, no leader tick). Foot: primary **Scan** button
-(editors), account + role, version. A sticky **translucent toolbar**
-(`bg-surface/75` + `backdrop-blur-xl`) carries the section title (plain sentence
-case) and quiet mono vitals — subnet · online/total · last scan · clock. Main
-column `max-w-[1240px]`.
+**Desktop:** a `228px` sidebar that sits on the grey ground with no divider —
+`AppMark` + `NetScan` wordmark,
+then the nav as rounded items — the active one is a white pill (`--surface` +
+a whisper of shadow), no number codes, no leader tick. Foot: primary **Scan**
+button (editors), account + role, version. A sticky **translucent toolbar**
+(`bg-bg/70` + `backdrop-blur-xl`, no divider) carries the section title (plain
+sentence case) and quiet mono vitals — subnet · online/total · last scan · clock.
+Main column `max-w-[1240px]`.
 
 **Mobile:** translucent top bar (mark + online/total + Scan + sign-out) with a
 scrollable vitals line → translucent bottom tab bar, active tab = filled icon +
@@ -75,36 +83,41 @@ the old survey line).
   toggles, dialogs.
 - `sheetSpring` — `{spring, bounce:0.18, duration:0.42}` — surfaces that "arrive":
   `Sheet` (drag-to-dismiss with velocity), `Dialog` on mobile.
-- Route body: `AnimatePresence mode="wait"` + fade/rise (`useViewTransition`).
-- `Toggle` — animated knob spring. `Toaster` — `AnimatePresence` spring in/out.
+- Route body: a keyed `motion.div` fade/rise per `pathname`.
+- `Toggle` — an iOS-style switch, animated knob spring. `Toaster` — `AnimatePresence`
+  spring in/out.
 - `useReducedMotion()` everywhere → opacity-only or instant; the CSS keyframes in
   `index.css` (`view-in`, `sheet-up`, …) remain as the no-JS / reduced fallback.
 
 ## Components — `components/ui.tsx`
 
 Export names and prop signatures are unchanged from "CHART" — only the visuals.
-`.panel` a 12px card; `.core` a sunken cell; `.btn-primary` the ink fill,
-`.btn-danger` red; `.input` a sunken cell with an ink focus border + soft ring;
-`.tag` a 6px chip (`tag-signal` = ink fill); `.signal-mark` a small dot
-(`--on` ink, `--alert` red, `--off` a hollow hairline ring that keeps its slot).
-`QueryState` copy: "Couldn't load" / "Something went wrong." (`common.*` keys).
+`.panel` a 14px card, shadow only, no border; `.core` a grey sunken fill;
+`.btn-primary` the ink fill, `.btn-secondary` a grey fill, `.btn-danger` a red
+tint that commits to solid on hover; `.input` a translucent-grey fill with no
+stroke, an ink focus ring; `.tag` a 6px filled chip (`tag-signal` = ink fill,
+`tag-neutral` / `tag-alert` = tint); `.signal-mark` a small dot (`--on` ink,
+`--alert` red, `--off` a hollow hairline that keeps its slot). Segmented controls,
+subnet tabs and filter chips are all filled pills on a translucent-grey track.
+`QueryState` / error states use an `alert/10` tinted block, not a border.
 
 ## Key surfaces
 
 - **Dashboard** — an **overview card**: a large online count `/ total`, then
-  Present · New today · Internet uptime + latency spark, split by hairlines; a red
-  "N · Review" cell appended only when devices await review. Then search + a
-  segmented filter → the device list.
-- **Device list** (`components/DeviceListView.tsx`) — one `.panel` with `divide-y`
-  hairlines. Columns: status dot · thumbnail · name + sub · address · owner · type
-  · OS · last-seen (the old chart-coordinate "Ref" column is gone). Online rows
-  are full-strength ink; offline rows dim under an `Offline · n` rule. Row hover
-  `--surface-2`; a new device gets one soft `row-flash`.
+  Present · New today · Internet uptime + latency spark, spaced with generous
+  gaps (no dividers); a red-tinted "N · Review" pill only when devices await review.
+  Then a search field + filter segmented control → the device list.
+- **Device list** (`components/DeviceListView.tsx`) — one borderless `.panel` with
+  `divide-y` inset separators. Columns: status dot · thumbnail (10px round-square)
+  · name + sub · address · owner · type · OS · last-seen. Online rows full-strength
+  ink; offline rows dim under an `Offline · n` rule. Row hover `--surface-2`; a new
+  device gets one soft `row-flash`.
 - **People** (`components/PresenceHeatmap.tsx`) — the strip-recorder stays; present
-  intervals are solid **ink** bars, hairline 6-hour gridlines, an ink "now" needle.
+  intervals are solid **ink** bars, faint 6-hour gridlines, an ink "now" needle.
 - **Settings** — the side-list category nav (rounded items, no codes); every
-  section restyled to the new tokens. `Channel` is a rounded bordered card.
-- **Login** — `AppMark` + wordmark over a single `.panel`, plain "Sign in".
+  section restyled. `Channel` is a filled grey block; its expanded body is white
+  so the fields read against it.
+- **Login** — `AppMark` + wordmark over a single floating `.panel`, plain "Sign in".
 
 ## Copy
 

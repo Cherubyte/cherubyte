@@ -41,7 +41,7 @@ export function Sheet({
             onClick={onClose}
           />
           <motion.div
-            className="relative max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-edge bg-surface pb-[env(safe-area-inset-bottom)] shadow-e3"
+            className="relative max-h-[85vh] overflow-y-auto rounded-t-[20px] bg-surface pb-[env(safe-area-inset-bottom)] shadow-e3"
             initial={reduced ? { opacity: 0 } : { y: "100%" }}
             animate={reduced ? { opacity: 1 } : { y: 0 }}
             exit={reduced ? { opacity: 0 } : { y: "100%" }}
@@ -53,8 +53,8 @@ export function Sheet({
               if (info.offset.y > 90 || info.velocity.y > 500) onClose();
             }}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-edge bg-surface px-4 py-3">
-              <span className="mx-auto absolute left-1/2 top-1.5 h-1 w-9 -translate-x-1/2 rounded-full bg-edge-2" />
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-4 pb-2.5 pt-4">
+              <span className="absolute left-1/2 top-1.5 h-1 w-9 -translate-x-1/2 rounded-full bg-fg/15" />
               <span className="font-display text-[13.5px] text-fg">{title}</span>
               <button onClick={onClose} className="text-fg-3 hover:text-fg">
                 <Close size={15} />

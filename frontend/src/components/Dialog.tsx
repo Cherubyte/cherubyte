@@ -58,12 +58,12 @@ export function Dialog({
           <motion.div
             {...panelMotion}
             className={
-              "relative flex max-h-[85vh] flex-col overflow-hidden border border-edge bg-surface shadow-e3 " +
-              (isMobile ? "w-full rounded-t-2xl pb-[env(safe-area-inset-bottom)]" : "rounded-2xl")
+              "relative flex max-h-[85vh] flex-col overflow-hidden bg-surface shadow-e3 " +
+              (isMobile ? "w-full rounded-t-[20px] pb-[env(safe-area-inset-bottom)]" : "rounded-2xl")
             }
             style={{ width: isMobile ? "100%" : width }}
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-edge px-4 py-3">
+            <div className="flex shrink-0 items-center justify-between px-4 pb-2.5 pt-3.5">
               <span className="font-display text-[13.5px] text-fg">{title}</span>
               <button onClick={onClose} className="text-fg-3 transition-colors hover:text-fg">
                 <Close size={15} />

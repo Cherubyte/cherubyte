@@ -290,7 +290,7 @@ export function DeviceDetail() {
                 const act = portAction(ip, p.port, p.service);
                 const hint = risk ? `${t(act.hint)} · ${risk}` : t(act.hint);
                 const cls = clsx(
-                  "tag inline-flex items-center gap-1 transition-colors hover:border-fg hover:text-fg",
+                  "tag inline-flex items-center gap-1 transition-colors hover:text-fg",
                   risk ? "tag-alert" : "tag-neutral",
                 );
                 if (act.kind === "web" || act.kind === "scheme")
@@ -356,7 +356,7 @@ export function DeviceDetail() {
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {d.images.map((img) => (
-            <div key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border border-edge bg-surface-2">
+            <div key={img.id} className="group relative aspect-square overflow-hidden rounded-xl">
               <img src={img.url} alt="" className="h-full w-full object-contain" />
               <button
                 onClick={() => delImage.mutate(img.id)}
@@ -432,9 +432,9 @@ export function DeviceDetail() {
           <h1 className="font-display truncate text-[28px] leading-tight text-fg sm:text-[34px]">
             {d.display_name}
           </h1>
-          <dl className="mt-4 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+          <dl className="core mt-4 grid grid-cols-1 gap-x-8 gap-y-2 px-3.5 py-3 sm:grid-cols-2">
             {facts.map(([k, v]) => (
-              <div key={k} className="flex items-baseline gap-2 border-b border-edge py-2">
+              <div key={k} className="flex items-baseline gap-2">
                 <dt className="label shrink-0">{k}</dt>
                 <span className="h-px flex-1" />
                 <dd className="mono truncate text-right text-[11.5px] text-fg-2">{v}</dd>
@@ -465,7 +465,7 @@ export function DeviceDetail() {
       )}
 
       {isMobile && (
-        <div className="sticky bottom-16 -mx-4 flex gap-2 border-t border-edge bg-surface px-4 py-3">
+        <div className="sticky bottom-16 -mx-4 flex gap-2 bg-bg/85 px-4 py-3 shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
           {d.approval_status !== "approved" && (
             <Button variant="primary" className="flex-1" icon={<Check size={13} />} onClick={() => approve.mutate()}>{t("common.approve")}</Button>
           )}

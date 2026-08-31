@@ -13,6 +13,10 @@ import { hms } from "../lib/format";
 import { AppMark } from "./Glyph";
 import { motion, useReducedMotion, snappy, fade } from "../lib/motion";
 import { useT, type MessageKey } from "../i18n";
+import { translate } from "../i18n/translate";
+
+/** Toast confirmations are always in English, regardless of the UI locale. */
+const enT = (k: MessageKey, vars?: Record<string, string | number>) => translate("en", k, vars);
 import {
   HostsIcon,
   ReviewIcon,
@@ -59,7 +63,6 @@ function activeKey(pathname: string): string {
 function useScan() {
   const qc = useQueryClient();
   const toast = useToast();
-  const t = useT();
   const [running, setRunning] = useState(false);
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["devices"] });
@@ -73,23 +76,23 @@ function useScan() {
       // and the response says what actually happened.
       if (data.status === "no-agents") {
         setRunning(false);
-        toast({ tone: "error", title: t("scan.noAgents"), desc: t("scan.noAgentsDesc") });
+        toast({ tone: "error", title: enT("scan.noAgents"), desc: enT("scan.noAgentsDesc") });
         return;
       }
       if (data.status === "stale") {
         setRunning(false);
-        toast({ tone: "error", title: t("scan.staleTitle"), desc: t("scan.staleDesc") });
+        toast({ tone: "error", title: enT("scan.staleTitle"), desc: enT("scan.staleDesc") });
         void refresh();
         return;
       }
       if (data.status === "queued") {
         setRunning(false);
-        toast({ tone: "info", title: t("scan.queued") });
+        toast({ tone: "info", title: enT("scan.queued") });
         void refresh();
         return;
       }
       // triggered: give the agent a moment to sweep and report back
-      toast({ tone: "success", title: t("scan.triggered", { n: data.triggered }) });
+      toast({ tone: "success", title: enT("scan.triggered", { n: data.triggered }) });
       setTimeout(async () => {
         setRunning(false);
         await refresh();
@@ -97,7 +100,7 @@ function useScan() {
     },
     onError: () => {
       setRunning(false);
-      toast({ tone: "error", title: t("scan.failed") });
+      toast({ tone: "error", title: enT("scan.failed") });
     },
   });
   return { run: () => mut.mutate(), running: running || mut.isPending };
@@ -195,13 +198,13 @@ function DesktopShell() {
 
   return (
     <div className="flex h-screen bg-bg">
-      {/* sidebar */}
-      <aside className="flex w-[232px] shrink-0 flex-col border-r border-edge bg-surface">
-        <div className="flex h-[56px] items-center px-5">
+      {/* sidebar — sits on the grey ground, no divider */}
+      <aside className="flex w-[228px] shrink-0 flex-col">
+        <div className="flex h-[60px] items-center px-6">
           <Wordmark />
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-3">
+        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
           {ROUTES.map((r) => {
             const on = r.to === active;
             const pend = r.to === "/approvals" && (s?.pending ?? 0) > 0;
@@ -211,8 +214,8 @@ function DesktopShell() {
                 to={r.to}
                 end={r.end}
                 className={clsx(
-                  "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] transition-colors",
-                  on ? "bg-surface-2 text-fg" : "text-fg-2 hover:bg-surface-2/60 hover:text-fg",
+                  "group relative flex items-center gap-3 rounded-[10px] px-3 py-[7px] text-[13.5px] transition-colors",
+                  on ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:bg-fg/[0.05] hover:text-fg",
                 )}
               >
                 <r.Icon size={16} className={on ? "text-fg" : "text-fg-3 group-hover:text-fg-2"} />
@@ -227,7 +230,7 @@ function DesktopShell() {
           })}
         </nav>
 
-        <div className="border-t border-edge p-3.5">
+        <div className="p-3.5">
           {canWrite && (
             <button onClick={run} disabled={running} className="btn btn-primary w-full">
               {running ? t("shell.sweeping") : t("shell.sweep")}
@@ -255,7 +258,7 @@ function DesktopShell() {
 
       {/* content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-10 flex h-[56px] shrink-0 items-center gap-6 border-b border-edge bg-surface/75 px-8 backdrop-blur-xl">
+        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-6 bg-bg/70 px-8 backdrop-blur-xl">
           <h1 className="font-display text-[15px] text-fg">{t(titleKeyOf(pathname))}</h1>
           <div className="ml-auto flex items-center gap-5 text-[12px] text-fg-3">
             <Vital k={t("shell.vital.subnet")} v={s?.subnet ?? "—"} />
@@ -321,7 +324,7 @@ function MobileShell() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-40 shrink-0 border-b border-edge bg-surface/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 shrink-0 bg-bg/80 shadow-[0_1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
         <div className="flex h-[52px] items-center gap-2.5 px-4">
           <Wordmark compact />
           <span className="mono ml-1 text-[13px] tnum text-fg">
@@ -338,7 +341,7 @@ function MobileShell() {
             )}
           </div>
         </div>
-        <div className="mono flex items-center gap-x-3 overflow-x-auto border-t border-edge px-4 py-1.5 text-[10.5px] text-fg-3">
+        <div className="mono flex items-center gap-x-3 overflow-x-auto px-4 pb-2 text-[10.5px] text-fg-3">
           <span>{s?.subnet ?? "—"}</span>
           <span className="text-fg-2">{s ? t("shell.onlineCount", { n: s.online }) : "—"}</span>
           <span>{cadence(iv)}</span>
@@ -359,7 +362,7 @@ function MobileShell() {
       </main>
 
       {/* bottom tabs */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-edge bg-surface/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch bg-bg/85 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
         {ROUTES.map((r) => {
           const on = r.to === active;
           return (

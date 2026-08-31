@@ -156,7 +156,7 @@ export function SectionHeader({
   return (
     <div
       className={clsx(
-        "mb-4 flex items-center justify-between gap-3 border-b border-edge pb-3",
+        "mb-4 flex items-center justify-between gap-3",
         className,
       )}
     >
@@ -317,17 +317,15 @@ export function Toggle({
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={clsx(
-        "relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full border transition-colors",
-        checked
-          ? "border-fg bg-fg"
-          : "border-edge-2 bg-surface-2",
+        "relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full transition-colors",
+        checked ? "bg-fg" : "bg-fg/[0.14]",
       )}
     >
       <motion.span
-        className="block h-[18px] w-[18px] rounded-full bg-surface shadow-sm"
+        className="block h-[20px] w-[20px] rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
         animate={{ x: checked ? 20 : 2 }}
         transition={reduced ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.25 }}
-        style={{ background: checked ? "rgb(var(--surface))" : "rgb(var(--fg-3))" }}
+        style={{ background: "#fff" }}
       />
     </button>
   );
@@ -372,7 +370,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="core flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
       {icon ? (
         <span className="text-fg-3">{icon}</span>
       ) : (
@@ -431,7 +429,7 @@ export function QueryState({
   if (q.isError) {
     const msg = q.error instanceof Error ? q.error.message : t("common.loadError");
     return (
-      <div className="core border-alert/50 px-4 py-4">
+      <div className="rounded-xl bg-alert/10 px-4 py-4">
         <p className="text-[13px] font-medium text-alert">{t("common.signalLost")}</p>
         <p className="mono mt-1.5 text-[11px] leading-relaxed text-fg-2">{msg}</p>
         {q.refetch && (

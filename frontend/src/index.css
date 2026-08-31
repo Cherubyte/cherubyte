@@ -16,18 +16,18 @@
 :root {
   color-scheme: light;
 
-  --paper: 250 250 249;       /* the page — warm off-white */
-  --bg: 250 250 249;
-  --surface: 255 255 255;     /* a card laid on the page */
-  --surface-2: 245 245 243;   /* input · row hover · sunken cell */
-  --surface-3: 236 236 233;   /* deep sunken · skeleton */
+  --paper: 242 242 245;       /* the page — a soft grey ground (cards float on it) */
+  --bg: 242 242 245;
+  --surface: 255 255 255;     /* a card — reads elevated by ground contrast, no border */
+  --surface-2: 240 240 243;   /* fill: input · secondary button · sunken cell · chip */
+  --surface-3: 230 230 234;   /* row hover on white · skeleton */
 
   --fg: 23 23 23;             /* primary ink — near-black */
-  --fg-2: 82 82 82;           /* secondary */
-  --fg-3: 140 140 137;        /* muted · labels · meta */
+  --fg-2: 92 92 96;           /* secondary */
+  --fg-3: 142 142 147;        /* muted · labels · meta */
 
-  --edge: 231 231 228;        /* hairline rule */
-  --edge-2: 214 214 210;      /* control border */
+  --edge: 226 226 230;       /* the ONLY hairline we keep: inset list separators */
+  --edge-2: 210 210 215;     /* slightly stronger separator */
 
   /* monochrome: "active / selected / online" is ink, not a colour */
   --signal: 23 23 23;
@@ -40,9 +40,10 @@
 
   --grid: 23 23 23;           /* legacy token — graticule removed */
 
-  --e1: 0 0 0 1px rgb(var(--edge));
-  --e2: 0 1px 2px rgb(17 17 17 / .05), 0 0 0 1px rgb(var(--edge));
-  --e3: 0 24px 60px -15px rgb(17 17 17 / .22), 0 0 0 1px rgb(var(--edge));
+  /* elevation is a soft shadow, not a stroke */
+  --e1: 0 1px 2px rgb(17 17 17 / .05);
+  --e2: 0 1px 2px rgb(17 17 17 / .04), 0 4px 12px -2px rgb(17 17 17 / .06);
+  --e3: 0 12px 32px -8px rgb(17 17 17 / .16), 0 32px 64px -16px rgb(17 17 17 / .2);
   --ring-focus: 0 0 0 3px rgb(var(--fg) / .14);
 
   --ease: cubic-bezier(.32, .72, 0, 1);
@@ -52,18 +53,18 @@
 :root.dark {
   color-scheme: dark;
 
-  --paper: 12 12 12;
-  --bg: 12 12 12;
-  --surface: 24 24 24;
-  --surface-2: 33 33 33;
-  --surface-3: 44 44 44;
+  --paper: 0 0 0;
+  --bg: 0 0 0;
+  --surface: 28 28 30;        /* elevated card on true-black ground */
+  --surface-2: 44 44 46;      /* fill: input · secondary button · chip */
+  --surface-3: 58 58 60;      /* row hover · skeleton */
 
   --fg: 245 245 245;
-  --fg-2: 168 168 168;
-  --fg-3: 115 115 115;
+  --fg-2: 174 174 178;
+  --fg-3: 122 122 128;
 
-  --edge: 38 38 38;
-  --edge-2: 58 58 58;
+  --edge: 56 56 58;           /* inset list separator */
+  --edge-2: 72 72 74;
 
   --signal: 245 245 245;
   --signal-fill-bg: 245 245 245;
@@ -75,10 +76,11 @@
 
   --grid: 245 245 245;
 
-  --e1: 0 0 0 1px rgb(var(--edge-2) / .8);
-  --e2: 0 1px 2px rgb(0 0 0 / .4), 0 0 0 1px rgb(var(--edge) / 1);
-  --e3: 0 28px 70px -18px rgb(0 0 0 / .7), 0 0 0 1px rgb(var(--edge-2) / .9);
-  --ring-focus: 0 0 0 3px rgb(var(--fg) / .2);
+  /* dark: elevation is a faint top-edge highlight (a material catching light) + depth */
+  --e1: inset 0 0 0 1px rgb(255 255 255 / .04);
+  --e2: inset 0 0 0 1px rgb(255 255 255 / .05), 0 4px 16px -4px rgb(0 0 0 / .5);
+  --e3: inset 0 0 0 1px rgb(255 255 255 / .07), 0 16px 48px -12px rgb(0 0 0 / .7);
+  --ring-focus: 0 0 0 3px rgb(var(--fg) / .22);
 }
 
 /* ═══════════════════════════ base ════════════════════════════════════ */
@@ -169,28 +171,26 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; color: r
     letter-spacing: -0.01em;
   }
 
-  /* ── panel — a card: clean surface, hairline, soft lift ───────────── */
+  /* ── panel — a card: it floats on the grey ground, no stroke ──────── */
   .panel {
     background: rgb(var(--surface));
-    border: 1px solid rgb(var(--edge));
-    border-radius: 12px;
+    border-radius: 14px;
     box-shadow: var(--e2);
   }
-  /* a sunken cell seated in a card */
+  /* a sunken cell seated in a card — a fill, no stroke */
   .core {
     background: rgb(var(--surface-2));
-    border: 1px solid rgb(var(--edge));
-    border-radius: 8px;
+    border-radius: 10px;
   }
   /* a card that carries a caution — one hairline of red along the top */
-  .panel-ruled { position: relative; }
+  .panel-ruled { position: relative; overflow: hidden; }
   .panel-ruled::before {
-    content: ""; position: absolute; left: 16px; right: 16px; top: -1px;
-    height: 2px; border-radius: 2px; background: rgb(var(--alert));
+    content: ""; position: absolute; left: 0; right: 0; top: 0;
+    height: 3px; background: rgb(var(--alert));
   }
-  .sunken, .inset { background: rgb(var(--surface-2)); border-radius: 8px; }
+  .sunken, .inset { background: rgb(var(--surface-2)); border-radius: 10px; }
 
-  /* ── rules ─────────────────────────────────────────────────────────── */
+  /* ── rules — the one hairline we keep: an inset list separator ────── */
   .rule   { border-top: 1px solid rgb(var(--edge)); }
   .rule-2 { border-top: 1px solid rgb(var(--edge-2)); }
 
@@ -214,33 +214,34 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; color: r
   .btn-primary       { background: rgb(var(--fg)); color: rgb(var(--surface)); border-color: rgb(var(--fg)); }
   .btn-primary:hover { background: rgb(var(--fg) / .84); border-color: rgb(var(--fg) / .84); }
 
-  .btn-secondary       { background: rgb(var(--surface)); color: rgb(var(--fg)); border-color: rgb(var(--edge-2)); }
-  .btn-secondary:hover { border-color: rgb(var(--fg-3)); background: rgb(var(--surface-2)); }
+  /* secondary = a grey fill, no stroke */
+  .btn-secondary       { background: rgb(var(--fg) / .07); color: rgb(var(--fg)); }
+  .btn-secondary:hover { background: rgb(var(--fg) / .11); }
 
   .btn-ghost       { background: transparent; color: rgb(var(--fg-2)); padding: 0 10px; }
   .btn-ghost:hover { color: rgb(var(--fg)); background: rgb(var(--fg) / .06); }
 
-  .btn-danger       { background: transparent; color: rgb(var(--alert)); border-color: rgb(var(--alert) / .45); }
-  .btn-danger:hover { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); border-color: rgb(var(--alert)); }
+  /* danger = a red tint fill; commits to solid on hover */
+  .btn-danger       { background: rgb(var(--alert) / .12); color: rgb(var(--alert)); }
+  .btn-danger:hover { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); }
 
   .btn-sm   { --h: 28px; padding: 0 11px; font-size: 12px; border-radius: 7px; }
   .btn-lg   { --h: 40px; padding: 0 22px; font-size: 14px; border-radius: 9px; }
   .btn-icon { padding: 0; width: var(--h); gap: 0; }
 
-  /* ── inputs — a sunken cell, ink focus ───────────────────────────── */
+  /* ── inputs — a grey fill, no stroke; ink ring on focus ──────────── */
   .input {
-    display: block; width: 100%; height: 36px; padding: 0 12px;
-    background: rgb(var(--surface-2)); color: rgb(var(--fg));
+    display: block; width: 100%; height: 38px; padding: 0 12px;
+    background: rgb(var(--fg) / .06); color: rgb(var(--fg));
     font-family: inherit; font-size: 13.5px;
-    border: 1px solid rgb(var(--edge-2)); border-radius: 8px;
+    border: 0; border-radius: 9px;
     caret-color: rgb(var(--fg));
-    transition: border-color .14s var(--ease), box-shadow .14s var(--ease), background-color .14s var(--ease);
+    transition: box-shadow .14s var(--ease), background-color .14s var(--ease);
   }
   .input::placeholder { color: rgb(var(--fg-3)); }
   .input:focus {
     outline: none;
     background: rgb(var(--surface));
-    border-color: rgb(var(--fg));
     box-shadow: var(--ring-focus);
   }
   .input.mono { font-family: ui-monospace, "SF Mono", "Menlo", "Consolas", monospace; font-size: 12.5px; }
@@ -263,9 +264,9 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; color: r
     white-space: nowrap;
   }
   .tag-signal  { background: rgb(var(--signal-fill-bg)); color: rgb(var(--signal-fill-fg)); }
-  .tag-alert   { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); }
-  .tag-neutral { border: 1px solid rgb(var(--edge-2)); color: rgb(var(--fg-2)); background: rgb(var(--surface)); }
-  .tag-ink     { border: 1px solid rgb(var(--fg-3)); color: rgb(var(--fg-2)); }
+  .tag-alert   { background: rgb(var(--alert) / .13); color: rgb(var(--alert)); }
+  .tag-neutral { background: rgb(var(--fg) / .07); color: rgb(var(--fg-2)); }
+  .tag-ink     { background: rgb(var(--fg) / .07); color: rgb(var(--fg-2)); }
 
   /* ── status marks — a small dot ──────────────────────────────────── */
   .signal-mark {

@@ -34,16 +34,16 @@ export function TypeCode({
 
   return (
     <div
-      className="shrink-0 overflow-hidden rounded-lg border border-edge bg-surface"
+      className="shrink-0 overflow-hidden rounded-[10px]"
       style={{ width: size, height: size }}
     >
       {photo ? (
-        <img src={photo} alt="" className="h-full w-full object-contain" />
+        <img src={photo} alt="" className="h-full w-full object-cover" />
       ) : logo ? (
-        <img src={logo} alt="" className="h-full w-full object-contain p-1" />
+        <img src={logo} alt="" className="h-full w-full object-contain" />
       ) : (
         <span
-          className="mono grid h-full w-full place-items-center bg-surface-2 font-medium leading-none text-fg-3"
+          className="mono grid h-full w-full place-items-center bg-fg/[0.06] font-medium leading-none text-fg-3"
           style={{ fontSize: Math.round(size * 0.34) }}
         >
           {TYPE_CODE[device.device_type]}
@@ -53,11 +53,11 @@ export function TypeCode({
   );
 }
 
-/** bare 2-letter code in a bordered block */
+/** bare 2-letter code in a filled block */
 export function TypeMark({ type, size = 22 }: { type: DeviceType; size?: number }) {
   return (
     <span
-      className="mono inline-grid shrink-0 place-items-center rounded-lg border border-edge-2 leading-none text-fg-2"
+      className="mono inline-grid shrink-0 place-items-center rounded-[10px] bg-surface-2 leading-none text-fg-2"
       style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}
     >
       {TYPE_CODE[type]}

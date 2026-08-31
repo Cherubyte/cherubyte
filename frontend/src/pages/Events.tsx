@@ -126,13 +126,13 @@ function Chips({
   onChange: (k: string) => void;
 }) {
   return (
-    <div className="flex gap-0.5 overflow-x-auto rounded-lg border border-edge-2 bg-surface-2 p-0.5 text-[12.5px] font-medium">
+    <div className="flex gap-0.5 overflow-x-auto rounded-[10px] bg-fg/[0.06] p-0.5 text-[12.5px] font-medium">
       {options.map((o) => (
         <button
           key={o.k}
           onClick={() => onChange(o.k)}
           className={clsx(
-            "shrink-0 rounded-md px-3 py-1.5 transition-colors",
+            "shrink-0 rounded-[7px] px-3 py-1.5 transition-colors",
             value === o.k ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:text-fg",
           )}
         >

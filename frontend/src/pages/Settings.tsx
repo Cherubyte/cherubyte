@@ -148,7 +148,7 @@ function InterfaceSection() {
             ))}
           </select>
         </Field>
-        <div className="flex items-center justify-between border-t border-edge-2 pt-3">
+        <div className="flex items-center justify-between border-t border-fg/10 pt-3">
           <span className="label text-fg-3">{t("settings.iface.darkMode")}</span>
           <Toggle
             label={t("settings.iface.darkMode")}
@@ -326,7 +326,7 @@ export function Settings() {
       toast(
         r.ok
           ? { tone: "success", title: "telegram.sent" }
-          : { tone: "error", title: "telegram.failed", desc: t("toast.telegramFailedDesc") },
+          : { tone: "error", title: "telegram.failed", desc: "toast.telegramFailedDesc" },
       ),
   });
   const purge = useMutation({
@@ -342,7 +342,7 @@ export function Settings() {
       toast(
         r.ok
           ? { tone: "success", title: "digest.sent" }
-          : { tone: "error", title: "digest.failed", desc: t("toast.digestFailedDesc") },
+          : { tone: "error", title: "digest.failed", desc: "toast.digestFailedDesc" },
       ),
   });
   const testNtfy = useMutation({
@@ -351,7 +351,7 @@ export function Settings() {
       toast(
         r.ok
           ? { tone: "success", title: "ntfy.sent" }
-          : { tone: "error", title: "ntfy.failed", desc: t("toast.ntfyFailedDesc") },
+          : { tone: "error", title: "ntfy.failed", desc: "toast.ntfyFailedDesc" },
       ),
   });
   const testFb = useMutation({
@@ -652,7 +652,7 @@ export function Settings() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[420px] text-left">
               <thead>
-                <tr className="label border-b border-edge-2 text-fg-3">
+                <tr className="label border-b border-fg/10 text-fg-3">
                   <th className="pb-2 font-normal">{t("settings.alerts.col.event")}</th>
                   <th className="pb-2 font-normal">{t("settings.alerts.col.on")}</th>
                   <th className="pb-2 font-normal">Telegram</th>
@@ -873,7 +873,7 @@ export function Settings() {
               />
             </Field>
           </div>
-          <div className="flex items-center justify-between border-t border-edge-2 pt-3">
+          <div className="flex items-center justify-between border-t border-fg/10 pt-3">
             <span className="label text-fg-3">{t("settings.digest.title")}</span>
             <Toggle
               label={t("settings.digest.title")}
@@ -1090,7 +1090,7 @@ function AgentsSection() {
       />
 
       {token && (
-        <div className="mb-4 rounded-lg border border-edge-2 bg-surface-2 p-3.5">
+        <div className="mb-4 rounded-xl bg-surface-2 p-4">
           <div className="label mb-1.5 text-fg-2">{t("agents.token.title")}</div>
           <div className="flex flex-wrap items-center gap-2">
             <code className="mono flex-1 break-all text-[12px]">{token}</code>
@@ -1113,7 +1113,7 @@ function AgentsSection() {
           <div className="mt-3 space-y-2">
             <div>
               <span className="label text-fg-3">{t("agents.install.docker")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface-2 p-2.5 text-[11px]">
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
 {`docker run -d --name netscan-agent --network host \\
   --cap-add NET_RAW --cap-add NET_ADMIN \\
   -v netscan-agent:/var/lib/netscan-agent \\
@@ -1124,13 +1124,13 @@ function AgentsSection() {
             </div>
             <div>
               <span className="label text-fg-3">{t("agents.install.linux")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface-2 p-2.5 text-[11px]">
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
 {`./scripts/install-agent-service.sh ${panelUrl} ${token}`}
               </pre>
             </div>
             <div>
               <span className="label text-fg-3">{t("agents.install.windows")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface-2 p-2.5 text-[11px]">
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
 {`.\\install-service.ps1 -PanelUrl ${panelUrl} -EnrolToken ${token}`}
               </pre>
             </div>
@@ -1214,7 +1214,7 @@ function Channel({
       : { tone: "alert" as const, label: t("settings.channel.setup") };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-edge">
+    <div className="overflow-hidden rounded-xl bg-surface-2">
       <div className="flex items-center gap-3 px-4 py-3">
         <span className="text-fg-2">{icon}</span>
         <span className="font-display text-[14px] text-fg">{name}</span>
@@ -1224,7 +1224,7 @@ function Channel({
         </span>
       </div>
       {enabled && (
-        <div className="space-y-4 border-t border-edge bg-surface-2 px-4 py-4">{children}</div>
+        <div className="space-y-4 bg-surface px-4 py-4 shadow-[inset_0_1px_0_rgba(0,0,0,0.04)]">{children}</div>
       )}
     </div>
   );
@@ -1380,7 +1380,7 @@ function AccountsCard() {
           </div>
         ))}
       </div>
-      <div className="mt-4 space-y-3 border-t border-edge-2 pt-3">
+      <div className="mt-4 space-y-3 border-t border-fg/10 pt-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t("auth.field.username")}>
             <input
@@ -1510,7 +1510,7 @@ function ApiTokensCard() {
       <SectionHeader title={t("auth.tokens.title")} sub={t("auth.tokens.sub")} />
 
       {fresh && (
-        <div className="mb-3 rounded-lg border border-edge-2 bg-surface-2 p-3.5">
+        <div className="mb-3 rounded-xl bg-surface-2 p-4">
           <p className="label text-fg-3">{t("auth.tokens.once")}</p>
           <div className="mt-1 flex items-center gap-2">
             <code className="mono flex-1 truncate text-[12px]">{fresh}</code>
@@ -1559,7 +1559,7 @@ function ApiTokensCard() {
         )}
       </div>
 
-      <div className="mt-4 flex items-end gap-3 border-t border-edge-2 pt-3">
+      <div className="mt-4 flex items-end gap-3 border-t border-fg/10 pt-3">
         <Field label={t("auth.tokens.name")} className="flex-1">
           <input
             className="input"

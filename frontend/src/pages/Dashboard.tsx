@@ -103,42 +103,38 @@ export function Dashboard() {
       )}
 
       {/* overview */}
-      <div className="panel overflow-hidden">
-        <div className="flex items-center justify-between border-b border-edge px-5 py-2.5">
+      <div className="panel p-5">
+        <div className="mb-4 flex items-center justify-between">
           <span className="key">{t("dash.plan")}</span>
           <span className="mono text-[11px] text-fg-3">{s?.subnet ?? "—"}</span>
         </div>
-        <div className="flex flex-wrap items-stretch divide-x divide-edge">
-          <div className="min-w-[180px] flex-[1.4] px-5 py-4">
-            <Readout
-              value={s?.online ?? "—"}
-              unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
-              caption={t("dash.onlineNow")}
-              size="xl"
-            />
-          </div>
-          <div className="min-w-[110px] flex-1 px-5 py-4">
-            <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" />
-          </div>
-          <div className="min-w-[110px] flex-1 px-5 py-4">
-            <Readout
-              value={newToday}
-              caption={t("dash.newToday")}
-              size="sm"
-              tone={newToday > 0 ? "signal" : "default"}
-            />
-          </div>
-          <div className="min-w-[220px] flex-[1.5] px-5 py-4">
+        <div className="flex flex-wrap items-stretch gap-x-10 gap-y-5">
+          <Readout
+            value={s?.online ?? "—"}
+            unit={t("dash.totalUnit", { total: s?.total ?? "—" })}
+            caption={t("dash.onlineNow")}
+            size="xl"
+            className="min-w-[160px]"
+          />
+          <Readout value={s?.users_present ?? "—"} caption={t("dash.present")} size="sm" className="min-w-[90px]" />
+          <Readout
+            value={newToday}
+            caption={t("dash.newToday")}
+            size="sm"
+            tone={newToday > 0 ? "signal" : "default"}
+            className="min-w-[90px]"
+          />
+          <div className="min-w-[200px]">
             <WanReadout />
           </div>
           {(s?.pending ?? 0) > 0 && (
             <Link
               to="/approvals"
-              className="group flex min-w-[150px] flex-1 items-center gap-2.5 bg-alert px-5 text-alert-fg transition-opacity hover:opacity-90"
+              className="group ml-auto flex items-center gap-2.5 self-center rounded-xl bg-alert/10 px-4 py-3 text-alert transition-colors hover:bg-alert/15"
             >
-              <span className="font-display text-[24px] leading-none tnum">{s?.pending}</span>
-              <span className="text-[12px] font-medium">{t("dash.review")}</span>
-              <ArrowRight size={12} className="ml-auto" />
+              <span className="font-display text-[22px] leading-none tnum">{s?.pending}</span>
+              <span className="text-[12.5px] font-medium">{t("dash.review")}</span>
+              <ArrowRight size={13} />
             </Link>
           )}
         </div>
@@ -146,7 +142,7 @@ export function Dashboard() {
 
       {/* subnet tabs */}
       {subnets.length > 0 && (
-        <div className="-mb-2 flex gap-1 overflow-x-auto border-b border-edge">
+        <div className="flex gap-1.5 overflow-x-auto">
           {[
             { k: "all", label: t("dash.tab.all") },
             ...subnets.map((sn) => ({ k: sn.cidr, label: sn.label || sn.cidr })),
@@ -156,10 +152,10 @@ export function Dashboard() {
               key={tab.k}
               onClick={() => setSubnetTab(tab.k)}
               className={clsx(
-                "shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors",
+                "shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors",
                 subnetTab === tab.k
-                  ? "border-fg text-fg"
-                  : "border-transparent text-fg-3 hover:text-fg",
+                  ? "bg-fg text-surface"
+                  : "bg-fg/[0.06] text-fg-2 hover:bg-fg/10 hover:text-fg",
               )}
             >
               {tab.label}
@@ -242,7 +238,7 @@ export function Segmented({
   return (
     <div
       className={clsx(
-        "flex shrink-0 gap-0.5 rounded-lg border border-edge-2 bg-surface-2 p-0.5 text-[12.5px] font-medium leading-none",
+        "flex shrink-0 gap-0.5 rounded-[10px] bg-fg/[0.06] p-0.5 text-[12.5px] font-medium leading-none",
         className,
       )}
     >

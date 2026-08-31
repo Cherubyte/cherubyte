@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { hm } from "../lib/format";
 import { en } from "../i18n/en";
 import { translate } from "../i18n/translate";
-import { getActiveLocale } from "../i18n/locale";
 import { AnimatePresence, motion, useReducedMotion } from "../lib/motion";
 
 type Tone = "success" | "error" | "info";
@@ -15,9 +14,10 @@ export function useToast() {
   return useContext(Ctx);
 }
 
-/** Call sites pass either an i18n key or plain text — translate when it's a key. */
+/** Toast confirmations are always shown in English, regardless of the UI locale.
+ *  Call sites pass either an i18n key or plain text — translate when it's a key. */
 function label(s: string): string {
-  return s in en ? translate(getActiveLocale(), s as keyof typeof en) : s;
+  return s in en ? translate("en", s as keyof typeof en) : s;
 }
 
 let seq = 0;
@@ -48,7 +48,7 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
                 exit={reduced ? { opacity: 0 } : { opacity: 0, x: -16 }}
                 transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                 onClick={() => dismiss(t.id)}
-                className="pointer-events-auto flex w-[min(360px,calc(100vw-1.5rem))] items-stretch gap-3 overflow-hidden rounded-xl border border-edge bg-surface py-2.5 pl-0 pr-3.5 text-left shadow-e3"
+                className="pointer-events-auto flex w-[min(360px,calc(100vw-1.5rem))] items-stretch gap-3 overflow-hidden rounded-2xl bg-surface py-2.5 pl-0 pr-3.5 text-left shadow-e3"
               >
                 <span
                   className={

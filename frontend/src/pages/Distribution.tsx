@@ -227,19 +227,19 @@ function LogoBars({
       {rows.map((b) => {
         const on = onlineMap.get(b.name.toLowerCase());
         return (
-          <div key={b.name} className="group grid grid-cols-[22px_84px_1fr_44px] items-center gap-2.5">
+          <div key={b.name} className="group grid grid-cols-[28px_84px_1fr_44px] items-center gap-2.5">
             <button
               onClick={() => {
                 setTarget(b.name);
                 fileRef.current?.click();
               }}
               title={t("stats.assignLogo")}
-              className="grid h-[22px] w-[22px] place-items-center overflow-hidden rounded-md bg-surface-2 text-fg-3 hover:text-fg"
+              className="grid h-7 w-7 place-items-center overflow-hidden rounded-[8px] bg-surface-2 text-fg-3 transition-colors hover:bg-surface-3 hover:text-fg"
             >
               {b.logo_url ? (
-                <img src={b.logo_url} alt="" className="h-full w-full object-contain p-px" />
+                <img src={b.logo_url} alt="" className="h-full w-full object-cover" />
               ) : (
-                <Image size={10} />
+                <Image size={12} />
               )}
             </button>
             <span className="truncate text-[11.5px] text-fg-2">{b.name}</span>

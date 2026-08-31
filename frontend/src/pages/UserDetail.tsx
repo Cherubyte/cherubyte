@@ -138,7 +138,7 @@ function DeviceRow({ d, onToggle }: { d: UserDeviceMini; onToggle: (on: boolean)
         <img
           src={d.primary_image}
           alt=""
-          className="h-9 w-9 shrink-0 rounded-lg border border-edge object-cover"
+          className="h-9 w-9 shrink-0 rounded-[10px] object-contain"
         />
       ) : (
         <TypeMark type={d.device_type} size={26} />
@@ -146,7 +146,7 @@ function DeviceRow({ d, onToggle }: { d: UserDeviceMini; onToggle: (on: boolean)
       <Link to={`/devices/${d.id}`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span
-            className={"h-[7px] w-[7px] shrink-0 rounded-full " + (d.is_online ? "bg-fg" : "border border-edge-2")}
+            className={"h-[7px] w-[7px] shrink-0 rounded-full " + (d.is_online ? "bg-fg" : "bg-fg/20")}
           />
           <span className="font-display truncate text-[13px] text-fg hover:underline">
             {d.display_name}
