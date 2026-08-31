@@ -3,8 +3,10 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,6 +44,44 @@ _LOADED = (
 )
 
 
+def _coerce_dt(value: object) -> datetime | None:
+    if value is None or isinstance(value, datetime):
+        return value
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+async def _last_joins(
+    session: AsyncSession, device_ids: list[int]
+) -> dict[int, datetime]:
+    """The timestamp of the most recent 'join' per device (indexed lookup)."""
+    if not device_ids:
+        return {}
+    rows = await session.execute(
+        select(ConnectionHistory.device_id, func.max(ConnectionHistory.timestamp))
+        .where(
+            ConnectionHistory.device_id.in_(device_ids),
+            ConnectionHistory.event == "join",
+        )
+        .group_by(ConnectionHistory.device_id)
+    )
+    out: dict[int, datetime] = {}
+    for did, ts in rows:
+        dt = _coerce_dt(ts)
+        if dt is not None:
+            out[did] = dt
+    return out
+
+
+def _set_online_since(device: Device, joined: datetime | None) -> None:
+    # a transient attribute DeviceOut (from_attributes) picks up
+    device.online_since = (
+        (joined or device.first_seen) if device.is_online else None
+    )
+
+
 async def _get(session: AsyncSession, device_id: int) -> Device:
     # start from a clean slate so post-mutation reads never see stale identity-map state
     session.expire_all()
@@ -51,6 +91,8 @@ async def _get(session: AsyncSession, device_id: int) -> Device:
     device = res.scalars().first()
     if device is None:
         raise HTTPException(404, "Device not found")
+    joins = await _last_joins(session, [device.id] if device.is_online else [])
+    _set_online_since(device, joins.get(device.id))
     return device
 
 
@@ -86,6 +128,10 @@ async def list_devices(
         stmt = stmt.where(Device.is_online.is_(online))
     res = await session.execute(stmt)
     devices = list(res.scalars().unique())
+
+    joins = await _last_joins(session, [d.id for d in devices if d.is_online])
+    for d in devices:
+        _set_online_since(d, joins.get(d.id))
 
     if q:
         needle = q.lower().strip()

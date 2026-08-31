@@ -80,6 +80,8 @@ class DeviceOut(ORMModel):
     notify_policy: str = "default"
     first_seen: AwareUtc
     last_seen: AwareUtc
+    # When online: the most recent join (falls back to first_seen). Null otherwise.
+    online_since: AwareUtc | None = None
     user: UserRef | None = None
     macs: list[MacOut] = []
     ips: list[IpOut] = []

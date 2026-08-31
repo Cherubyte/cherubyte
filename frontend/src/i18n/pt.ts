@@ -105,6 +105,7 @@ export const pt: Record<keyof typeof en, string> = {
   "list.col.type": "Tipo",
   "list.col.os": "SO",
   "list.col.seen": "Visto",
+  "list.col.joined": "Entrou",
   "list.offlineCount": "Offline · {n}",
   "list.unreviewed": "POR REVER",
   "list.now": "agora",
