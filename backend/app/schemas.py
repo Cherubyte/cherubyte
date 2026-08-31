@@ -258,6 +258,7 @@ class SettingsOut(BaseModel):
     # snmp
     enable_snmp: bool = False
     snmp_community: str = "public"
+    topology_enabled: bool = False
     # weekly digest
     weekly_summary_enabled: bool = False
     weekly_summary_weekday: int = 0
@@ -302,6 +303,7 @@ class SettingsIn(BaseModel):
     metrics_token: str | None = None
     enable_snmp: bool | None = None
     snmp_community: str | None = None
+    topology_enabled: bool | None = None
     weekly_summary_enabled: bool | None = None
     weekly_summary_weekday: int | None = None
     weekly_summary_hour: int | None = None

@@ -162,6 +162,9 @@ class AgentConfig(BaseModel):
     enable_reverse_dns: bool = True
     enable_port_probe: bool = True
     enable_dhcp_sniffer: bool = True
+    # Passive ARP listening, alongside (not instead of) the active sweep —
+    # catches a host that answers someone else's ARP but missed ours.
+    enable_passive_arp: bool = True
     # SNMP is off unless asked for — it needs a community string and most LANs
     # have nothing that answers it.
     enable_snmp: bool = False

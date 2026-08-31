@@ -69,8 +69,11 @@ in a SQLite file on your LAN and never leaves it.
 - **Wake-on-LAN** — a Wake button on an offline device; the agent on that
   segment sends the magic packet.
 - **CSV export** — the whole device inventory from **Settings ▸ History**.
-- **SNMP · topology** (opt-in) — name managed switches from their `sysDescr` and
-  read the links between them from the LLDP-MIB.
+- **SNMP · topology** (opt-in) — name managed switches from their `sysDescr`
+  and read the links between them from the LLDP-MIB; switch on **Settings ▸
+  Integrations ▸ Show topology map** to draw them as a **Topology** page.
+- **Passive ARP listening**, alongside the active sweep — a host that answers
+  someone else's "who has" rather than the agent's own probe still gets caught.
 - **Risky-port watchlist** — a database, a remote shell or an unauthenticated
   admin API answering on the LAN gets a louder alert and a mark on the device.
 - **Merge suggestions** for phones that rotate their MAC, and a weekly digest.
@@ -367,8 +370,6 @@ is — each entry anchored to the failure that produced it.
 
 **Ideas**
 
-- A topology map (the LLDP edges are already collected at `/api/topology`)
-- Passive discovery alongside the active ARP sweep
 - Alembic for non-additive migrations
 
 ---

@@ -57,6 +57,7 @@ _BOOL_KEYS = (
     "weekly_summary_enabled",
     "metrics_enabled",
     "enable_snmp",
+    "topology_enabled",
 )
 
 _PERSISTED = (
@@ -195,6 +196,7 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         metrics_path="/api/metrics",
         enable_snmp=cfg.enable_snmp,
         snmp_community=cfg.snmp_community or "public",
+        topology_enabled=cfg.topology_enabled,
         weekly_summary_enabled=cfg.weekly_summary_enabled,
         weekly_summary_weekday=cfg.weekly_summary_weekday,
         weekly_summary_hour=cfg.weekly_summary_hour,
@@ -336,6 +338,9 @@ async def update_settings(
     if "snmp_community" in data:
         cfg.snmp_community = (data["snmp_community"] or "").strip() or "public"
         await _set(session, "snmp_community", cfg.snmp_community)
+    if "topology_enabled" in data and data["topology_enabled"] is not None:
+        cfg.topology_enabled = bool(data["topology_enabled"])
+        await _set(session, "topology_enabled", "true" if cfg.topology_enabled else "false")
 
     digest_touched = False
     if "weekly_summary_enabled" in data and data["weekly_summary_enabled"] is not None:

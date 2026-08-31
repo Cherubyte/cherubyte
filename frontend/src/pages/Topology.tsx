@@ -1,0 +1,185 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../api/client";
+import type { TopologyLink } from "../api/types";
+import { EmptyState, QueryState, SectionHeader } from "../components/ui";
+import { useIsMobile } from "../hooks/useMediaQuery";
+import { timeAgo } from "../lib/format";
+import { useT } from "../i18n";
+
+const SIZE = 640;
+const CENTER = SIZE / 2;
+const RADIUS = SIZE * 0.38;
+const NODE_R = 7;
+
+type Point = { x: number; y: number };
+
+function layoutCircle(nodes: string[]): Map<string, Point> {
+  const pos = new Map<string, Point>();
+  const n = nodes.length || 1;
+  nodes.forEach((label, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    pos.set(label, {
+      x: CENTER + RADIUS * Math.cos(angle),
+      y: CENTER + RADIUS * Math.sin(angle),
+    });
+  });
+  return pos;
+}
+
+/** Both ends of a live LLDP link can report it, so the same physical cable
+ * shows up as two rows (A→B and B→A). Keep one per unordered pair. */
+function dedupeLinks(edges: TopologyLink[]): TopologyLink[] {
+  const seen = new Map<string, TopologyLink>();
+  for (const e of edges) {
+    if (!e.local || !e.remote) continue;
+    const key = [e.local, e.remote].sort().join(" ");
+    if (!seen.has(key)) seen.set(key, e);
+  }
+  return [...seen.values()];
+}
+
+export function Topology() {
+  const t = useT();
+  const nav = useNavigate();
+  const isMobile = useIsMobile();
+  const [hovered, setHovered] = useState<string | null>(null);
+  const topology = useQuery({
+    queryKey: ["topology"],
+    queryFn: api.topology,
+    refetchInterval: 30000,
+  });
+
+  const links = useMemo(() => dedupeLinks(topology.data?.edges ?? []), [topology.data]);
+  const nodes = topology.data?.nodes ?? [];
+  const pos = useMemo(() => layoutCircle(nodes), [nodes]);
+
+  // a label reachable from at least one edge with a known local device
+  const deviceIdFor = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of topology.data?.edges ?? []) {
+      if (e.local_device_id != null) m.set(e.local, e.local_device_id);
+    }
+    return m;
+  }, [topology.data]);
+
+  return (
+    <div className="space-y-3">
+      <section className="panel p-5">
+        <SectionHeader
+          title={t("topology.title")}
+          sub={t("topology.sub", { n: links.length })}
+        />
+
+        {topology.isLoading ? (
+          <QueryState q={topology} />
+        ) : topology.isError ? (
+          <QueryState q={topology} />
+        ) : nodes.length === 0 ? (
+          <EmptyState title={t("topology.empty.title")} description={t("topology.empty.desc")} />
+        ) : (
+          <svg
+            viewBox={`0 0 ${SIZE} ${SIZE}`}
+            className="mx-auto block w-full max-w-[640px]"
+            role="img"
+            aria-label={t("topology.title")}
+          >
+            {links.map((e, i) => {
+              const a = pos.get(e.local);
+              const b = pos.get(e.remote);
+              if (!a || !b) return null;
+              const dim = hovered && hovered !== e.local && hovered !== e.remote;
+              const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+              return (
+                <g key={i} opacity={dim ? 0.15 : 1}>
+                  <line
+                    x1={a.x}
+                    y1={a.y}
+                    x2={b.x}
+                    y2={b.y}
+                    stroke="currentColor"
+                    className="text-fg-3"
+                    strokeWidth={1.5}
+                  />
+                  {(e.local_port || e.remote_port) && (
+                    <text
+                      x={mid.x}
+                      y={mid.y}
+                      textAnchor="middle"
+                      className="mono fill-fg-3"
+                      fontSize={9}
+                    >
+                      {[e.local_port, e.remote_port].filter(Boolean).join(" ↔ ")}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {nodes.map((label) => {
+              const p = pos.get(label);
+              if (!p) return null;
+              const deviceId = deviceIdFor.get(label);
+              const dim = hovered && hovered !== label;
+              const labelAbove = p.y > CENTER;
+              return (
+                <g
+                  key={label}
+                  opacity={dim ? 0.35 : 1}
+                  className={deviceId ? "cursor-pointer" : ""}
+                  onMouseEnter={() => setHovered(label)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => deviceId != null && nav(`/devices/${deviceId}`)}
+                >
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={NODE_R}
+                    className={deviceId != null ? "fill-fg" : "fill-surface-2 stroke-fg-3"}
+                    strokeWidth={deviceId != null ? 0 : 1.5}
+                  />
+                  <text
+                    x={p.x}
+                    y={labelAbove ? p.y + NODE_R + 14 : p.y - NODE_R - 6}
+                    textAnchor="middle"
+                    className="fill-fg text-[11px] font-medium"
+                  >
+                    {label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        )}
+      </section>
+
+      {links.length > 0 && !isMobile && (
+        <section className="panel p-5">
+          <SectionHeader title={t("topology.links")} sub={String(links.length)} />
+          <div className="space-y-1">
+            {links.map((e, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg bg-surface-2 px-3 py-2 text-[11.5px]"
+              >
+                <span className="min-w-0 flex-1 truncate text-fg-2">
+                  {e.local}
+                  {e.local_port && <span className="mono ml-1.5 text-fg-3">{e.local_port}</span>}
+                </span>
+                <span className="text-fg-3">↔</span>
+                <span className="min-w-0 flex-1 truncate text-right text-fg-2">
+                  {e.remote_port && <span className="mono mr-1.5 text-fg-3">{e.remote_port}</span>}
+                  {e.remote}
+                </span>
+                <span className="mono ml-auto shrink-0 text-[10px] text-fg-3">
+                  {timeAgo(e.seen_at, true)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
