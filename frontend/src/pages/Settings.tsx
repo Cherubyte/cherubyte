@@ -509,15 +509,20 @@ export function Settings() {
                 connections: (d?.stored_connections ?? 0).toLocaleString(intlLocale()),
               })}
             </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Trash size={12} />}
-              loading={purge.isPending}
-              onClick={() => purge.mutate()}
-            >
-              {t("settings.purgeNow")}
-            </Button>
+            <div className="flex items-center gap-2">
+              <a className="btn btn-secondary btn-sm" href={api.devicesCsvUrl()}>
+                {t("settings.exportCsv")}
+              </a>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Trash size={12} />}
+                loading={purge.isPending}
+                onClick={() => purge.mutate()}
+              >
+                {t("settings.purgeNow")}
+              </Button>
+            </div>
           </div>
         </div>
       </section>

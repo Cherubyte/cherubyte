@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import csv
+import io
 import uuid
+from datetime import datetime
 from pathlib import Path
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -22,6 +24,7 @@ from ..models import (
     IpAddress,
     MacAddress,
     OpenPort,
+    iso_utc,
 )
 from ..services import duplicates, wol
 from ._uploads import save_image_upload
@@ -112,6 +115,46 @@ async def merge_suggestions(session: AsyncSession = Depends(get_session)):
         }
         for s in found
     ]
+
+
+@router.get("/export.csv")
+async def export_devices_csv(session: AsyncSession = Depends(get_session)):
+    """The whole device inventory as CSV. Declared before `/{device_id}` so the
+    literal path wins the route match."""
+    res = await session.execute(select(Device).options(*_LOADED).order_by(Device.id))
+    devices = list(res.scalars().unique())
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(
+        ["id", "name", "type", "vendor", "model", "os", "approval", "online",
+         "primary_ip", "ips", "macs", "owner", "first_seen", "last_seen"]
+    )
+    for d in devices:
+        primary = next((i.address for i in d.ips if i.is_primary), None)
+        if primary is None and d.ips:
+            primary = d.ips[0].address
+        w.writerow([
+            d.id,
+            d.display_name,
+            d.device_type.value,
+            d.vendor or "",
+            d.model or "",
+            d.os_family or "",
+            d.approval_status.value,
+            "yes" if d.is_online else "no",
+            primary or "",
+            " ".join(i.address for i in d.ips),
+            " ".join(m.address for m in d.macs),
+            d.user.name if d.user else "",
+            iso_utc(d.first_seen) or "",
+            iso_utc(d.last_seen) or "",
+        ])
+    return Response(
+        buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="netscan-devices.csv"'},
+    )
 
 
 @router.get("", response_model=list[DeviceOut])

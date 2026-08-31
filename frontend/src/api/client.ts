@@ -89,6 +89,7 @@ export const api = {
   wakeDevice: (id: number) => req<{ ok: boolean; mac: string }>(`/devices/${id}/wake`, { method: "POST" }),
   deleteDevice: (id: number) => req<void>(`/devices/${id}`, { method: "DELETE" }),
   deviceHistory: (id: number) => req<Connection[]>(`/devices/${id}/history`),
+  devicesCsvUrl: () => BASE + "/devices/export.csv",
   mergeDevices: (targetId: number, sourceIds: number[]) =>
     req<Device>(`/devices/${targetId}/merge`, {
       method: "POST",

@@ -322,6 +322,7 @@ export const pt: Record<keyof typeof en, string> = {
   "settings.section.history": "Histórico",
   "settings.storedCounts": "{events} eventos · {connections} ligações guardadas",
   "settings.purgeNow": "Purgar agora",
+  "settings.exportCsv": "Exportar dispositivos (CSV)",
   "settings.section.backup": "Cópia de segurança",
   "settings.backup.sub": "A base de dados e as imagens carregadas — tudo o que o painel guarda.",
   "settings.backup.download": "Transferir cópia",
