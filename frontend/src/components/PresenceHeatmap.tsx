@@ -8,14 +8,22 @@ import { Skeleton } from "./ui";
 /**
  * Presence as a chart-recorder strip: one row per local calendar day (oldest
  * first, today last). Each interval the person was present is drawn as a solid
- * orange bar, clipped to that day and positioned to the minute. Everything is
- * converted to the viewer's own timezone. A hairline marks "now" on today's row.
+ * bar, clipped to that day and positioned to the minute. Everything is converted
+ * to the viewer's own timezone. A hairline marks "now" on today's row.
+ *
+ * Row boundaries are real local calendar days (`setDate`), not fixed 24-hour
+ * offsets, so the grid stays aligned across a DST change; a 23- or 25-hour day
+ * is mapped proportionally onto the 24-column track.
  */
-const DAY_MS = 86_400_000;
-
 function startOfLocalDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addLocalDays(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
   return x;
 }
 
@@ -49,18 +57,24 @@ export function PresenceHeatmap({
   );
   const anyPresent = spans.length > 0;
 
-  const now = new Date();
-  const nowFrac = now.getHours() + now.getMinutes() / 60;
-  // local midnight of the oldest row
-  const firstDay = startOfLocalDay(new Date(now.getTime() - (days - 1) * DAY_MS));
+  const nowMs = Date.now();
+  const today0 = startOfLocalDay(new Date());
+  const firstDay = addLocalDays(today0, -(days - 1)); // local midnight of the oldest row
 
-  const label = (d: number) => {
-    const dt = new Date(firstDay.getTime() + d * DAY_MS);
+  // one entry per row: real local-midnight boundaries (DST-safe)
+  const rows = Array.from({ length: days }).map((_, d) => {
+    const start = addLocalDays(firstDay, d).getTime();
+    const end = addLocalDays(firstDay, d + 1).getTime();
     return {
-      text: dt.toLocaleDateString(intlLocale(), { day: "2-digit", month: "2-digit" }),
+      start,
+      end,
+      span: end - start, // 23h / 24h / 25h across a DST change
       isToday: d === days - 1,
+      text: new Date(start).toLocaleDateString(intlLocale(), { day: "2-digit", month: "2-digit" }),
     };
-  };
+  });
+  const todayRow = rows[days - 1];
+  const nowFrac = Math.min(24, ((nowMs - todayRow.start) / todayRow.span) * 24);
 
   return (
     <div className="w-full max-w-[1080px]">
@@ -82,17 +96,21 @@ export function PresenceHeatmap({
       </div>
 
       <div className="space-y-[3px]">
-        {Array.from({ length: days }).map((_, d) => {
-          const L = label(d);
-          const dayStart = firstDay.getTime() + d * DAY_MS;
-          const dayEnd = dayStart + DAY_MS;
-          // intervals overlapping this local day, clipped to it, as [0..24] hours
+        {rows.map((L, d) => {
+          const dayStart = L.start;
+          const dayEnd = L.end;
+          // intervals overlapping this local day, clipped to it and mapped onto
+          // the 24-column track (proportionally, so a DST day still fills the row)
           const bars = spans
             .filter(([a, b]) => b > dayStart && a < dayEnd)
             .map(([a, b]) => {
-              const from = (Math.max(a, dayStart) - dayStart) / 3_600_000;
-              const to = (Math.min(b, dayEnd) - dayStart) / 3_600_000;
-              return { from, to };
+              const from = Math.max(a, dayStart);
+              const to = Math.min(b, dayEnd);
+              return {
+                from: ((from - dayStart) / L.span) * 24,
+                to: ((to - dayStart) / L.span) * 24,
+                label: `${fmtClock(from)}–${fmtClock(to)}`,
+              };
             });
           return (
             <div key={d} className="grid grid-cols-[52px_1fr] items-center">
@@ -118,7 +136,7 @@ export function PresenceHeatmap({
                 {bars.map((b, i) => (
                   <span
                     key={i}
-                    title={`${fmtHour(b.from)}–${fmtHour(b.to)}`}
+                    title={b.label}
                     className="absolute top-0 h-full bg-signal"
                     style={{
                       left: `${(b.from / 24) * 100}%`,
@@ -152,11 +170,8 @@ export function PresenceHeatmap({
   );
 }
 
-/** hour-of-day float (e.g. 13.5) → "13:30" */
-function fmtHour(h: number): string {
-  const hh = Math.floor(h) % 24;
-  const mm = Math.round((h - Math.floor(h)) * 60);
-  const m = mm === 60 ? 0 : mm;
-  const carry = mm === 60 ? 1 : 0;
-  return `${String((hh + carry) % 24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+/** a UTC-ms instant → local "HH:MM" */
+function fmtClock(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
