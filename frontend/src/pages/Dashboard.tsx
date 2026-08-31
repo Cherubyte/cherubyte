@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { DeviceListView } from "../components/DeviceListView";
 import { Sheet } from "../components/Sheet";
 import { ArrowRight, Search } from "../components/Glyph";
 import { Readout, Redacted } from "../components/ui";
+import { motion, useReducedMotion } from "../lib/motion";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { ipInCidr, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
@@ -235,6 +236,8 @@ export function Segmented({
   options: { k: string; label: string }[];
   className?: string;
 }) {
+  const reduced = useReducedMotion();
+  const thumb = useId();
   return (
     <div
       className={clsx(
@@ -242,18 +245,27 @@ export function Segmented({
         className,
       )}
     >
-      {options.map((o) => (
-        <button
-          key={o.k}
-          onClick={() => onChange(o.k)}
-          className={clsx(
-            "rounded-md px-3 py-1.5 transition-colors",
-            value === o.k ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:text-fg",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
+      {options.map((o) => {
+        const on = value === o.k;
+        return (
+          <button
+            key={o.k}
+            onClick={() => onChange(o.k)}
+            className="relative rounded-md px-3 py-1.5"
+          >
+            {on && (
+              <motion.span
+                layoutId={thumb}
+                className="absolute inset-0 rounded-md bg-surface shadow-e1"
+                transition={reduced ? { duration: 0 } : { type: "spring", bounce: 0.15, duration: 0.32 }}
+              />
+            )}
+            <span className={clsx("relative z-10 transition-colors", on ? "text-fg" : "text-fg-2 hover:text-fg")}>
+              {o.label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

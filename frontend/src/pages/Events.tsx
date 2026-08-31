@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "../lib/motion";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { EventItem, EventLevel } from "../api/types";
@@ -125,20 +126,31 @@ function Chips({
   value: string;
   onChange: (k: string) => void;
 }) {
+  const reduced = useReducedMotion();
+  const thumb = useId();
   return (
     <div className="flex gap-0.5 overflow-x-auto rounded-[10px] bg-fg/[0.06] p-0.5 text-[12.5px] font-medium">
-      {options.map((o) => (
-        <button
-          key={o.k}
-          onClick={() => onChange(o.k)}
-          className={clsx(
-            "shrink-0 rounded-[7px] px-3 py-1.5 transition-colors",
-            value === o.k ? "bg-surface text-fg shadow-e1" : "text-fg-2 hover:text-fg",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
+      {options.map((o) => {
+        const on = value === o.k;
+        return (
+          <button
+            key={o.k}
+            onClick={() => onChange(o.k)}
+            className="relative shrink-0 rounded-[7px] px-3 py-1.5"
+          >
+            {on && (
+              <motion.span
+                layoutId={thumb}
+                className="absolute inset-0 rounded-[7px] bg-surface shadow-e1"
+                transition={reduced ? { duration: 0 } : { type: "spring", bounce: 0.15, duration: 0.32 }}
+              />
+            )}
+            <span className={clsx("relative z-10 transition-colors", on ? "text-fg" : "text-fg-2 hover:text-fg")}>
+              {o.label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
