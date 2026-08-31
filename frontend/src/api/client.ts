@@ -86,6 +86,7 @@ export const api = {
     req<Device>(`/devices/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   approveDevice: (id: number) => req<Device>(`/devices/${id}/approve`, { method: "POST" }),
   ignoreDevice: (id: number) => req<Device>(`/devices/${id}/ignore`, { method: "POST" }),
+  wakeDevice: (id: number) => req<{ ok: boolean; mac: string }>(`/devices/${id}/wake`, { method: "POST" }),
   deleteDevice: (id: number) => req<void>(`/devices/${id}`, { method: "DELETE" }),
   deviceHistory: (id: number) => req<Connection[]>(`/devices/${id}/history`),
   mergeDevices: (targetId: number, sourceIds: number[]) =>

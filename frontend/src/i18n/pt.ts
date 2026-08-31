@@ -173,6 +173,7 @@ export const pt: Record<keyof typeof en, string> = {
   "device.notFound": "Host não encontrado",
   "device.mergeWith": "Fundir com outro",
   "device.merge": "Fundir",
+  "device.wake": "Ligar",
   "device.deleteConfirm": "Eliminar este dispositivo?",
   "device.deleteConfirmShort": "Eliminar?",
   "device.fact.ip": "IP",
@@ -553,4 +554,6 @@ export const pt: Record<keyof typeof en, string> = {
   "digest.failed": "Resumo falhou",
   "person.created": "Pessoa adicionada",
   "visita.created": "Visita adicionada",
+  "wake.sent": "Wake-on-LAN enviado",
+  "wake.failed": "Não foi possível enviar Wake-on-LAN",
 };

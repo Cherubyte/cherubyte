@@ -66,6 +66,8 @@ in a SQLite file on your LAN and never leaves it.
   presence, agent freshness, WAN state), optionally behind a token.
 - **Multiple subnets** — scan several CIDRs; each gets its own tab.
 - **Per-device photos** — snap a picture so you recognise the thing later.
+- **Wake-on-LAN** — a Wake button on an offline device; the agent on that
+  segment sends the magic packet.
 - **SNMP · topology** (opt-in) — name managed switches from their `sysDescr` and
   read the links between them from the LLDP-MIB.
 - **Risky-port watchlist** — a database, a remote shell or an unauthenticated
@@ -339,7 +341,6 @@ is — each entry anchored to the failure that produced it.
 **Ideas**
 
 - A topology map (the LLDP edges are already collected at `/api/topology`)
-- Wake-on-LAN and per-device actions
 - CSV / report export
 - Passive discovery alongside the active ARP sweep
 - Alembic for non-additive migrations

@@ -603,6 +603,24 @@ class WanSample(Base):
     target: Mapped[str] = mapped_column(String(64), default="")
 
 
+class PendingWake(Base):
+    """A Wake-on-LAN request queued for the agents. Every agent that reports
+    within a short window after the request sends the magic packet — only the
+    one on the target's segment reaches its NIC; the rest are harmless. Rows are
+    cleared once they age out."""
+
+    __tablename__ = "pending_wakes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mac: Mapped[str] = mapped_column(String(17), unique=True)
+    device_id: Mapped[int | None] = mapped_column(
+        ForeignKey("devices.id", ondelete="SET NULL")
+    )
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+
 class Setting(Base):
     __tablename__ = "settings"
 

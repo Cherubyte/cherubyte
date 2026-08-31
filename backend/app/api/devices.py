@@ -23,7 +23,7 @@ from ..models import (
     MacAddress,
     OpenPort,
 )
-from ..services import duplicates
+from ..services import duplicates, wol
 from ._uploads import save_image_upload
 from ..schemas import (
     AbsorbMacRequest,
@@ -297,6 +297,31 @@ async def merge_devices(
     )
     await session.commit()
     return await _get(session, device_id)
+
+
+@router.post("/{device_id}/wake")
+async def wake_device(device_id: int, session: AsyncSession = Depends(get_session)):
+    """Queue a Wake-on-LAN for this device. The agents send the magic packet on
+    their next check-in; the panel can't reach the network itself."""
+    device = await _get(session, device_id)
+    primary = device.macs[0] if device.macs else None
+    if primary is None:
+        raise HTTPException(422, "Device has no MAC address to wake")
+    if primary.is_random:
+        raise HTTPException(422, "A randomised MAC can't be used for Wake-on-LAN")
+    norm = await wol.queue(session, primary.address, device.id)
+    if norm is None:
+        raise HTTPException(422, f"Not a usable MAC address: {mac}")
+    session.add(
+        Event(
+            message=f"Wake-on-LAN enviado a {device.display_name}",
+            level=EventLevel.info,
+            category="presence",
+            device_id=device.id,
+        )
+    )
+    await session.commit()
+    return {"ok": True, "mac": norm}
 
 
 @router.post("/{device_id}/absorb-mac", response_model=DeviceOut)

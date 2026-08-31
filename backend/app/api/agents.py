@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_session
 from ..models import Agent, WanSample, iso_utc, utcnow
 from ..services import agents as agent_service
-from ..services import wan
+from ..services import wan, wol
 from ..scheduler import note_report
 from ..services.monitor import ingest_report
 from .deps import current_account, enforce_access
@@ -106,6 +106,12 @@ async def receive_report(
 
     note_report()
     result = await ingest_report(report, agent_name=agent.name, agent_id=agent.id)
+
+    # Wake-on-LAN: hand every agent reporting in the pickup window the queued
+    # MACs; the one on the target's segment reaches its NIC.
+    wake_macs = await wol.take_pending(session)
+    await session.commit()
+
     # The ack carries the configuration the agent should be running, so an
     # install needs nothing but a panel URL and a token.
     return ReportAck(
@@ -114,6 +120,7 @@ async def receive_report(
         degraded=bool(result.get("degraded")),
         config=agent_service.desired_config(),
         scan_now=wants_sweep,
+        wake=wake_macs,
     )
 
 
