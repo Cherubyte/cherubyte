@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import type { ApprovalStatus, EventLevel } from "../api/types";
 import { initials, readableOn, stringHsl } from "../lib/format";
 import { useT } from "../i18n";
-import { motion, useReducedMotion } from "../lib/motion";
+import { AnimatePresence, motion, useReducedMotion } from "../lib/motion";
 
 /* ── Button ──────────────────────────────────────────────────────────── */
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -74,6 +74,27 @@ export function Card({
   return <As className={clsx("panel", className)}>{children}</As>;
 }
 
+/* ── RollingValue — the figure flips when it changes (a metric ticked) ── */
+function RollingValue({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion();
+  return (
+    <span className="relative inline-block overflow-hidden">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={String(children)}
+          className="inline-block"
+          initial={reduced ? { opacity: 0 } : { y: "65%", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={reduced ? { opacity: 0 } : { y: "-65%", opacity: 0 }}
+          transition={reduced ? { duration: 0.14 } : { type: "spring", bounce: 0.16, duration: 0.42 }}
+        >
+          {children}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
 /* ── Readout — a big figure + a quiet caption ─────────────────────────── */
 export function Readout({
   value,
@@ -100,7 +121,9 @@ export function Readout({
   return (
     <div className={clsx("flex flex-col gap-1.5", className)}>
       <div className="flex items-baseline gap-2">
-        <span className={clsx("font-display leading-[0.95] tnum", px, color)}>{value}</span>
+        <span className={clsx("font-display leading-[0.95] tnum", px, color)}>
+          <RollingValue>{value}</RollingValue>
+        </span>
         {unit && <span className="mono text-[12px] text-fg-3">{unit}</span>}
       </div>
       {caption != null && <span className="label">{caption}</span>}
