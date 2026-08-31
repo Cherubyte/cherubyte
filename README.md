@@ -356,6 +356,20 @@ All run in CI on every push and pull request. See
 [`docs/DECISIONS.md`](docs/DECISIONS.md) for why the system is shaped the way it
 is — each entry anchored to the failure that produced it.
 
+**Schema changes** go through Alembic (`backend/alembic/`). A database it has
+never touched — every install predating this — is stamped at `baseline`
+without re-running its DDL, since `init_db()`'s `create_all` plus a handful of
+frozen additive patches already bring any database, however old, to exactly
+what `baseline` builds from nothing; anything from here on is a real
+migration:
+
+```bash
+cd backend && .venv/bin/alembic revision --autogenerate -m "add a column"
+```
+
+Review the generated file before committing — autogenerate is a good first
+draft, not a decision.
+
 ---
 
 ## Roadmap
@@ -367,10 +381,6 @@ is — each entry anchored to the failure that produced it.
   one is (`docs/RELEASING.md`).
 - **Deploy the site** (`site/`, Cloudflare) and run the Windows agent on real
   hardware once — it's CI-tested but never hand-installed.
-
-**Ideas**
-
-- Alembic for non-additive migrations
 
 ---
 

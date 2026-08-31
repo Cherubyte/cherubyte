@@ -39,7 +39,7 @@ def test_two_random_macs_with_the_same_model_are_suggested():
     [suggestion] = find([a, b])
     assert suggestion.target is a, "the oldest entry should absorb the others"
     assert suggestion.duplicates == [b]
-    assert suggestion.confidence == "alta"
+    assert suggestion.confidence == "high"
 
 
 def test_overlapping_lifetimes_are_never_merged():
@@ -78,7 +78,7 @@ def test_hostname_matching_is_reported_as_weaker():
     a = device(1, hostname="sam-telemovel", first=10, last=9)
     b = device(2, hostname="sam-telemovel", first=8, last=1)
     [suggestion] = find([a, b])
-    assert suggestion.confidence == "média"
+    assert suggestion.confidence == "medium"
 
 
 def test_devices_with_no_identity_at_all_are_skipped():

@@ -51,15 +51,15 @@ async def save_image_upload(file: UploadFile, dest: Path, *, max_bytes: int) -> 
                 if fmt is None:
                     fmt = sniff_image(chunk)
                     if fmt is None:
-                        raise HTTPException(400, "Ficheiro não é uma imagem reconhecida")
+                        raise HTTPException(400, "File is not a recognised image")
                 written += len(chunk)
                 if written > max_bytes:
                     raise HTTPException(
-                        413, f"Imagem demasiado grande (máx. {max_bytes // 1024} KiB)"
+                        413, f"Image too large (max {max_bytes // 1024} KiB)"
                     )
                 out.write(chunk)
         if not written:
-            raise HTTPException(400, "Ficheiro vazio")
+            raise HTTPException(400, "Empty file")
     except Exception:
         dest.unlink(missing_ok=True)
         raise

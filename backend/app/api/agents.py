@@ -48,7 +48,7 @@ async def enrol_agent(payload: EnrolRequest, session: AsyncSession = Depends(get
         # One message for every rejection reason: telling an unenrolled caller
         # whether a token is unknown, spent or merely expired is free
         # reconnaissance.
-        raise HTTPException(403, "Token de inscrição inválido")
+        raise HTTPException(403, "Invalid enrolment token")
     agent, key = issued
     await session.commit()
     return EnrolResponse(agent_id=agent.id, key=key, name=agent.name)
@@ -64,15 +64,15 @@ async def receive_report(
 ):
     agent = await agent_service.authenticate(session, agent_id, _bearer(authorization))
     if agent is None:
-        raise HTTPException(401, "Agente desconhecido ou chave inválida")
+        raise HTTPException(401, "Unknown agent or invalid key")
 
     if report.protocol_version != PROTOCOL_VERSION:
         # Refuse rather than half-read it: a rejected report is visible in both
         # logs, a partially understood one is invisible in both.
         raise HTTPException(
             409,
-            f"Versão de protocolo {report.protocol_version} não suportada "
-            f"(este painel fala {PROTOCOL_VERSION})",
+            f"Protocol version {report.protocol_version} not supported "
+            f"(this panel speaks {PROTOCOL_VERSION})",
         )
 
     agent.last_seen = utcnow()
@@ -168,6 +168,6 @@ async def remove_agent(
 ):
     agent = await session.get(Agent, agent_id)
     if agent is None:
-        raise HTTPException(404, "Agente não encontrado")
+        raise HTTPException(404, "Agent not found")
     await session.delete(agent)
     await session.commit()

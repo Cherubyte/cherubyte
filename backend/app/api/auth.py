@@ -32,13 +32,13 @@ def _clean_username(raw: str) -> str:
     if not (2 <= len(name) <= 64) or not all(
         c.isalnum() or c in "._-" for c in name
     ):
-        raise HTTPException(422, "Nome de utilizador inválido")
+        raise HTTPException(422, "Invalid username")
     return name
 
 
 def _check_password(raw: str) -> str:
     if len(raw or "") < _MIN_PASSWORD:
-        raise HTTPException(422, f"A palavra-passe precisa de {_MIN_PASSWORD}+ caracteres")
+        raise HTTPException(422, f"Password needs to be {_MIN_PASSWORD}+ characters")
     return raw
 
 
@@ -85,7 +85,7 @@ async def setup(
     session: AsyncSession = Depends(get_session),
 ):
     if await auth.count_accounts(session) > 0:
-        raise HTTPException(409, "A configuração inicial já foi feita")
+        raise HTTPException(409, "Initial setup is already done")
     account = Account(
         username=_clean_username(payload.username),
         password_hash=auth.hash_password(_check_password(payload.password)),
@@ -108,13 +108,13 @@ async def login(
 ):
     username = (payload.username or "").strip().lower()
     if auth.is_locked_out(username):
-        raise HTTPException(429, "Demasiadas tentativas; tenta novamente daqui a pouco")
+        raise HTTPException(429, "Too many attempts; try again shortly")
     account = (
         await session.execute(select(Account).where(Account.username == username))
     ).scalars().first()
     if account is None or not auth.verify_password(payload.password, account.password_hash):
         auth.note_failure(username)
-        raise HTTPException(401, "Credenciais inválidas")
+        raise HTTPException(401, "Invalid credentials")
     auth.clear_failures(username)
     row = await auth.create_session(session, account, request.headers.get("user-agent"))
     await session.commit()
@@ -143,7 +143,7 @@ async def update_me(
     """Change your own username and/or password. The current password is the
     gate for both — a hijacked session then can't lock the real owner out."""
     if not auth.verify_password(payload.current, account.password_hash):
-        raise HTTPException(403, "Palavra-passe atual errada")
+        raise HTTPException(403, "Current password is wrong")
     if payload.username is not None:
         new_name = _clean_username(payload.username)
         if new_name != account.username:
@@ -155,7 +155,7 @@ async def update_me(
                 )
             ).first()
             if taken is not None:
-                raise HTTPException(409, "Esse nome de utilizador já existe")
+                raise HTTPException(409, "That username is already taken")
             account.username = new_name
     if payload.new_password is not None:
         account.password_hash = auth.hash_password(_check_password(payload.new_password))
@@ -182,7 +182,7 @@ async def create_account(
         await session.execute(select(Account.id).where(Account.username == username))
     ).first()
     if exists is not None:
-        raise HTTPException(409, "Esse nome de utilizador já existe")
+        raise HTTPException(409, "That username is already taken")
     account = Account(
         username=username,
         password_hash=auth.hash_password(_check_password(payload.password)),
@@ -202,14 +202,14 @@ async def update_account(
 ):
     account = await session.get(Account, account_id)
     if account is None:
-        raise HTTPException(404, "Conta não encontrada")
+        raise HTTPException(404, "Account not found")
     if (
         payload.role is not None
         and payload.role != AccountRole.admin
         and account.role == AccountRole.admin
         and await _last_admin(session, account.id)
     ):
-        raise HTTPException(409, "Tem de existir pelo menos um admin")
+        raise HTTPException(409, "There has to be at least one admin")
     if payload.role is not None:
         account.role = payload.role
     if payload.password is not None:
@@ -226,11 +226,11 @@ async def delete_account(
 ):
     account = await session.get(Account, account_id)
     if account is None:
-        raise HTTPException(404, "Conta não encontrada")
+        raise HTTPException(404, "Account not found")
     if account.id == me.id:
-        raise HTTPException(409, "Não podes apagar a tua própria conta")
+        raise HTTPException(409, "You can't delete your own account")
     if account.role == AccountRole.admin and await _last_admin(session, account.id):
-        raise HTTPException(409, "Tem de existir pelo menos um admin")
+        raise HTTPException(409, "There has to be at least one admin")
     await session.delete(account)
     await session.commit()
 
@@ -253,7 +253,7 @@ async def create_token(
 ):
     name = (payload.name or "").strip()
     if not name:
-        raise HTTPException(422, "Dá um nome ao token")
+        raise HTTPException(422, "Give the token a name")
     row, secret = await api_tokens.create(session, name=name, created_by=me.id)
     await session.commit()
     out = ApiTokenCreatedOut.model_validate(row)
@@ -268,5 +268,5 @@ async def revoke_token(
     _: Account = Depends(require_admin),
 ):
     if not await api_tokens.revoke(session, token_id):
-        raise HTTPException(404, "Token não encontrado")
+        raise HTTPException(404, "Token not found")
     await session.commit()
