@@ -23,6 +23,7 @@ from ..models import (
     IpAddress,
     MacAddress,
     OpenPort,
+    _os_family,
     utcnow,
 )
 from netscan_protocol import AgentReport, HostObservation
@@ -396,6 +397,9 @@ async def _reconcile_host(
         if opened or closed:
             await _report_port_change(session, device, host, opened, closed)
 
+    if host.identified:
+        await _check_fingerprint(session, device, host, os_guess, is_new)
+
     await session.flush()
 
     if is_new:
@@ -442,6 +446,67 @@ async def _report_port_change(
         emoji="🔌",
         tags=["electric_plug"],
         prio=4 if opened else 3,
+    )
+
+
+async def _check_fingerprint(
+    session: AsyncSession,
+    device: Device,
+    host: HostObservation,
+    os_guess: str | None,
+    is_new: bool,
+) -> None:
+    """A known MAC that starts presenting a different OS is worth a look.
+
+    Same hardware address, same IP, but the OS family flipped — that is what a
+    spoofed MAC (or a device physically swapped for another) looks like. Ports
+    and services move around on their own, so only the OS-family change alerts;
+    the full fingerprint is still stored for a richer rule later.
+    """
+    import json
+
+    current = {
+        "os": _os_family(os_guess) or "",
+        "ports": sorted(host.open_ports),
+    }
+    previous_raw = device.fingerprint
+    device.fingerprint = json.dumps(current, separators=(",", ":"))
+
+    if is_new or not previous_raw:
+        return
+    try:
+        previous = json.loads(previous_raw)
+    except (ValueError, TypeError):
+        return
+
+    old_os, new_os = previous.get("os") or "", current["os"]
+    if not (old_os and new_os and old_os != new_os):
+        return
+
+    await _log_event(
+        session,
+        f"{device.display_name} mudou de sistema: {old_os} → {new_os} "
+        f"(mesmo MAC {host.mac})",
+        level=EventLevel.warning,
+        category="security",
+        device_id=device.id,
+    )
+    _publish("fingerprint_change", {"id": device.id, "from": old_os, "to": new_os})
+    if not _notify_allowed("fingerprint_change", device.id):
+        return
+    await notify.broadcast(
+        "fingerprint_change",
+        "Fingerprint de um dispositivo mudou",
+        [
+            f"Dispositivo: {device.display_name}",
+            f"MAC: {host.mac}",
+            f"Sistema: {old_os} → {new_os}",
+            "",
+            "O mesmo endereço de hardware está a responder como outro sistema.",
+        ],
+        emoji="🕵️",
+        tags=["detective"],
+        prio=4,
     )
 
 

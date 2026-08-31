@@ -381,6 +381,7 @@ export const en = {
   "alert.port_change": "A device's ports changed",
   "alert.arp_anomaly": "ARP-layer anomaly",
   "alert.rogue_dhcp": "Unexpected DHCP server",
+  "alert.fingerprint_change": "Device fingerprint changed",
   "alert.wan_down": "Internet down",
   "alert.wan_up": "Internet recovered",
   "alert.scan_degraded": "Scan found nothing",
