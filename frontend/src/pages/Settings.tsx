@@ -1133,7 +1133,13 @@ function AgentsSection() {
             <div>
               <span className="label text-fg-3">{t("agents.install.linux")}</span>
               <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
-{`./scripts/install-agent-service.sh ${panelUrl} ${token}`}
+{`sudo ./install-service.sh --panel ${panelUrl} --token ${token}`}
+              </pre>
+            </div>
+            <div>
+              <span className="label text-fg-3">{t("agents.install.macos")}</span>
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
+{`sudo ./install-daemon.sh --panel ${panelUrl} --token ${token}`}
               </pre>
             </div>
             <div>

@@ -289,6 +289,7 @@ export const en = {
   "agents.token.copied": "Copied",
   "agents.install.docker": "Docker",
   "agents.install.linux": "Linux / Raspberry Pi",
+  "agents.install.macos": "macOS",
   "agents.install.windows": "Windows",
   "agents.revoke": "Revoke",
   "agents.revoke.confirm": "Revoke this agent? It will need a new token to come back.",

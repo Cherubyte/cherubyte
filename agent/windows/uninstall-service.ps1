@@ -20,6 +20,8 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Write-Host 'Service was not installed.'
 }
 
+# Older installs put these in the machine environment; clear them so an upgrade
+# from such a version cannot leave a stale panel URL behind.
 foreach ($v in 'PANEL_URL', 'ENROL_TOKEN', 'NAME', 'STATE_FILE') {
     [Environment]::SetEnvironmentVariable("NETSCAN_AGENT_$v", $null, 'Machine')
 }
@@ -28,7 +30,7 @@ Remove-Item -Recurse -Force "$env:ProgramFiles\NetScan Agent" -ErrorAction Silen
 $StateDir = Join-Path $env:ProgramData 'NetScan Agent'
 if ($Purge) {
     Remove-Item -Recurse -Force $StateDir -ErrorAction SilentlyContinue
-    Write-Host 'State removed — a new enrolment token will be needed.'
+    Write-Host 'Configuration and state removed — a new enrolment token will be needed.'
 } elseif (Test-Path $StateDir) {
     Write-Host "State kept at $StateDir (pass -Purge to remove it)."
 }

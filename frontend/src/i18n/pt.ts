@@ -290,6 +290,7 @@ export const pt: Record<keyof typeof en, string> = {
   "agents.token.copied": "Copiado",
   "agents.install.docker": "Docker",
   "agents.install.linux": "Linux / Raspberry Pi",
+  "agents.install.macos": "macOS",
   "agents.install.windows": "Windows",
   "agents.revoke": "Revogar",
   "agents.revoke.confirm": "Revogar este agente? Vai precisar de um token novo para voltar.",
