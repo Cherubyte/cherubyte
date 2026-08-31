@@ -75,7 +75,7 @@ export function Card({
 }
 
 /* ── RollingValue — the figure flips when it changes (a metric ticked) ── */
-function RollingValue({ children }: { children: ReactNode }) {
+export function RollingValue({ children }: { children: ReactNode }) {
   const reduced = useReducedMotion();
   return (
     <span className="relative inline-block overflow-hidden">
