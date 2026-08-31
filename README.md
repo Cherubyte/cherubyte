@@ -74,6 +74,9 @@ in a SQLite file on your LAN and never leaves it.
 - **Risky-port watchlist** — a database, a remote shell or an unauthenticated
   admin API answering on the LAN gets a louder alert and a mark on the device.
 - **Merge suggestions** for phones that rotate their MAC, and a weekly digest.
+- **Update check** — **Settings ▸ Update** compares the running version against
+  `main` and, for a git install, updates in place with one click; a container
+  install gets the `docker compose pull` command instead.
 - English or Portuguese, light or dark — a tap to switch either.
 </details>
 

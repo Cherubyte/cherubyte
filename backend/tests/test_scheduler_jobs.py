@@ -34,6 +34,7 @@ async def test_every_expected_job_is_registered(started_scheduler):
     assert set(started_scheduler.job_next_run_times()) == {
         "history-purge",
         "weekly-digest",
+        "update-check",
     }, "scanning and the WAN probe belong to the agent now, not to this scheduler"
 
 

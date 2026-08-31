@@ -31,6 +31,7 @@ from ..services import (
     retention,
     telegram,
 )
+from ..services import update as update_service
 from .deps import require_admin
 
 logger = logging.getLogger("cherubyte.api.settings")
@@ -412,6 +413,50 @@ async def test_ntfy():
         tags=["white_check_mark"],
     )
     return {"ok": ok}
+
+
+# --- update check (admin to trigger a check or apply one; anyone can read) --
+
+
+def _update_payload() -> dict:
+    st = update_service.status()
+    latest = st["latest"]
+    return {
+        **st,
+        "deploy_mode": update_service.deploy_mode(),
+        "repo_url": update_service.REPO_URL,
+        "update_available": bool(latest and update_service.is_newer(latest, st["current"])),
+        "apply": update_service.apply_status(),
+    }
+
+
+@router.get("/update")
+async def get_update():
+    return _update_payload()
+
+
+@router.post("/update/check")
+async def check_update(_=Depends(require_admin)):
+    await update_service.check()
+    return _update_payload()
+
+
+@router.post("/update/apply")
+async def apply_update(_=Depends(require_admin)):
+    st = update_service.status()
+    if not st["latest"]:
+        raise HTTPException(400, "Check for updates first")
+    if update_service.deploy_mode() != "git":
+        raise HTTPException(
+            409,
+            "This is a container deployment — pull the new image instead "
+            "(docker compose pull panel && docker compose up -d panel).",
+        )
+    try:
+        await update_service.apply()
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return _update_payload()
 
 
 # --- backup / restore (admin) --------------------------------------------
