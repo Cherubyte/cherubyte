@@ -13,7 +13,7 @@ import httpx
 
 from ..config import settings
 
-logger = logging.getLogger("netscan.ntfy")
+logger = logging.getLogger("cherubyte.ntfy")
 
 DEFAULT_SERVER = "https://ntfy.sh"
 

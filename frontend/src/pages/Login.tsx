@@ -32,7 +32,7 @@ export function Login({ setupRequired }: { setupRequired: boolean }) {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-2.5">
           <AppMark size={24} className="text-fg" />
-          <span className="font-display text-[17px] text-fg">NetScan</span>
+          <span className="font-display text-[17px] text-fg">Cherubyte</span>
         </div>
         <div className="panel p-7">
           <h1 className="font-display mb-1 text-[22px] text-fg">

@@ -1,6 +1,6 @@
-# NetScan service site
+# Cherubyte service site
 
-The public face of NetScan: what it is, how to install it, where to download the
+The public face of Cherubyte: what it is, how to install it, where to download the
 agent, and a signup list for people who would rather we ran their panel.
 
 One Cloudflare Worker, per the house convention. D1 holds the signups. Static
@@ -27,7 +27,7 @@ nothing else.
 ## First deploy
 
 ```sh
-npx wrangler d1 create netscan-site        # put the id in wrangler.jsonc
+npx wrangler d1 create cherubyte-site        # put the id in wrangler.jsonc
 npx wrangler secret put ACCESS_AUD         # the Access application's AUD tag
 npx wrangler secret put ALLOWED_EMAILS     # comma separated
 # ACCESS_TEAM_DOMAIN is a plain var in wrangler.jsonc

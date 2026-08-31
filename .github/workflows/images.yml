@@ -40,9 +40,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: netscan-agent
+          - image: cherubyte-agent
             dockerfile: Dockerfile.agent
-          - image: netscan-panel
+          - image: cherubyte-panel
             dockerfile: Dockerfile.panel
     steps:
       - uses: actions/checkout@v4
@@ -85,7 +85,7 @@ jobs:
           platforms: ${{ env.PUBLISH == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ env.PUBLISH == 'true' }}
           load: ${{ env.PUBLISH != 'true' }}
-          tags: ${{ steps.meta.outputs.tags || 'netscan-ci:test' }}
+          tags: ${{ steps.meta.outputs.tags || 'cherubyte-ci:test' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
@@ -94,9 +94,9 @@ jobs:
         # A build that succeeds and an image that runs are different claims, and
         # only the panel can be checked without a network to scan. Runs on pull
         # requests, where the image is loaded locally rather than pushed.
-        if: env.PUBLISH != 'true' && matrix.image == 'netscan-panel'
+        if: env.PUBLISH != 'true' && matrix.image == 'cherubyte-panel'
         run: |
-          docker run -d --name check -p 1001:1001 netscan-ci:test
+          docker run -d --name check -p 1001:1001 cherubyte-ci:test
           for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:1001/api/health >/dev/null; then
               echo "panel answered its health check"

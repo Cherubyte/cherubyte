@@ -3,7 +3,7 @@
 import pytest
 from scapy.all import BOOTP, DHCP, Ether, IP, UDP
 
-from netscan_agent import dhcp_sniffer
+from cherubyte_agent import dhcp_sniffer
 
 
 @pytest.fixture(autouse=True)

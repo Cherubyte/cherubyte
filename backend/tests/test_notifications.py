@@ -42,13 +42,13 @@ async def test_unconfigured_ntfy_sends_nothing(captured):
 
 
 async def test_ntfy_publishes_json_with_title_and_tags(captured):
-    ntfy.configure(server="https://ntfy.example.com/", topic="netscan", priority=4)
+    ntfy.configure(server="https://ntfy.example.com/", topic="cherubyte", priority=4)
 
     assert await ntfy.send("corpo", title="🆕 Título", tags=["new"]) is True
 
     assert captured["url"] == "https://ntfy.example.com", "trailing slash trimmed"
     assert captured["json"] == {
-        "topic": "netscan",
+        "topic": "cherubyte",
         "message": "corpo",
         "priority": 4,
         "title": "🆕 Título",
@@ -57,27 +57,27 @@ async def test_ntfy_publishes_json_with_title_and_tags(captured):
 
 
 async def test_ntfy_token_auth(captured):
-    ntfy.configure(topic="netscan", token="tk_123")
+    ntfy.configure(topic="cherubyte", token="tk_123")
     await ntfy.send("x")
     assert captured["headers"]["Authorization"] == "Bearer tk_123"
 
 
 async def test_ntfy_basic_auth(captured):
-    ntfy.configure(topic="netscan", username="user", password="pw")
+    ntfy.configure(topic="cherubyte", username="user", password="pw")
     await ntfy.send("x")
     expected = base64.b64encode(b"user:pw").decode()
     assert captured["headers"]["Authorization"] == f"Basic {expected}"
 
 
 async def test_ntfy_priority_is_clamped():
-    ntfy.configure(topic="netscan", priority=99)
+    ntfy.configure(topic="cherubyte", priority=99)
     assert ntfy.priority() == 5
     ntfy.configure(priority=-3)
     assert ntfy.priority() == 1
 
 
 async def test_disabling_or_clearing_the_topic_stops_delivery(captured):
-    ntfy.configure(topic="netscan")
+    ntfy.configure(topic="cherubyte")
     assert ntfy.is_configured()
 
     ntfy.configure(enabled=False)
@@ -99,7 +99,7 @@ async def test_broadcast_escapes_html_for_telegram_but_not_for_ntfy(
         return True
 
     monkeypatch.setattr(telegram, "send", fake_telegram)
-    ntfy.configure(topic="netscan")
+    ntfy.configure(topic="cherubyte")
 
     result = await notify.broadcast(
         "device_new", "Novo & <teste>", ["Nome: a<b>", "MAC: aa"], emoji="🆕", prio=4

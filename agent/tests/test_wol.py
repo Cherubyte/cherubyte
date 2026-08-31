@@ -1,6 +1,6 @@
 """The Wake-on-LAN magic packet."""
 
-from netscan_agent import wol
+from cherubyte_agent import wol
 
 
 def test_magic_packet_shape():

@@ -5,7 +5,7 @@ before the transaction commits — otherwise a client that refetches on
 from datetime import datetime, timezone
 
 import pytest
-from netscan_protocol import AgentReport, HostObservation
+from cherubyte_protocol import AgentReport, HostObservation
 from sqlalchemy import select
 
 from app.database import SessionLocal

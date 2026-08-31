@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from netscan_protocol import (
+from cherubyte_protocol import (
     PROTOCOL_VERSION,
     AgentReport,
     EnrolRequest,
@@ -28,7 +28,7 @@ from ..scheduler import note_report
 from ..services.monitor import ingest_report
 from .deps import current_account, enforce_access
 
-logger = logging.getLogger("netscan.api.agents")
+logger = logging.getLogger("cherubyte.api.agents")
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 

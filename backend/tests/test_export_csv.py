@@ -60,7 +60,7 @@ async def test_export_returns_a_csv_attachment(client):
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/csv")
     assert "attachment" in r.headers["content-disposition"]
-    assert "netscan-devices.csv" in r.headers["content-disposition"]
+    assert "cherubyte-devices.csv" in r.headers["content-disposition"]
 
     rows = list(csv.DictReader(io.StringIO(r.text)))
     assert len(rows) == 2

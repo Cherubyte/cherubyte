@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger("netscan.oui")
+logger = logging.getLogger("cherubyte.oui")
 
 try:
     from mac_vendor_lookup import AsyncMacLookup

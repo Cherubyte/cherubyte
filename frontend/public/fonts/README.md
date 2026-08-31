@@ -1,6 +1,6 @@
 # Fonts
 
-Self-hosted and served from `/fonts/*` — **NetScan makes no external font
+Self-hosted and served from `/fonts/*` — **Cherubyte makes no external font
 requests.**
 
 | Family | File | Role | License |

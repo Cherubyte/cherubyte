@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from netscan_protocol import AgentReport, HostObservation
+from cherubyte_protocol import AgentReport, HostObservation
 from sqlalchemy import select
 
 from app.api.scan import trigger_scan

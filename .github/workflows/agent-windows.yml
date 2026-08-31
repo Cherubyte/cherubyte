@@ -33,7 +33,7 @@ jobs:
 
       - name: Build the executable
         working-directory: agent/windows
-        run: pyinstaller --clean --noconfirm netscan-agent.spec
+        run: pyinstaller --clean --noconfirm cherubyte-agent.spec
 
       - name: The executable runs and carries the service framework
         working-directory: agent/windows/dist
@@ -44,7 +44,7 @@ jobs:
           # seeing that text proves the bundle loaded every module and reached
           # HandleCommandLine — which is the packaging failure worth catching
           # here, before the service does it in front of a user.
-          $out = (.\netscan-agent.exe --netscan-smoke-check 2>&1 | Out-String)
+          $out = (.\cherubyte-agent.exe --cherubyte-smoke-check 2>&1 | Out-String)
           Write-Host $out
           if ($out -notmatch 'install\|update\|remove') {
             throw "the executable did not reach the service framework"
@@ -61,14 +61,14 @@ jobs:
           # No panel to talk to here, so it will fail to enrol — that is fine.
           # What is being proven is that the SCM can start and stop it, which is
           # exactly what a console exe registered with sc.exe cannot do.
-          [Environment]::SetEnvironmentVariable('NETSCAN_AGENT_PANEL_URL','http://127.0.0.1:9','Machine')
-          [Environment]::SetEnvironmentVariable('NETSCAN_AGENT_STATE_FILE',"$env:TEMP\agent.json",'Machine')
+          [Environment]::SetEnvironmentVariable('CHERUBYTE_AGENT_PANEL_URL','http://127.0.0.1:9','Machine')
+          [Environment]::SetEnvironmentVariable('CHERUBYTE_AGENT_STATE_FILE',"$env:TEMP\agent.json",'Machine')
 
-          .\netscan-agent.exe --startup manual install
+          .\cherubyte-agent.exe --startup manual install
           if ($LASTEXITCODE -ne 0) { throw "install failed ($LASTEXITCODE)" }
 
-          Start-Service NetScanAgent
-          $svc = Get-Service NetScanAgent
+          Start-Service CherubyteAgent
+          $svc = Get-Service CherubyteAgent
           Write-Host "service status: $($svc.Status)"
           if ($svc.Status -ne 'Running') { throw "service did not reach Running: $($svc.Status)" }
 
@@ -92,18 +92,18 @@ jobs:
           }
           if (-not $ok) { throw 'the service never answered its health endpoint' }
 
-          Stop-Service NetScanAgent
-          .\netscan-agent.exe remove
+          Stop-Service CherubyteAgent
+          .\cherubyte-agent.exe remove
           Write-Host 'Service installed, started, answered, stopped and removed.'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: netscan-agent-windows
-          path: agent/windows/dist/netscan-agent.exe
+          name: cherubyte-agent-windows
+          path: agent/windows/dist/cherubyte-agent.exe
           if-no-files-found: error
 
       - name: Attach to the release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: agent/windows/dist/netscan-agent.exe
+          files: agent/windows/dist/cherubyte-agent.exe

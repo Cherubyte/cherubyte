@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from netscan_protocol import HostObservation
+from cherubyte_protocol import HostObservation
 
 from .apple_models import prettify_model
 

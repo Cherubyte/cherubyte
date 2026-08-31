@@ -22,12 +22,12 @@ from hashlib import sha256
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from netscan_protocol import AgentConfig
+from cherubyte_protocol import AgentConfig
 
 from ..config import settings
 from ..models import Agent, EnrolmentToken, utcnow
 
-logger = logging.getLogger("netscan.agents")
+logger = logging.getLogger("cherubyte.agents")
 
 TOKEN_TTL = timedelta(hours=24)
 

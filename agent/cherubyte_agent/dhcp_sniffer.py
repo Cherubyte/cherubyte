@@ -21,7 +21,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-logger = logging.getLogger("netscan.dhcp")
+logger = logging.getLogger("cherubyte.dhcp")
 
 
 @dataclass

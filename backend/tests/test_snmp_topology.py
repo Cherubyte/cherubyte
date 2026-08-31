@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from netscan_protocol import AgentReport, HostObservation, LldpNeighbor
+from cherubyte_protocol import AgentReport, HostObservation, LldpNeighbor
 from sqlalchemy import select
 
 from app import main

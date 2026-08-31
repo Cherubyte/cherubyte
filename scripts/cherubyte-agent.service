@@ -1,5 +1,5 @@
 [Unit]
-Description=NetScan agent — varrimento da rede local
+Description=Cherubyte agent — varrimento da rede local
 After=network-online.target
 Wants=network-online.target
 # An always-on monitor should never sit dead because it restarted a few times
@@ -10,9 +10,9 @@ StartLimitIntervalSec=0
 Type=simple
 # The USER and ROOT placeholders below are filled in by
 # scripts/install-agent-service.sh (it seds in the invoking user and repo path).
-User=__NETSCAN_USER__
-WorkingDirectory=__NETSCAN_ROOT__/agent
-ExecStart=__NETSCAN_ROOT__/agent/.venv/bin/python run.py
+User=__CHERUBYTE_USER__
+WorkingDirectory=__CHERUBYTE_ROOT__/agent
+ExecStart=__CHERUBYTE_ROOT__/agent/.venv/bin/python run.py
 # `always`, not `on-failure`: a monitor that stops sweeping is useless, so it
 # comes back from a crash, an OOM kill, or a stray signal too. Only an explicit
 # `systemctl stop` keeps it down.

@@ -4,8 +4,8 @@ import react from "@vitejs/plugin-react";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
-// Dev server proxies the API to the backend on :1001 (override with NETSCAN_API).
-const api = process.env.NETSCAN_API ?? "http://localhost:1001";
+// Dev server proxies the API to the backend on :1001 (override with CHERUBYTE_API).
+const api = process.env.CHERUBYTE_API ?? "http://localhost:1001";
 export default defineConfig({
   plugins: [react()],
   define: {

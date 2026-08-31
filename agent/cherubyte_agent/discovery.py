@@ -19,7 +19,7 @@ import struct
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 
-logger = logging.getLogger("netscan.discovery")
+logger = logging.getLogger("cherubyte.discovery")
 
 
 @dataclass
@@ -267,7 +267,7 @@ def _http_get(url: str, timeout: float = 1.5, max_bytes: int = 8000) -> str | No
             c.settimeout(timeout)
             c.sendall(
                 f"GET {path} HTTP/1.1\r\nHost: {host}\r\n"
-                f"User-Agent: NetScan\r\nConnection: close\r\n\r\n".encode()
+                f"User-Agent: Cherubyte\r\nConnection: close\r\n\r\n".encode()
             )
             chunks = []
             got = 0

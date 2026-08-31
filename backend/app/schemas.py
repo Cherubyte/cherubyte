@@ -243,7 +243,7 @@ class SettingsOut(BaseModel):
     mqtt_host: str = ""
     mqtt_port: int = 1883
     mqtt_username: str = ""
-    mqtt_base_topic: str = "netscan"
+    mqtt_base_topic: str = "cherubyte"
     mqtt_discovery_prefix: str = "homeassistant"
     mqtt_auth_configured: bool = False
     # wan

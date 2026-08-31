@@ -10,7 +10,7 @@ from .config import settings
 from .services.digest import run_weekly
 from .services.retention import run_purge
 
-logger = logging.getLogger("netscan.scheduler")
+logger = logging.getLogger("cherubyte.scheduler")
 
 scheduler = AsyncIOScheduler()
 _PURGE_JOB_ID = "history-purge"

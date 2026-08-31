@@ -13,7 +13,7 @@ from html import escape
 
 from . import alerts, ntfy, telegram
 
-logger = logging.getLogger("netscan.notify")
+logger = logging.getLogger("cherubyte.notify")
 
 
 async def broadcast(

@@ -18,7 +18,7 @@ from ..config import settings
 from ..database import SessionLocal
 from ..models import Agent, EventLevel, WanSample, utcnow
 
-logger = logging.getLogger("netscan.wan")
+logger = logging.getLogger("cherubyte.wan")
 
 # None until the first sample; then the last known state, to spot transitions.
 _last_ok: bool | None = None

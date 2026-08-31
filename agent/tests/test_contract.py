@@ -7,7 +7,7 @@ release, with both sides still reporting success.
 
 from datetime import datetime, timezone
 
-from netscan_protocol import (
+from cherubyte_protocol import (
     PROTOCOL_VERSION,
     AgentReport,
     HostObservation,
@@ -15,8 +15,8 @@ from netscan_protocol import (
     WanObservation,
 )
 
-from netscan_agent.collector import to_observation
-from netscan_agent.scanner import Host
+from cherubyte_agent.collector import to_observation
+from cherubyte_agent.scanner import Host
 
 
 def a_host() -> Host:

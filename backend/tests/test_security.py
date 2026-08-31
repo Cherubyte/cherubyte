@@ -23,7 +23,7 @@ def dist(tmp_path, monkeypatch):
     (root / "assets").mkdir(parents=True)
     (root / "index.html").write_text("<html>spa</html>")
     (root / "favicon.svg").write_text("<svg/>")
-    (tmp_path / "segredo.env").write_text("NETSCAN_TELEGRAM_BOT_TOKEN=super-secreto")
+    (tmp_path / "segredo.env").write_text("CHERUBYTE_TELEGRAM_BOT_TOKEN=super-secreto")
     monkeypatch.setattr(main, "_dist", root)
     return tmp_path
 
@@ -50,7 +50,7 @@ def test_traversal_never_escapes_the_built_frontend(client, probe):
     other path goes through our own resolver. Neither may leak."""
     response = client.get("/" + probe)
     assert "secreto" not in response.text, f"{probe} leaked a file outside dist"
-    assert "NETSCAN_" not in response.text
+    assert "CHERUBYTE_" not in response.text
 
 
 def test_absolute_paths_do_not_escape_either(client):

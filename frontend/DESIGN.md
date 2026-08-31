@@ -1,6 +1,6 @@
 # DESIGN — "STUDIO"
 
-The NetScan panel as a calm, near-monochrome instrument — in the spirit of an
+The Cherubyte panel as a calm, near-monochrome instrument — in the spirit of an
 Apple system app and [curated.supply](https://www.curated.supply/). Near-black ink
 on a soft grey ground, generous rhythm, restraint. **Depth is elevation, not a
 stroke**: white cards float on the grey ground with a soft shadow, controls are
@@ -62,7 +62,7 @@ marks / avatars full. Focus ring: `0 0 0 3px rgb(--fg / .14)`, no border.
 ## Chrome — `components/Shell.tsx`
 
 **Desktop:** a `228px` sidebar that sits on the grey ground with no divider —
-`AppMark` + `NetScan` wordmark,
+`AppMark` + `Cherubyte` wordmark,
 then the nav as rounded items — the active one is a white pill (`--surface` +
 a whisper of shadow), no number codes, no leader tick. Foot: primary **Scan**
 button (editors), account + role, version, a sun/moon theme toggle. A sticky

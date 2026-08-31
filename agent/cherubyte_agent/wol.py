@@ -12,7 +12,7 @@ import logging
 import re
 import socket
 
-logger = logging.getLogger("netscan.agent.wol")
+logger = logging.getLogger("cherubyte.agent.wol")
 
 _MAC_RE = re.compile(r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$")
 _PORTS = (9, 7)

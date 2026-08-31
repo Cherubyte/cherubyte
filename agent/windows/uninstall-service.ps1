@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Removes the NetScan agent service.
+  Removes the Cherubyte agent service.
 .DESCRIPTION
   Leaves the state directory alone by default: it holds the key this agent
   enrolled with, and deleting it means needing a fresh token to come back.
@@ -10,7 +10,7 @@
 param([switch] $Purge)
 
 $ErrorActionPreference = 'Stop'
-$ServiceName = 'NetScanAgent'
+$ServiceName = 'CherubyteAgent'
 
 if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
@@ -21,11 +21,11 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
 }
 
 foreach ($v in 'PANEL_URL', 'ENROL_TOKEN', 'NAME', 'STATE_FILE') {
-    [Environment]::SetEnvironmentVariable("NETSCAN_AGENT_$v", $null, 'Machine')
+    [Environment]::SetEnvironmentVariable("CHERUBYTE_AGENT_$v", $null, 'Machine')
 }
-Remove-Item -Recurse -Force "$env:ProgramFiles\NetScan Agent" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "$env:ProgramFiles\Cherubyte Agent" -ErrorAction SilentlyContinue
 
-$StateDir = Join-Path $env:ProgramData 'NetScan Agent'
+$StateDir = Join-Path $env:ProgramData 'Cherubyte Agent'
 if ($Purge) {
     Remove-Item -Recurse -Force $StateDir -ErrorAction SilentlyContinue
     Write-Host 'State removed — a new enrolment token will be needed.'

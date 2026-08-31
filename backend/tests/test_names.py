@@ -1,6 +1,6 @@
 """Name selection and cleanup — Host.best_name decides what the user sees."""
 
-from netscan_protocol import HostObservation
+from cherubyte_protocol import HostObservation
 
 from app.models import Device, _generic_host, _short_vendor
 from app.services.naming import best_name, clean_name

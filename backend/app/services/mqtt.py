@@ -1,6 +1,6 @@
 """MQTT publishing, with Home Assistant auto-discovery.
 
-Presence is already computed here; publishing it turns NetScan into a presence
+Presence is already computed here; publishing it turns Cherubyte into a presence
 source the rest of the house can use. Each person becomes a HA `device_tracker`
 and each device a connectivity `binary_sensor`, created automatically through
 the discovery topics — no YAML on the Home Assistant side.
@@ -17,7 +17,7 @@ import re
 
 from ..config import settings
 
-logger = logging.getLogger("netscan.mqtt")
+logger = logging.getLogger("cherubyte.mqtt")
 
 _QUEUE: asyncio.Queue | None = None
 _WORKER: asyncio.Task | None = None
@@ -35,7 +35,7 @@ def slug(value: str) -> str:
 
 
 def base_topic() -> str:
-    return (settings.mqtt_base_topic or "netscan").strip("/")
+    return (settings.mqtt_base_topic or "cherubyte").strip("/")
 
 
 def availability_topic() -> str:
@@ -51,12 +51,12 @@ def device_topic(device_id: int) -> str:
 
 
 def _origin() -> dict:
-    return {"name": "NetScan", "sw_version": "0.1.0"}
+    return {"name": "Cherubyte", "sw_version": "0.1.0"}
 
 
 def user_discovery(user_id: int, name: str) -> tuple[str, dict]:
     """(topic, payload) that makes Home Assistant create a person tracker."""
-    object_id = f"netscan_user_{user_id}"
+    object_id = f"cherubyte_user_{user_id}"
     topic = f"{settings.mqtt_discovery_prefix}/device_tracker/{object_id}/config"
     payload = {
         "name": name,
@@ -67,9 +67,9 @@ def user_discovery(user_id: int, name: str) -> tuple[str, dict]:
         "source_type": "router",
         "availability_topic": availability_topic(),
         "device": {
-            "identifiers": ["netscan"],
-            "name": "NetScan",
-            "manufacturer": "NetScan",
+            "identifiers": ["cherubyte"],
+            "name": "Cherubyte",
+            "manufacturer": "Cherubyte",
         },
         "origin": _origin(),
     }
@@ -77,7 +77,7 @@ def user_discovery(user_id: int, name: str) -> tuple[str, dict]:
 
 
 def device_discovery(device_id: int, name: str) -> tuple[str, dict]:
-    object_id = f"netscan_device_{device_id}"
+    object_id = f"cherubyte_device_{device_id}"
     topic = f"{settings.mqtt_discovery_prefix}/binary_sensor/{object_id}/config"
     payload = {
         "name": name,
@@ -88,9 +88,9 @@ def device_discovery(device_id: int, name: str) -> tuple[str, dict]:
         "device_class": "connectivity",
         "availability_topic": availability_topic(),
         "device": {
-            "identifiers": ["netscan"],
-            "name": "NetScan",
-            "manufacturer": "NetScan",
+            "identifiers": ["cherubyte"],
+            "name": "Cherubyte",
+            "manufacturer": "Cherubyte",
         },
         "origin": _origin(),
     }

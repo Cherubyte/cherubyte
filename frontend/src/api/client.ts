@@ -51,7 +51,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   if (!ct.includes("json")) {
     // old backend has no such route -> SPA fallback served index.html
     throw new ApiError(
-      "Endpoint em falta — reinicia o backend (sudo systemctl restart netscan).",
+      "Endpoint em falta — reinicia o backend (sudo systemctl restart cherubyte).",
       true,
     );
   }

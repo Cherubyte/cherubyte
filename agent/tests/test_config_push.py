@@ -6,10 +6,10 @@ overwritten on the first report.
 """
 
 import pytest
-from netscan_protocol import AgentConfig
+from cherubyte_protocol import AgentConfig
 
-from netscan_agent import config as agent_config
-from netscan_agent.config import apply_config, settings
+from cherubyte_agent import config as agent_config
+from cherubyte_agent.config import apply_config, settings
 
 
 @pytest.fixture(autouse=True)

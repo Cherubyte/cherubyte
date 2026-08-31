@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Account, AuthSession, utcnow
 
-COOKIE_NAME = "netscan_session"
+COOKIE_NAME = "cherubyte_session"
 SESSION_TTL = timedelta(days=30)
 
 _PBKDF2_ROUNDS = 600_000

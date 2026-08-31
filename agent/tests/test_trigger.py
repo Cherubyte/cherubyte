@@ -10,7 +10,7 @@ import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
-from netscan_agent import main
+from cherubyte_agent import main
 
 
 @pytest.fixture(autouse=True)

@@ -8,7 +8,7 @@ import httpx
 
 from ..config import settings
 
-logger = logging.getLogger("netscan.telegram")
+logger = logging.getLogger("cherubyte.telegram")
 
 _runtime: dict[str, object] = {}
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NetScan — one-shot setup after cloning.
+# Cherubyte — one-shot setup after cloning.
 #
 # Builds the panel (backend venv + compiled frontend), creates the database and
 # the first admin account. Optionally builds the bundled agent and installs the
@@ -9,7 +9,7 @@
 #   ./scripts/setup.sh --service             # + install & start at boot
 #   ./scripts/setup.sh --service --agent     # + a local scanner on this box
 #
-#   NETSCAN_ADMIN_USERNAME=me NETSCAN_ADMIN_PASSWORD=secret123 \
+#   CHERUBYTE_ADMIN_USERNAME=me CHERUBYTE_ADMIN_PASSWORD=secret123 \
 #     ./scripts/setup.sh --service           # unattended
 #
 # Flags:
@@ -54,7 +54,7 @@ echo ">> Database schema"
 
 if [ "$WANT_ADMIN" = 1 ]; then
   echo ">> Initial admin account"
-  ADMIN_USER=${NETSCAN_ADMIN_USERNAME:-}
+  ADMIN_USER=${CHERUBYTE_ADMIN_USERNAME:-}
   if [ -z "$ADMIN_USER" ] && [ -t 0 ]; then
     read -rp "   Admin username [admin]: " ADMIN_USER
   fi
@@ -72,14 +72,14 @@ fi
 
 # --- optional systemd unit ------------------------------------------------
 if [ "$WANT_SERVICE" = 1 ]; then
-  echo ">> Installing /etc/systemd/system/netscan.service"
-  sed -e "s#__NETSCAN_ROOT__#${ROOT}#g" \
-      -e "s#__NETSCAN_USER__#$(id -un)#g" \
-      scripts/netscan.service | sudo tee /etc/systemd/system/netscan.service >/dev/null
+  echo ">> Installing /etc/systemd/system/cherubyte.service"
+  sed -e "s#__CHERUBYTE_ROOT__#${ROOT}#g" \
+      -e "s#__CHERUBYTE_USER__#$(id -un)#g" \
+      scripts/cherubyte.service | sudo tee /etc/systemd/system/cherubyte.service >/dev/null
   sudo systemctl daemon-reload
-  sudo systemctl enable --now netscan.service
+  sudo systemctl enable --now cherubyte.service
   sleep 2
-  sudo systemctl --no-pager status netscan.service | head -6
+  sudo systemctl --no-pager status cherubyte.service | head -6
 fi
 
 echo
@@ -87,7 +87,7 @@ echo "────────────────────────�
 echo " Panel → http://$(hostname -I 2>/dev/null | awk '{print $1}'):1001"
 [ "$WANT_SERVICE" = 1 ] || echo " Start it:  ./scripts/start.sh"
 echo
-echo " NetScan does not scan on its own — enrol an agent:"
+echo " Cherubyte does not scan on its own — enrol an agent:"
 echo "   Panel ▸ Config ▸ Agents ▸ New agent  (copy the token)"
 if [ "$WANT_AGENT" = 1 ]; then
   echo "   ./scripts/install-agent-service.sh http://localhost:1001 <token>"

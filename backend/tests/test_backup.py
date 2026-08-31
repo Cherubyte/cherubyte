@@ -51,6 +51,24 @@ async def test_round_trip_restores_rows_and_files(session, uploads, tmp_path):
     assert backup.db_path().with_name(backup.db_path().name + ".pre-restore").exists()
 
 
+def test_inspect_accepts_a_legacy_netscan_db_member(tmp_path):
+    """Backups written before the NetScan → Cherubyte rename carry the database
+    as `netscan.db`. `inspect` (and, through it, `restore`) still accept them."""
+    import sqlite3
+
+    db_file = tmp_path / "src.db"
+    con = sqlite3.connect(str(db_file))
+    con.execute("CREATE TABLE t (x)")
+    con.commit()
+    con.close()
+
+    legacy = tmp_path / "legacy.tar.gz"
+    with tarfile.open(legacy, "w:gz") as tar:
+        tar.add(db_file, arcname="netscan.db")
+
+    assert backup.inspect(legacy) == {"meta": {}, "uploads": 0}
+
+
 @pytest.mark.asyncio
 async def test_backup_snapshot_is_consistent_under_writes(session, uploads, tmp_path):
     session.add(User(name="Sam"))
@@ -59,7 +77,7 @@ async def test_backup_snapshot_is_consistent_under_writes(session, uploads, tmp_
     backup.create(archive)
     assert tarfile.is_tarfile(archive)
     with tarfile.open(archive) as tar:
-        assert "netscan.db" in tar.getnames()
+        assert "cherubyte.db" in tar.getnames()
         assert "meta.json" in tar.getnames()
 
 
@@ -131,7 +149,7 @@ def test_restore_rejects_a_corrupt_database(tmp_path):
     bad = tmp_path / "bad.tar.gz"
     with tarfile.open(bad, "w:gz") as tar:
         payload = b"SQLite format 3\x00 but corrupt"
-        info = tarfile.TarInfo("netscan.db")
+        info = tarfile.TarInfo("cherubyte.db")
         info.size = len(payload)
         tar.addfile(info, io.BytesIO(payload))
     with pytest.raises(backup.BackupError):

@@ -67,10 +67,10 @@ export function CommandPalette() {
     };
     const openIt = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    window.addEventListener("netscan:cmdk", openIt);
+    window.addEventListener("cherubyte:cmdk", openIt);
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("netscan:cmdk", openIt);
+      window.removeEventListener("cherubyte:cmdk", openIt);
     };
   }, []);
 

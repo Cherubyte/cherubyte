@@ -10,13 +10,13 @@ import os
 import tempfile
 from pathlib import Path
 
-_TMP = Path(tempfile.mkdtemp(prefix="netscan-tests-"))
-os.environ["NETSCAN_DATABASE_URL"] = f"sqlite+aiosqlite:///{_TMP / 'test.db'}"
+_TMP = Path(tempfile.mkdtemp(prefix="cherubyte-tests-"))
+os.environ["CHERUBYTE_DATABASE_URL"] = f"sqlite+aiosqlite:///{_TMP / 'test.db'}"
 # pin these so tests never depend on the machine's real network
-os.environ["NETSCAN_SUBNET"] = "192.168.1.0/24"
-os.environ["NETSCAN_TELEGRAM_BOT_TOKEN"] = ""
-os.environ["NETSCAN_TELEGRAM_CHAT_ID"] = ""
-os.environ["NETSCAN_NTFY_TOPIC"] = ""
+os.environ["CHERUBYTE_SUBNET"] = "192.168.1.0/24"
+os.environ["CHERUBYTE_TELEGRAM_BOT_TOKEN"] = ""
+os.environ["CHERUBYTE_TELEGRAM_CHAT_ID"] = ""
+os.environ["CHERUBYTE_NTFY_TOPIC"] = ""
 
 import pytest_asyncio  # noqa: E402
 

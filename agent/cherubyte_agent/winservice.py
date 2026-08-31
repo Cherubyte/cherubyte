@@ -22,13 +22,13 @@ import win32event
 import win32service
 import win32serviceutil
 
-SERVICE_NAME = "NetScanAgent"
+SERVICE_NAME = "CherubyteAgent"
 
 
-class NetScanAgentService(win32serviceutil.ServiceFramework):
+class CherubyteAgentService(win32serviceutil.ServiceFramework):
     _svc_name_ = SERVICE_NAME
-    _svc_display_name_ = "NetScan Agent"
-    _svc_description_ = "Scans this network and reports to a NetScan panel."
+    _svc_display_name_ = "Cherubyte Agent"
+    _svc_description_ = "Scans this network and reports to a Cherubyte panel."
 
     def __init__(self, args):
         super().__init__(args)
@@ -54,7 +54,7 @@ class NetScanAgentService(win32serviceutil.ServiceFramework):
         from .config import settings
 
         config = uvicorn.Config(
-            "netscan_agent.main:app",
+            "cherubyte_agent.main:app",
             host=settings.health_host,
             port=settings.health_port,
             log_config=None,
@@ -75,10 +75,10 @@ def main() -> None:
     """
     if len(sys.argv) == 1:
         servicemanager.Initialize()
-        servicemanager.PrepareToHostSingle(NetScanAgentService)
+        servicemanager.PrepareToHostSingle(CherubyteAgentService)
         servicemanager.StartServiceCtrlDispatcher()
     else:
-        win32serviceutil.HandleCommandLine(NetScanAgentService)
+        win32serviceutil.HandleCommandLine(CherubyteAgentService)
 
 
 if __name__ == "__main__":

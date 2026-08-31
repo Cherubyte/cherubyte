@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small admin CLI for the NetScan panel.
+"""Small admin CLI for the Cherubyte panel.
 
 Run from the `backend/` directory with its venv:
 
@@ -8,7 +8,7 @@ Run from the `backend/` directory with its venv:
     .venv/bin/python manage.py backup [path.tar.gz]
     .venv/bin/python manage.py restore <path.tar.gz>
 
-`create-admin` reads the password from $NETSCAN_ADMIN_PASSWORD when set (so the
+`create-admin` reads the password from $CHERUBYTE_ADMIN_PASSWORD when set (so the
 setup script can run unattended), otherwise it prompts. It also promotes an
 existing account to admin and resets its password, so it doubles as a recovery
 tool if you lock yourself out.
@@ -54,10 +54,10 @@ async def _create_admin(username: str, password: str) -> str:
 
 
 def _prompt_password() -> str:
-    env = os.environ.get("NETSCAN_ADMIN_PASSWORD")
+    env = os.environ.get("CHERUBYTE_ADMIN_PASSWORD")
     if env:
         if len(env) < _MIN_PASSWORD:
-            sys.exit(f"NETSCAN_ADMIN_PASSWORD is shorter than {_MIN_PASSWORD} characters")
+            sys.exit(f"CHERUBYTE_ADMIN_PASSWORD is shorter than {_MIN_PASSWORD} characters")
         return env
     while True:
         pw = getpass.getpass("Password: ")
@@ -122,7 +122,7 @@ def main() -> None:
 
     if cmd == "create-admin":
         username = _clean_username(
-            args[1] if len(args) > 1 else os.environ.get("NETSCAN_ADMIN_USERNAME") or "admin"
+            args[1] if len(args) > 1 else os.environ.get("CHERUBYTE_ADMIN_USERNAME") or "admin"
         )
         password = _prompt_password()
         verb = asyncio.run(_create_admin(username, password))

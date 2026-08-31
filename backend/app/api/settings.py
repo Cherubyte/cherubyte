@@ -33,7 +33,7 @@ from ..services import (
 )
 from .deps import require_admin
 
-logger = logging.getLogger("netscan.api.settings")
+logger = logging.getLogger("cherubyte.api.settings")
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -183,7 +183,7 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         mqtt_host=cfg.mqtt_host or "",
         mqtt_port=cfg.mqtt_port,
         mqtt_username=cfg.mqtt_username or "",
-        mqtt_base_topic=cfg.mqtt_base_topic or "netscan",
+        mqtt_base_topic=cfg.mqtt_base_topic or "cherubyte",
         mqtt_discovery_prefix=cfg.mqtt_discovery_prefix or "homeassistant",
         mqtt_auth_configured=bool(cfg.mqtt_password),
         wan_enabled=cfg.wan_enabled,
@@ -369,7 +369,7 @@ async def update_settings(
 
 @router.post("/telegram/test")
 async def test_telegram():
-    ok = await telegram.send("✅ NetScan: teste de notificação Telegram.")
+    ok = await telegram.send("✅ Cherubyte: teste de notificação Telegram.")
     return {"ok": ok}
 
 
@@ -389,7 +389,7 @@ async def test_digest(session: AsyncSession = Depends(get_session)):
     data = await digest.collect(session)
     sent = await notify.broadcast(
         "weekly_summary",
-        "Resumo semanal do NetScan",
+        "Resumo semanal do Cherubyte",
         digest.format_lines(data),
         emoji="📊",
         tags=["bar_chart"],
@@ -408,7 +408,7 @@ async def test_fingerbank():
 async def test_ntfy():
     ok = await ntfy.send(
         "Teste de notificação ntfy — se recebeste isto, está tudo a funcionar.",
-        title="✅ NetScan",
+        title="✅ Cherubyte",
         tags=["white_check_mark"],
     )
     return {"ok": ok}
@@ -422,7 +422,7 @@ _MAX_RESTORE_BYTES = 512 * 1024 * 1024
 @router.get("/backup")
 async def download_backup(_=Depends(require_admin)):
     """A gzipped tar of the database and the uploads. Admin only."""
-    tmp = Path(tempfile.mkdtemp(prefix="netscan-backup-")) / backup_service.default_name()
+    tmp = Path(tempfile.mkdtemp(prefix="cherubyte-backup-")) / backup_service.default_name()
     try:
         backup_service.create(tmp)
     except FileNotFoundError as exc:
@@ -451,7 +451,7 @@ async def restore_backup(file: UploadFile, _=Depends(require_admin)):
     `Restart=always`, Docker `restart: unless-stopped`). A hand-run `start.sh`
     does not — restart it yourself.
     """
-    tmp_dir = Path(tempfile.mkdtemp(prefix="netscan-restore-"))
+    tmp_dir = Path(tempfile.mkdtemp(prefix="cherubyte-restore-"))
     staged = tmp_dir / "upload.tar.gz"
     size = 0
     with staged.open("wb") as out:

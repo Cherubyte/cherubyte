@@ -17,7 +17,7 @@ from ..config import settings
 from ..database import SessionLocal
 from ..models import Agent, ConnectionHistory, Event, WanSample, utcnow
 
-logger = logging.getLogger("netscan.retention")
+logger = logging.getLogger("cherubyte.retention")
 
 
 async def purge(session: AsyncSession, days: int | None = None) -> dict[str, int]:

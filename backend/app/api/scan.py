@@ -13,7 +13,7 @@ from ..database import get_session
 from ..models import Agent, iso_utc, utcnow
 
 router = APIRouter(tags=["scan"])
-logger = logging.getLogger("netscan.api.scan")
+logger = logging.getLogger("cherubyte.api.scan")
 
 
 def _age_seconds(agent: Agent) -> float | None:
@@ -101,7 +101,7 @@ async def trigger_scan(session: AsyncSession = Depends(get_session)):
         if stale:
             detail = (
                 "Nenhum agente reporta há algum tempo. Verifica se o serviço do "
-                "agente está a correr (systemctl status netscan-agent)."
+                "agente está a correr (systemctl status cherubyte-agent)."
             )
 
     return {

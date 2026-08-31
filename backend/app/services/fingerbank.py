@@ -1,6 +1,6 @@
 """Optional Fingerbank (https://fingerbank.org) device identification.
 
-Needs a free API key in NETSCAN_FINGERBANK_API_KEY. Given a DHCP parameter
+Needs a free API key in CHERUBYTE_FINGERBANK_API_KEY. Given a DHCP parameter
 request list (+ optional hints) it returns a device name, its hierarchy
 (e.g. "Operating System/…/Android OS") and often the OS.
 """
@@ -13,7 +13,7 @@ import httpx
 
 from ..config import settings
 
-logger = logging.getLogger("netscan.fingerbank")
+logger = logging.getLogger("cherubyte.fingerbank")
 
 _URL = "https://api.fingerbank.org/api/v2/combinations/interrogate"
 _cache: dict[str, dict | None] = {}

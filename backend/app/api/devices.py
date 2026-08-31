@@ -174,7 +174,7 @@ async def export_devices_csv(session: AsyncSession = Depends(get_session)):
     return Response(
         buf.getvalue(),
         media_type="text/csv",
-        headers={"Content-Disposition": 'attachment; filename="netscan-devices.csv"'},
+        headers={"Content-Disposition": 'attachment; filename="cherubyte-devices.csv"'},
     )
 
 

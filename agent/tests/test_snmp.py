@@ -2,7 +2,7 @@
 
 import pytest
 
-from netscan_agent import snmp
+from cherubyte_agent import snmp
 
 _LLDP_WALK = """\
 .1.0.8802.1.1.2.1.4.1.1.4.0.1.1 "GigabitEthernet0/1"

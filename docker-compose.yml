@@ -1,4 +1,4 @@
-# NetScan runs as two services, and the split is the point: the agent is the
+# Cherubyte runs as two services, and the split is the point: the agent is the
 # only half that needs to see a network, so it is the only half that needs host
 # networking and raw sockets. The panel holds the data and the UI and needs
 # neither — which is what lets it be hosted somewhere the LAN is not.
@@ -13,7 +13,7 @@
 
 services:
   panel:
-    image: ${PANEL_IMAGE:-ghcr.io/nobrega8/netscan-panel:latest}
+    image: ${PANEL_IMAGE:-ghcr.io/nobrega8/cherubyte-panel:latest}
     # `pull_policy: missing` so `up` pulls the published image; the `build`
     # section is only used by an explicit `docker compose build`. Without this,
     # the presence of `build` makes `up` build instead of pull.
@@ -21,7 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.panel
-    container_name: netscan-panel
+    container_name: cherubyte-panel
     restart: unless-stopped
 
     # An ordinary bridge network with a published port. The panel scans
@@ -38,12 +38,12 @@ services:
       - panel-data:/app/backend/data
 
   agent:
-    image: ${AGENT_IMAGE:-ghcr.io/nobrega8/netscan-agent:latest}
+    image: ${AGENT_IMAGE:-ghcr.io/nobrega8/cherubyte-agent:latest}
     pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile.agent
-    container_name: netscan-agent
+    container_name: cherubyte-agent
     restart: unless-stopped
     depends_on:
       - panel
@@ -62,17 +62,17 @@ services:
       TZ: ${TZ:-Europe/Lisbon}
       # With host networking the agent shares the host's stack, so the panel is
       # reachable on the published port above rather than by service name.
-      NETSCAN_AGENT_PANEL_URL: ${PANEL_URL:-http://127.0.0.1:1001}
+      CHERUBYTE_AGENT_PANEL_URL: ${PANEL_URL:-http://127.0.0.1:1001}
       # Mint one in the panel (Agents → new token) and put it here. It is spent
       # on first start for a long-lived key, which is kept in the volume below.
-      NETSCAN_AGENT_ENROL_TOKEN: ${AGENT_ENROL_TOKEN:-}
-      NETSCAN_AGENT_NAME: ${AGENT_NAME:-casa}
-      # NETSCAN_AGENT_SUBNET: "192.168.1.0/24"   # empty = auto-detect
+      CHERUBYTE_AGENT_ENROL_TOKEN: ${AGENT_ENROL_TOKEN:-}
+      CHERUBYTE_AGENT_NAME: ${AGENT_NAME:-casa}
+      # CHERUBYTE_AGENT_SUBNET: "192.168.1.0/24"   # empty = auto-detect
 
     volumes:
       # The issued key. Without this the agent re-enrols on every restart, and
       # enrolment tokens are single-use — so it would fail on the second start.
-      - agent-state:/var/lib/netscan-agent
+      - agent-state:/var/lib/cherubyte-agent
 
 volumes:
   panel-data:

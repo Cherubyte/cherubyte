@@ -26,7 +26,7 @@ tagged `:edge` and `:sha-<commit>`.
    publishing if you want.
 
 3. **Watch the build.** Publishing the release triggers `Images`, which builds
-   `netscan-panel` and `netscan-agent` for `linux/amd64` + `linux/arm64` (QEMU,
+   `cherubyte-panel` and `cherubyte-agent` for `linux/amd64` + `linux/arm64` (QEMU,
    ~20 min per image) and pushes them.
 
    ```bash
@@ -36,14 +36,14 @@ tagged `:edge` and `:sha-<commit>`.
 4. **Check the tags landed.**
 
    ```bash
-   docker manifest inspect ghcr.io/nobrega8/netscan-panel:0.5.0 | grep architecture
+   docker manifest inspect ghcr.io/nobrega8/cherubyte-panel:0.5.0 | grep architecture
    ```
 
 ## First release
 
 The GHCR packages are created by the first successful push. They are private by
 default — make each one public once (GitHub → your profile → Packages →
-`netscan-panel` / `netscan-agent` → Package settings → Change visibility), or the
+`cherubyte-panel` / `cherubyte-agent` → Package settings → Change visibility), or the
 README's `docker run` fails with `denied` for anyone not logged in.
 
 ## What can go wrong

@@ -59,7 +59,7 @@ async def _seed(session):
             ),
         ]
     )
-    session.add(Agent(name="netscan-agent", key_hash="x", last_hosts=2, last_healthy=True))
+    session.add(Agent(name="cherubyte-agent", key_hash="x", last_hosts=2, last_healthy=True))
     session.add(WanSample(ok=True, latency_ms=12.5, target="1.1.1.1"))
     session.add(Event(message="hi", level=EventLevel.alert, category="security"))
     await session.commit()
@@ -70,27 +70,27 @@ async def test_exposition_reports_the_core_gauges(session):
     await _seed(session)
     text = await build_exposition(session, version="9.9.9")
 
-    assert '# TYPE netscan_devices gauge' in text
-    assert 'netscan_devices 2' in text
-    assert 'netscan_devices_online 1' in text
-    assert 'netscan_devices_pending 1' in text
-    assert 'netscan_devices_by_type{type="phone"} 1' in text
-    assert 'netscan_build_info{version="9.9.9"} 1' in text
-    assert 'netscan_people 2' in text
-    assert 'netscan_people_present 1' in text
-    assert 'netscan_person_present{person="Alex"} 1' in text
-    assert 'netscan_person_present{person="Sam"} 0' in text
-    assert 'netscan_wan_up 1' in text
-    assert 'netscan_events_created_total{level="alert"} 1' in text
+    assert '# TYPE cherubyte_devices gauge' in text
+    assert 'cherubyte_devices 2' in text
+    assert 'cherubyte_devices_online 1' in text
+    assert 'cherubyte_devices_pending 1' in text
+    assert 'cherubyte_devices_by_type{type="phone"} 1' in text
+    assert 'cherubyte_build_info{version="9.9.9"} 1' in text
+    assert 'cherubyte_people 2' in text
+    assert 'cherubyte_people_present 1' in text
+    assert 'cherubyte_person_present{person="Alex"} 1' in text
+    assert 'cherubyte_person_present{person="Sam"} 0' in text
+    assert 'cherubyte_wan_up 1' in text
+    assert 'cherubyte_events_created_total{level="alert"} 1' in text
     # every level present even at zero, so a counter never disappears
-    assert 'netscan_events_created_total{level="info"} 0' in text
+    assert 'cherubyte_events_created_total{level="info"} 0' in text
 
 
 def test_endpoint_is_open_when_no_token_is_set(client):
     r = client.get("/api/metrics")
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/plain")
-    assert "netscan_build_info" in r.text
+    assert "cherubyte_build_info" in r.text
 
 
 def test_endpoint_requires_the_token_when_one_is_set(client):

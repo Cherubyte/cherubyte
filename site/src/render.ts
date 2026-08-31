@@ -104,26 +104,26 @@ export function landingPage(opts: { releasesUrl: string; message?: string; error
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NetScan — see every device on your network</title>
+<title>Cherubyte — see every device on your network</title>
 <meta name="description" content="A self-hosted network monitor. Free, open source, and your device inventory never leaves your network.">
 <style>${STYLES}</style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <span class="brand">NetScan</span>
+    <span class="brand">Cherubyte</span>
   </header>
 
   <h1>See every device on your network.</h1>
   <p class="lede">
-    NetScan discovers everything on your LAN, works out what each thing is, tracks
+    Cherubyte discovers everything on your LAN, works out what each thing is, tracks
     when people come and go, and tells you the moment something new appears.
     It runs on hardware you already own.
   </p>
   <p><span class="pill">Self-hosting is free, forever</span></p>
   <div class="row">
     <a class="btn btn-primary" href="#install">Install it</a>
-    <a class="btn btn-quiet" href="https://github.com/nobrega8/netscan">Source on GitHub</a>
+    <a class="btn btn-quiet" href="https://github.com/nobrega8/cherubyte">Source on GitHub</a>
   </div>
 
   <section>
@@ -155,19 +155,19 @@ export function landingPage(opts: { releasesUrl: string; message?: string; error
     <div class="split" style="margin-top:2rem">
       <div>
         <h3>Panel</h3>
-        <pre>git clone https://github.com/nobrega8/netscan
-cd netscan
+        <pre>git clone https://github.com/nobrega8/cherubyte
+cd cherubyte
 docker compose up -d panel</pre>
         <p class="note">Open <code>http://your-host:1001</code> and go to Config → Agents.</p>
       </div>
       <div>
         <h3>Agent</h3>
-        <pre>docker run -d --name netscan-agent \\
+        <pre>docker run -d --name cherubyte-agent \\
   --network host --cap-add NET_RAW --cap-add NET_ADMIN \\
-  -v netscan-agent:/var/lib/netscan-agent \\
-  -e NETSCAN_AGENT_PANEL_URL=http://your-panel:1001 \\
-  -e NETSCAN_AGENT_ENROL_TOKEN=&lt;token&gt; \\
-  netscan-agent:latest</pre>
+  -v cherubyte-agent:/var/lib/cherubyte-agent \\
+  -e CHERUBYTE_AGENT_PANEL_URL=http://your-panel:1001 \\
+  -e CHERUBYTE_AGENT_ENROL_TOKEN=&lt;token&gt; \\
+  cherubyte-agent:latest</pre>
         <p class="note">On Windows, <a href="${escapeHtml(opts.releasesUrl)}">download the agent</a>
         and run <code>install-service.ps1</code> from an elevated PowerShell.</p>
       </div>
@@ -209,8 +209,8 @@ docker compose up -d panel</pre>
 
   <footer>
     <div class="wrap" style="padding:0">
-      NetScan is open source under the licence in the repository.
-      <a href="https://github.com/nobrega8/netscan">Source</a> ·
+      Cherubyte is open source under the licence in the repository.
+      <a href="https://github.com/nobrega8/cherubyte">Source</a> ·
       <a href="${escapeHtml(opts.releasesUrl)}">Downloads</a>
     </div>
   </footer>
@@ -236,12 +236,12 @@ export function adminPage(rows: { email: string; networks: string | null; note: 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Signups — NetScan</title><style>${STYLES}
+<title>Signups — Cherubyte</title><style>${STYLES}
 table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
 th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-subtle); font-size: 0.9rem; vertical-align: top; }
 th { font-weight: 500; color: var(--ink-muted); }
 </style></head>
-<body><div class="wrap"><header><span class="brand">NetScan</span></header>
+<body><div class="wrap"><header><span class="brand">Cherubyte</span></header>
 <h2 style="margin-top:2rem">Hosted-panel signups</h2>
 <p class="muted">${rows.length} in total.</p>
 <table><thead><tr><th>Email</th><th>Networks</th><th>Note</th><th>When</th></tr></thead>

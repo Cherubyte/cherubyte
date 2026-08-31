@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# The NetScan agent: the half that touches the network.
+# The Cherubyte agent: the half that touches the network.
 #
 # It sweeps a LAN and pushes what it saw to a panel. It holds no database and
 # serves no UI, so it is also the only half that needs raw sockets and host
@@ -26,12 +26,12 @@ COPY agent/ agent/
 
 # the key issued at enrolment lives here; mount it or the agent re-enrols,
 # which needs a fresh token every restart
-VOLUME ["/var/lib/netscan-agent"]
+VOLUME ["/var/lib/cherubyte-agent"]
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    NETSCAN_AGENT_HEALTH_HOST=0.0.0.0 \
-    NETSCAN_AGENT_HEALTH_PORT=1002
+    CHERUBYTE_AGENT_HEALTH_HOST=0.0.0.0 \
+    CHERUBYTE_AGENT_HEALTH_PORT=1002
 
 EXPOSE 1002
 
@@ -39,7 +39,7 @@ EXPOSE 1002
 # purpose: an agent nobody is listening to is not doing its job.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD python -c "import os,sys,urllib.request; \
-p=os.getenv('NETSCAN_AGENT_HEALTH_PORT','1002'); \
+p=os.getenv('CHERUBYTE_AGENT_HEALTH_PORT','1002'); \
 sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{p}/health',timeout=4).status==200 else 1)"
 
 WORKDIR /app/agent

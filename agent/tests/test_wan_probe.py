@@ -3,7 +3,7 @@ panel's job; all the agent does is take one."""
 
 import pytest
 
-from netscan_agent import wan
+from cherubyte_agent import wan
 
 
 def test_rtt_is_parsed_from_real_ping_output():

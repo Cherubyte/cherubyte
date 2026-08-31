@@ -15,7 +15,7 @@ from datetime import datetime, time
 
 from ..config import settings
 
-logger = logging.getLogger("netscan.alerts")
+logger = logging.getLogger("cherubyte.alerts")
 
 CHANNELS = ("telegram", "ntfy")
 

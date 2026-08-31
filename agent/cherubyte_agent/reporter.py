@@ -14,11 +14,11 @@ import logging
 from pathlib import Path
 
 import httpx
-from netscan_protocol import AgentReport, EnrolRequest, EnrolResponse, ReportAck
+from cherubyte_protocol import AgentReport, EnrolRequest, EnrolResponse, ReportAck
 
 from .config import settings
 
-logger = logging.getLogger("netscan.agent.reporter")
+logger = logging.getLogger("cherubyte.agent.reporter")
 
 AGENT_VERSION = "1.0.0"
 
@@ -65,7 +65,7 @@ async def enrol() -> tuple[int, str]:
     """
     if not settings.enrol_token:
         raise NotEnrolled(
-            "No key stored and NETSCAN_AGENT_ENROL_TOKEN is empty. Issue a token "
+            "No key stored and CHERUBYTE_AGENT_ENROL_TOKEN is empty. Issue a token "
             "in the panel (Agents) and set it, or mount the state file."
         )
     payload = EnrolRequest(

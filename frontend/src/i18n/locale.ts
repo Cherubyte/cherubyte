@@ -10,7 +10,7 @@ export const LOCALES: Record<Locale, string> = {
 };
 
 export const DEFAULT_LOCALE: Locale = "en";
-export const LOCALE_STORAGE_KEY = "netscan-locale";
+export const LOCALE_STORAGE_KEY = "cherubyte-locale";
 
 let active: Locale = DEFAULT_LOCALE;
 

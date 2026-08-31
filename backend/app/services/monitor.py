@@ -26,14 +26,14 @@ from ..models import (
     _os_family,
     utcnow,
 )
-from netscan_protocol import AgentReport, HostObservation
+from cherubyte_protocol import AgentReport, HostObservation
 
 from . import action_tokens, fingerbank, mqtt, notify, portrisk
 from .enrichment import ICON_FOR_TYPE, classify
 from .oui import is_locally_administered, vendor_for
 from .naming import best_model, best_name
 
-logger = logging.getLogger("netscan.monitor")
+logger = logging.getLogger("cherubyte.monitor")
 
 
 def _from_dhcp_hostname(name: str | None) -> str | None:
@@ -659,7 +659,7 @@ async def _reconcile_new_device_notice(
         lines.append(f"Fabricante: {device.vendor}")
     lines.append(f"Tipo (estimado): {device.device_type.value}")
     lines.append("")
-    lines.append("Aprova ou ignora este dispositivo no NetScan.")
+    lines.append("Aprova ou ignora este dispositivo no Cherubyte.")
     if _notify_allowed("device_new", device.id):
         await notify.broadcast(
             "device_new",

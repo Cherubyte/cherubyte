@@ -1,5 +1,5 @@
 /**
- * The NetScan service site.
+ * The Cherubyte service site.
  *
  * Public by design: self-hosting is free and needs no account, so the landing
  * page, the install instructions and the download links must be reachable by
@@ -29,7 +29,7 @@ export interface Env {
 const app = new Hono<{ Bindings: Env }>();
 
 const releases = (env: Env) =>
-  env.AGENT_RELEASES_URL ?? "https://github.com/nobrega8/netscan/releases/latest";
+  env.AGENT_RELEASES_URL ?? "https://github.com/nobrega8/cherubyte/releases/latest";
 
 app.get("/", (c) => c.html(landingPage({ releasesUrl: releases(c.env) })));
 

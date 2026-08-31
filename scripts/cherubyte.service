@@ -1,5 +1,5 @@
 [Unit]
-Description=NetScan — monitorização de dispositivos em rede
+Description=Cherubyte — monitorização de dispositivos em rede
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=0
@@ -8,9 +8,9 @@ StartLimitIntervalSec=0
 Type=simple
 # The USER and ROOT placeholders below are filled in by scripts/setup.sh and
 # scripts/install-service.sh (they sed in the invoking user and the repo path).
-User=__NETSCAN_USER__
-WorkingDirectory=__NETSCAN_ROOT__/backend
-ExecStart=__NETSCAN_ROOT__/backend/.venv/bin/python run.py
+User=__CHERUBYTE_USER__
+WorkingDirectory=__CHERUBYTE_ROOT__/backend
+ExecStart=__CHERUBYTE_ROOT__/backend/.venv/bin/python run.py
 # `always`, not `on-failure`: the panel is the always-on half — bring it back
 # from a crash or a stray signal, not only from a non-zero exit.
 Restart=always

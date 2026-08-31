@@ -21,7 +21,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
 )
-logger = logging.getLogger("netscan")
+logger = logging.getLogger("cherubyte")
 
 
 @asynccontextmanager
@@ -39,13 +39,13 @@ async def lifespan(app: FastAPI):
     # the purge job only fires 24h in; a box that reboots daily would never
     # reach it, so run one pass at startup too
     asyncio.create_task(run_purge())
-    logger.info("NetScan up on :%s", settings.port)
+    logger.info("Cherubyte up on :%s", settings.port)
     yield
     mqtt.stop()
     scheduler.shutdown(wait=False)
 
 
-app = FastAPI(title="NetScan", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Cherubyte", version="0.1.0", lifespan=lifespan)
 
 # The SPA is served from this same origin in production, and in development the
 # Vite server proxies /api and /uploads server-side — neither makes a
@@ -90,7 +90,7 @@ async def health():
 _dist = settings.frontend_dist
 
 _NO_FRONTEND = {
-    "message": "NetScan API is running. Build the frontend "
+    "message": "Cherubyte API is running. Build the frontend "
     "(cd frontend && npm install && npm run build) or use the Vite dev server.",
     "docs": "/docs",
 }

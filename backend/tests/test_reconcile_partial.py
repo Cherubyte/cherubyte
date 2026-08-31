@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models import Device, DeviceType, MacAddress, OpenPort
 from app.services import monitor
-from netscan_protocol import HostObservation
+from cherubyte_protocol import HostObservation
 
 MAC = "aa:bb:cc:dd:ee:ff"
 

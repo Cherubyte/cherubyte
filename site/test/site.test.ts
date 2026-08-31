@@ -15,7 +15,7 @@ import { emailKey, signupSchema } from "../src/shared/schemas";
 const ctx = createExecutionContext();
 
 async function get(path: string, init?: RequestInit) {
-  return worker.fetch(new Request(`https://netscan.test${path}`, init), env, ctx);
+  return worker.fetch(new Request(`https://cherubyte.test${path}`, init), env, ctx);
 }
 
 async function postForm(path: string, fields: Record<string, string>) {
@@ -274,7 +274,7 @@ describe("Access verification against a real key", () => {
   it("lets a signed-in allowed reader see the admin page", async () => {
     const token = await sign(goodPayload());
     const response = await worker.fetch(
-      new Request("https://netscan.test/admin", {
+      new Request("https://cherubyte.test/admin", {
         headers: { "cf-access-jwt-assertion": token },
       }),
       { ...env, ...base } as never,

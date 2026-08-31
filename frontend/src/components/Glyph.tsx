@@ -119,7 +119,7 @@ export function DeviceTypeIcon({ type, size = 14, className }: P & { type: Devic
   return <Icon size={size} className={className} d={DEVICE[type] ?? DEVICE.unknown} />;
 }
 
-/** The NetScan mark — a quiet monochrome glyph: a ring with a solid centre,
+/** The Cherubyte mark — a quiet monochrome glyph: a ring with a solid centre,
  *  the whole network watched from one point. Drawn, not an icon-font glyph. */
 export function AppMark({ size = 24, className }: P) {
   return (

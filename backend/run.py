@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entrypoint for the NetScan service (port 1001 by default).
+"""Entrypoint for the Cherubyte service (port 1001 by default).
 
 Port 1001 is privileged and ARP scanning needs raw sockets, so the process
 needs CAP_NET_BIND_SERVICE + CAP_NET_RAW/ADMIN. Pick one:
@@ -31,7 +31,7 @@ def _warn_if_no_raw_socket() -> None:
         s.close()
     except (PermissionError, OSError):
         print(
-            "[netscan] WARNING: no raw-socket permission — ARP scans will fail.\n"
+            "[cherubyte] WARNING: no raw-socket permission — ARP scans will fail.\n"
             "          Run as root or: sudo setcap cap_net_raw,cap_net_admin+eip "
             f"{sys.executable}",
             file=sys.stderr,

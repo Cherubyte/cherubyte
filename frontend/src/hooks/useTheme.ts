@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 function readLight(): boolean {
   try {
     // default (unset) is the light chart sheet
-    return localStorage.getItem("netscan-theme") !== "dark";
+    return localStorage.getItem("cherubyte-theme") !== "dark";
   } catch {
     return true;
   }
@@ -26,7 +26,7 @@ function apply() {
   const r = document.documentElement;
   r.classList.toggle("dark", !light);
   try {
-    localStorage.setItem("netscan-theme", light ? "light" : "dark");
+    localStorage.setItem("cherubyte-theme", light ? "light" : "dark");
   } catch {
     /* private mode */
   }

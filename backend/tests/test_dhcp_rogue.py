@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 import pytest
-from netscan_protocol import AgentReport, DhcpServerObservation, HostObservation
+from cherubyte_protocol import AgentReport, DhcpServerObservation, HostObservation
 from sqlalchemy import select
 
 from app.config import settings

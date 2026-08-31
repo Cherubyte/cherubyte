@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "netscan-site",
+  "name": "cherubyte-site",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -11,18 +11,18 @@
   // applications, so this is not optional.
   "workers_dev": false,
   // Set this to the domain you serve the site from before deploying.
-  "routes": [{ "pattern": "netscan.example.com", "custom_domain": true }],
+  "routes": [{ "pattern": "cherubyte.example.com", "custom_domain": true }],
 
   "vars": {
     // The Access team domain. AUD and the allowlist are secrets — see README.
     "ACCESS_TEAM_DOMAIN": "",
-    "AGENT_RELEASES_URL": "https://github.com/nobrega8/netscan/releases/latest"
+    "AGENT_RELEASES_URL": "https://github.com/nobrega8/cherubyte/releases/latest"
   },
 
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "netscan-site",
+      "database_name": "cherubyte-site",
       "database_id": "PLACEHOLDER-run-wrangler-d1-create-first"
     }
   ],

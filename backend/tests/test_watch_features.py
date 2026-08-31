@@ -20,7 +20,7 @@ from app.models import (
     utcnow,
 )
 from app.services import monitor
-from netscan_protocol import HostObservation
+from cherubyte_protocol import HostObservation
 
 MAC = "aa:bb:cc:dd:ee:01"
 OTHER_MAC = "aa:bb:cc:dd:ee:02"

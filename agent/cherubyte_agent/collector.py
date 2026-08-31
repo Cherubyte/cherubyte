@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from netscan_protocol import (
+from cherubyte_protocol import (
     AgentReport,
     DhcpServerObservation,
     HostObservation,
@@ -20,7 +20,7 @@ from . import dhcp_sniffer, wan
 from .config import settings
 from .scanner import Host, local_subnets, scan_network
 
-logger = logging.getLogger("netscan.agent.collector")
+logger = logging.getLogger("cherubyte.agent.collector")
 
 
 def to_observation(host: Host) -> HostObservation:

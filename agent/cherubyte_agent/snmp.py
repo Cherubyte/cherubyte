@@ -19,9 +19,9 @@ import logging
 import shutil
 import subprocess
 
-from netscan_protocol import LldpNeighbor
+from cherubyte_protocol import LldpNeighbor
 
-logger = logging.getLogger("netscan.agent.snmp")
+logger = logging.getLogger("cherubyte.agent.snmp")
 
 OID_SYSNAME = "1.3.6.1.2.1.1.5.0"
 OID_SYSDESCR = "1.3.6.1.2.1.1.1.0"

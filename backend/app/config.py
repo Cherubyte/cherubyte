@@ -9,9 +9,26 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
+def _migrate_legacy_db() -> None:
+    """The panel was once called NetScan and its database was `netscan.db`.
+    Rename it (and its SQLite sidecars) in place on first boot so an upgrade is
+    zero-touch. Only runs when there is no `cherubyte.db` yet."""
+    new = DATA_DIR / "cherubyte.db"
+    old = DATA_DIR / "netscan.db"
+    if new.exists() or not old.exists():
+        return
+    for suffix in ("", "-wal", "-shm"):
+        legacy = old.with_name(old.name + suffix)
+        if legacy.exists():
+            legacy.rename(new.with_name(new.name + suffix))
+
+
+_migrate_legacy_db()
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env", env_prefix="NETSCAN_", extra="ignore"
+        env_file=BASE_DIR / ".env", env_prefix="CHERUBYTE_", extra="ignore"
     )
 
     # HTTP
@@ -27,7 +44,7 @@ class Settings(BaseSettings):
     cors_origins: str = ""
 
     # Storage
-    database_url: str = f"sqlite+aiosqlite:///{DATA_DIR / 'netscan.db'}"
+    database_url: str = f"sqlite+aiosqlite:///{DATA_DIR / 'cherubyte.db'}"
 
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
@@ -101,7 +118,7 @@ class Settings(BaseSettings):
     mqtt_port: int = 1883
     mqtt_username: str = ""
     mqtt_password: str = ""
-    mqtt_base_topic: str = "netscan"
+    mqtt_base_topic: str = "cherubyte"
     mqtt_discovery_prefix: str = "homeassistant"
 
     # Prometheus metrics at /api/metrics. When metrics_token is set it must be

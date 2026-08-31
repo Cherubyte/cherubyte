@@ -76,7 +76,7 @@ const FORM_CATS = new Set<SettingsCat>([
   "history",
 ]);
 
-const CAT_KEY = "netscan-settings-tab";
+const CAT_KEY = "cherubyte-settings-tab";
 
 function readCat(isAdmin: boolean): SettingsCat {
   try {
@@ -193,7 +193,7 @@ export function Settings() {
     mqtt_port: 1883,
     mqtt_username: "",
     mqtt_password: "",
-    mqtt_base_topic: "netscan",
+    mqtt_base_topic: "cherubyte",
     mqtt_discovery_prefix: "homeassistant",
     wan_enabled: true,
     wan_target: "1.1.1.1",
@@ -589,7 +589,7 @@ export function Settings() {
             <Field label={t("settings.ntfy.topic")} hint={t("settings.ntfy.topicHint")}>
               <input
                 className="input mono"
-                placeholder="netscan-a7f3k2"
+                placeholder="cherubyte-a7f3k2"
                 value={form.ntfy_topic}
                 onChange={(e) => set("ntfy_topic", e.target.value)}
               />
@@ -1119,12 +1119,12 @@ function AgentsSection() {
             <div>
               <span className="label text-fg-3">{t("agents.install.docker")}</span>
               <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
-{`docker run -d --name netscan-agent --network host \\
+{`docker run -d --name cherubyte-agent --network host \\
   --cap-add NET_RAW --cap-add NET_ADMIN \\
-  -v netscan-agent:/var/lib/netscan-agent \\
-  -e NETSCAN_AGENT_PANEL_URL=${panelUrl} \\
-  -e NETSCAN_AGENT_ENROL_TOKEN=${token} \\
-  ghcr.io/nobrega8/netscan-agent:latest`}
+  -v cherubyte-agent:/var/lib/cherubyte-agent \\
+  -e CHERUBYTE_AGENT_PANEL_URL=${panelUrl} \\
+  -e CHERUBYTE_AGENT_ENROL_TOKEN=${token} \\
+  ghcr.io/nobrega8/cherubyte-agent:latest`}
               </pre>
             </div>
             <div>

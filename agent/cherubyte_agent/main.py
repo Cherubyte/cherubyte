@@ -22,7 +22,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
 )
-logger = logging.getLogger("netscan.agent")
+logger = logging.getLogger("cherubyte.agent")
 
 _state: dict = {
     "enrolled": False,
@@ -112,13 +112,13 @@ async def lifespan(app: FastAPI):
     if settings.enable_dhcp_sniffer:
         dhcp_sniffer.start()
     task = asyncio.create_task(_loop())
-    logger.info("NetScan agent up; panel=%s", reporter.panel_base())
+    logger.info("Cherubyte agent up; panel=%s", reporter.panel_base())
     yield
     task.cancel()
     dhcp_sniffer.stop()
 
 
-app = FastAPI(title="NetScan agent", version=reporter.AGENT_VERSION, lifespan=lifespan)
+app = FastAPI(title="Cherubyte agent", version=reporter.AGENT_VERSION, lifespan=lifespan)
 
 
 @app.post("/trigger")

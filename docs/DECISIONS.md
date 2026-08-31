@@ -1,6 +1,6 @@
 # Decisions
 
-Why NetScan is shaped the way it is. Every entry names the failure that produced
+Why Cherubyte is shaped the way it is. Every entry names the failure that produced
 it, because a constraint without its incident gets deleted by someone who does
 not know what it prevents — including by whoever wrote it, six months later.
 
@@ -199,7 +199,7 @@ that way.
 
 ## Restore swaps the files and then exits
 
-Rewriting `netscan.db` while the async engine holds open connections to it
+Rewriting `cherubyte.db` while the async engine holds open connections to it
 corrupts the file it is reading. So `POST /api/settings/restore` moves the new
 database and uploads into place, disposes the engine, and calls `os._exit(0)`
 about a second later. Every supported deployment restarts on any exit — systemd

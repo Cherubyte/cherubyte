@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from .config import settings
 from . import dhcp_sniffer, discovery, snmp
 
-logger = logging.getLogger("netscan.scanner")
+logger = logging.getLogger("cherubyte.scanner")
 
 # Ports probed to help classify a device and to offer quick actions in the UI.
 # Kept focused to stay fast — all probed in one parallel round.
@@ -199,7 +199,7 @@ def _detect_subnet() -> tuple[str, str | None]:
                 break
 
     if not ip or ip == "0.0.0.0":
-        raise RuntimeError("Could not determine local IP; set NETSCAN_SUBNET.")
+        raise RuntimeError("Could not determine local IP; set CHERUBYTE_SUBNET.")
 
     net = ipaddress.ip_network(f"{ip}/24", strict=False)
     return str(net), str(iface)

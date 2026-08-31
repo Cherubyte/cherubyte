@@ -7,12 +7,12 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-STATE_DIR = Path("/var/lib/netscan-agent")
+STATE_DIR = Path("/var/lib/cherubyte-agent")
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env", env_prefix="NETSCAN_AGENT_", extra="ignore"
+        env_file=BASE_DIR / ".env", env_prefix="CHERUBYTE_AGENT_", extra="ignore"
     )
 
     # Where the panel is, and how this agent proves who it is. The enrolment

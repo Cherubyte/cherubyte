@@ -26,7 +26,7 @@ from ..models import (
 from . import wan
 from .notify import broadcast
 
-logger = logging.getLogger("netscan.digest")
+logger = logging.getLogger("cherubyte.digest")
 
 
 async def collect(session: AsyncSession, days: int = 7) -> dict:
@@ -121,7 +121,7 @@ async def run_weekly() -> dict | None:
         return None
     await broadcast(
         "weekly_summary",
-        "Resumo semanal do NetScan",
+        "Resumo semanal do Cherubyte",
         format_lines(data),
         emoji="📊",
         tags=["bar_chart"],

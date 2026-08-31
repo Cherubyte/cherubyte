@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from netscan_protocol import PROTOCOL_VERSION, AgentReport, HostObservation
+from cherubyte_protocol import PROTOCOL_VERSION, AgentReport, HostObservation
 from sqlalchemy import select
 
 from app.models import Agent, Device, EnrolmentToken, WanSample

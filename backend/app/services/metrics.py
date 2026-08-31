@@ -99,7 +99,7 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
     now = utcnow()
 
     m.gauge(
-        "netscan_build_info",
+        "cherubyte_build_info",
         1,
         help="Panel build, version carried as a label.",
         labels={"version": version},
@@ -115,10 +115,10 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
             Device.approval_status == ApprovalStatus.pending
         )
     ) or 0
-    m.gauge("netscan_devices", total, help="Devices known to the panel.")
-    m.gauge("netscan_devices_online", online, help="Devices currently online.")
+    m.gauge("cherubyte_devices", total, help="Devices known to the panel.")
+    m.gauge("cherubyte_devices_online", online, help="Devices currently online.")
     m.gauge(
-        "netscan_devices_pending",
+        "cherubyte_devices_pending",
         pending,
         help="Devices awaiting approval in the review queue.",
     )
@@ -129,7 +129,7 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
     for dtype, count in by_type:
         name = dtype.value if isinstance(dtype, DeviceType) else str(dtype)
         m.gauge(
-            "netscan_devices_by_type",
+            "cherubyte_devices_by_type",
             count,
             help="Devices by classified type.",
             labels={"type": name},
@@ -139,7 +139,7 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
     people = await session.scalar(
         select(func.count(User.id)).where(User.is_guest.is_(False))
     ) or 0
-    m.gauge("netscan_people", people, help="Non-guest people.")
+    m.gauge("cherubyte_people", people, help="Non-guest people.")
 
     named = (
         await session.execute(
@@ -164,13 +164,13 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
         is_present = 1 if uid in present_ids else 0
         present_count += is_present
         m.gauge(
-            "netscan_person_present",
+            "cherubyte_person_present",
             is_present,
             help="1 when a person has a presence-counting device online.",
             labels={"person": name},
         )
     m.gauge(
-        "netscan_people_present",
+        "cherubyte_people_present",
         present_count,
         help="People currently counted as present.",
     )
@@ -179,33 +179,33 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
     agents = (
         await session.execute(select(Agent).where(Agent.enabled.is_(True)))
     ).scalars().all()
-    m.gauge("netscan_agents", len(agents), help="Enabled scanning agents.")
+    m.gauge("cherubyte_agents", len(agents), help="Enabled scanning agents.")
     stale_after = max(180.0, 3.0 * settings.scan_interval_seconds)
     for agent in agents:
         labels = {"agent": agent.name}
         epoch = _epoch(agent.last_seen)
         fresh = epoch is not None and (now.timestamp() - epoch) <= stale_after
         m.gauge(
-            "netscan_agent_up",
+            "cherubyte_agent_up",
             1 if fresh else 0,
             help="1 when the agent reported within 3 scan intervals.",
             labels={**labels, "version": agent.version or ""},
         )
         if epoch is not None:
             m.gauge(
-                "netscan_agent_last_report_timestamp_seconds",
+                "cherubyte_agent_last_report_timestamp_seconds",
                 epoch,
                 help="Unix time of the agent's last report.",
                 labels=labels,
             )
         m.gauge(
-            "netscan_agent_last_hosts",
+            "cherubyte_agent_last_hosts",
             agent.last_hosts or 0,
             help="Hosts in the agent's last report.",
             labels=labels,
         )
         m.gauge(
-            "netscan_agent_healthy",
+            "cherubyte_agent_healthy",
             1 if agent.last_healthy else 0,
             help="1 when the agent's last sweep was not degraded.",
             labels=labels,
@@ -219,13 +219,13 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
     ).scalars().first()
     if last_wan is not None:
         m.gauge(
-            "netscan_wan_up",
+            "cherubyte_wan_up",
             1 if last_wan.ok else 0,
             help="1 when the last internet probe succeeded.",
         )
         if last_wan.latency_ms is not None:
             m.gauge(
-                "netscan_wan_latency_ms",
+                "cherubyte_wan_latency_ms",
                 last_wan.latency_ms,
                 help="Latency of the last successful internet probe, ms.",
             )
@@ -238,7 +238,7 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
     if day_samples:
         up = sum(1 for ok in day_samples if ok)
         m.gauge(
-            "netscan_wan_uptime_ratio",
+            "cherubyte_wan_uptime_ratio",
             up / len(day_samples),
             help="Fraction of successful internet probes in the last 24h.",
         )
@@ -254,7 +254,7 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
         by_level[key] = count
     for level in EventLevel:
         m.counter(
-            "netscan_events_created_total",
+            "cherubyte_events_created_total",
             by_level.get(level.value, 0),
             help="Events logged, by level (subject to history retention).",
             labels={"level": level.value},

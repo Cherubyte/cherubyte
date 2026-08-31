@@ -4,7 +4,7 @@ network emptied — the panel must not mark every device offline on it."""
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from netscan_protocol import AgentReport, HostObservation
+from cherubyte_protocol import AgentReport, HostObservation
 from sqlalchemy import select
 
 from app.models import ApprovalStatus, ConnectionHistory, Device, Event, EventLevel

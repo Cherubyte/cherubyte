@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# The NetScan panel: database, UI, notifications, integrations.
+# The Cherubyte panel: database, UI, notifications, integrations.
 #
 # It never touches a network it is monitoring — agents do that and report in.
 # So unlike the agent it needs no raw sockets, no host networking and no extra
@@ -41,14 +41,14 @@ VOLUME ["/app/backend/data"]
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    NETSCAN_HOST=0.0.0.0 \
-    NETSCAN_PORT=1001
+    CHERUBYTE_HOST=0.0.0.0 \
+    CHERUBYTE_PORT=1001
 
 EXPOSE 1001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
     CMD python -c "import os,sys,urllib.request; \
-p=os.getenv('NETSCAN_PORT','1001'); \
+p=os.getenv('CHERUBYTE_PORT','1001'); \
 sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{p}/api/health',timeout=4).status==200 else 1)"
 
 WORKDIR /app/backend

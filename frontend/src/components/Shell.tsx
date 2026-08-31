@@ -176,7 +176,7 @@ function Wordmark({ compact }: { compact?: boolean }) {
           compact ? "text-[15px]" : "text-[16px]",
         )}
       >
-        NetScan
+        Cherubyte
       </span>
     </span>
   );
@@ -197,7 +197,7 @@ export function Shell() {
 /** small toolbar / top-bar trigger for the ⌘K palette */
 function CmdKButton({ compact }: { compact?: boolean }) {
   const t = useT();
-  const open = () => window.dispatchEvent(new Event("netscan:cmdk"));
+  const open = () => window.dispatchEvent(new Event("cherubyte:cmdk"));
   if (compact)
     return (
       <button onClick={open} aria-label={t("cmd.placeholder")} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 hover:bg-fg/[0.06] hover:text-fg">

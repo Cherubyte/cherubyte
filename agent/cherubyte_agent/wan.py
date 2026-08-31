@@ -14,7 +14,7 @@ import re
 
 import httpx
 
-logger = logging.getLogger("netscan.agent.wan")
+logger = logging.getLogger("cherubyte.agent.wan")
 
 _RTT = re.compile(rb"time[=<]\s*([\d.]+)\s*ms")
 
@@ -83,7 +83,7 @@ async def public_ip(timeout: float = 4.0) -> str | None:
         async with httpx.AsyncClient(
             timeout=timeout,
             follow_redirects=True,
-            headers={"user-agent": "netscan-agent"},
+            headers={"user-agent": "cherubyte-agent"},
             transport=httpx.AsyncHTTPTransport(local_address="0.0.0.0"),
         ) as client:
             for url, key in _PUBLIC_IP_SOURCES:

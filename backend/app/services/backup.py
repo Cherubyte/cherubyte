@@ -1,6 +1,6 @@
 """Back up and restore the panel's state — the SQLite database and the uploads.
 
-Everything the panel holds lives in `backend/data/`: `netscan.db` and the
+Everything the panel holds lives in `backend/data/`: `cherubyte.db` and the
 `uploads/` tree. A backup is a gzipped tar of exactly those two, plus a small
 `meta.json`. Losing the database loses your whole history, and on a Raspberry Pi
 the thing it lives on is an SD card — so this wants to be one button.
@@ -26,11 +26,23 @@ from pathlib import Path
 
 from ..config import DATA_DIR, UPLOAD_DIR, settings
 
-logger = logging.getLogger("netscan.backup")
+logger = logging.getLogger("cherubyte.backup")
 
-_DB_MEMBER = "netscan.db"
+_DB_MEMBER = "cherubyte.db"
+# Backups written before the NetScan → Cherubyte rename carry the database as
+# `netscan.db`. Restore still accepts them.
+_LEGACY_DB_MEMBER = "netscan.db"
 _META_MEMBER = "meta.json"
 _UPLOADS_PREFIX = "uploads/"
+
+
+def _archived_db_member(members: set[str]) -> str:
+    """The name the database is stored under in this archive."""
+    if _DB_MEMBER in members:
+        return _DB_MEMBER
+    if _LEGACY_DB_MEMBER in members:
+        return _LEGACY_DB_MEMBER
+    raise BackupError(f"archive has no {_DB_MEMBER}")
 
 
 def db_path() -> Path | None:
@@ -66,7 +78,7 @@ def create(out_path: Path) -> Path:
         _snapshot_db(db_copy)
 
         meta = {
-            "app": "netscan",
+            "app": "cherubyte",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         meta_bytes = json.dumps(meta, indent=2).encode()
@@ -87,11 +99,11 @@ def create(out_path: Path) -> Path:
 
 
 def default_name() -> str:
-    return f"netscan-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.tar.gz"
+    return f"cherubyte-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.tar.gz"
 
 
 class BackupError(ValueError):
-    """The archive is not a NetScan backup, or is damaged."""
+    """The archive is not a Cherubyte backup, or is damaged."""
 
 
 def _safe_members(tar: tarfile.TarFile) -> list[tarfile.TarInfo]:
@@ -119,11 +131,10 @@ def inspect(archive: Path) -> dict:
         raise BackupError("not a .tar.gz archive")
     with tarfile.open(archive, "r:gz") as tar:
         members = {m.name for m in _safe_members(tar)}
-        if _DB_MEMBER not in members:
-            raise BackupError(f"archive has no {_DB_MEMBER}")
+        db_member = _archived_db_member(members)
         with tempfile.TemporaryDirectory() as tmp:
-            tar.extract(tar.getmember(_DB_MEMBER), tmp)  # noqa: S202 — path checked above
-            db_copy = Path(tmp) / _DB_MEMBER
+            tar.extract(tar.getmember(db_member), tmp)  # noqa: S202 — path checked above
+            db_copy = Path(tmp) / db_member
             probe = sqlite3.connect(str(db_copy))
             try:
                 result = probe.execute("PRAGMA integrity_check").fetchone()
@@ -161,13 +172,15 @@ def restore(archive: Path) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         with tarfile.open(archive, "r:gz") as tar:
-            for m in _safe_members(tar):
+            members = _safe_members(tar)
+            db_member = _archived_db_member({m.name for m in members})
+            for m in members:
                 tar.extract(m, tmp_path)  # noqa: S202 — members checked
 
         # database
         _rotate(target_db)
         target_db.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(tmp_path / _DB_MEMBER, target_db)
+        shutil.copy2(tmp_path / db_member, target_db)
         for sidecar in ("-wal", "-shm"):
             stale = target_db.with_name(target_db.name + sidecar)
             stale.unlink(missing_ok=True)

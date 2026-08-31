@@ -10,8 +10,8 @@ import socket
 
 import pytest
 
-from netscan_agent import scanner
-from netscan_agent.scanner import (
+from cherubyte_agent import scanner
+from cherubyte_agent.scanner import (
     Host,
     _due_for_full_sweep,
     _ping_targets,

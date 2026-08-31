@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/logo-wordmark.png" alt="NetScan" width="560">
+  <img src="docs/logo-wordmark.png" alt="Cherubyte" width="560">
 </p>
 
 <p align="center">
-  <a href="https://github.com/nobrega8/netscan/actions/workflows/ci.yml"><img src="https://github.com/nobrega8/netscan/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/nobrega8/netscan/actions/workflows/agent-windows.yml"><img src="https://github.com/nobrega8/netscan/actions/workflows/agent-windows.yml/badge.svg" alt="Agent (Windows)"></a>
+  <a href="https://github.com/nobrega8/cherubyte/actions/workflows/ci.yml"><img src="https://github.com/nobrega8/cherubyte/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/nobrega8/cherubyte/actions/workflows/agent-windows.yml"><img src="https://github.com/nobrega8/cherubyte/actions/workflows/agent-windows.yml/badge.svg" alt="Agent (Windows)"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/node-20%2B-339933?logo=nodedotjs&logoColor=white" alt="Node 20+">
@@ -14,13 +14,13 @@
 <h1 align="center">Your whole network, in one quiet place.</h1>
 
 <p align="center">
-  NetScan watches every device on your LAN, works out what each one is,<br>
+  Cherubyte watches every device on your LAN, works out what each one is,<br>
   remembers when it comes and goes, and tells you the moment something new appears.<br>
   Self-hosted. No account. No cloud. A free, private alternative to Fing.
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" alt="The NetScan dashboard — an overview strip above the list of every device on the network" width="880">
+  <img src="docs/screenshots/dashboard.png" alt="The Cherubyte dashboard — an overview strip above the list of every device on the network" width="880">
 </p>
 
 ---
@@ -99,9 +99,9 @@ detail, presence history, custom alerts, more than a handful of devices — are
 behind a paid subscription, and everything syncs through Fing's cloud with an
 account attached.
 
-NetScan does the same job on your own hardware.
+Cherubyte does the same job on your own hardware.
 
-| | NetScan | Fing (free) | Fing Premium |
+| | Cherubyte | Fing (free) | Fing Premium |
 | --- | --- | --- | --- |
 | Price | Free | Free | Paid subscription |
 | Runs | On your own machine | Phone / cloud | Phone / cloud |
@@ -117,7 +117,7 @@ NetScan does the same job on your own hardware.
 
 ## Two halves
 
-NetScan is a **panel** and one or more **agents**, and the split is the point.
+Cherubyte is a **panel** and one or more **agents**, and the split is the point.
 
 An **agent** sits on the network it watches and does the scanning — an ARP sweep,
 mDNS, SSDP, the kernel's neighbour table — which needs raw sockets and a place on
@@ -136,8 +136,8 @@ them is a panel upgrade that reaches every agent already in the field.
 ## Get started
 
 ```bash
-git clone https://github.com/nobrega8/netscan.git
-cd netscan
+git clone https://github.com/nobrega8/cherubyte.git
+cd cherubyte
 
 # builds the panel + the bundled agent, creates the database,
 # prompts for an admin account, installs both as systemd services
@@ -149,13 +149,13 @@ Then open **<http://localhost:1001>**, sign in, and enrol the agent:
 1. **Settings ▸ Agents ▸ New agent** — copy the token.
 2. `./scripts/install-agent-service.sh http://localhost:1001 <token>`
 
-The first scan lands a few seconds later. NetScan does not scan until an agent
+The first scan lands a few seconds later. Cherubyte does not scan until an agent
 is enrolled and reporting.
 
 ```bash
-sudo systemctl {status,restart,stop} netscan          # the panel
-sudo systemctl {status,restart,stop} netscan-agent    # the scanner
-journalctl -u netscan -f
+sudo systemctl {status,restart,stop} cherubyte          # the panel
+sudo systemctl {status,restart,stop} cherubyte-agent    # the scanner
+journalctl -u cherubyte -f
 ```
 
 Reset a lost admin password with `cd backend && .venv/bin/python manage.py
@@ -165,7 +165,7 @@ create-admin <name>`. Back up everything — the database and the uploads — fr
 <details>
 <summary>Docker</summary>
 
-Two containers, `ghcr.io/nobrega8/netscan-panel` and `-agent`, multi-arch
+Two containers, `ghcr.io/nobrega8/cherubyte-panel` and `-agent`, multi-arch
 (`amd64` + `arm64`).
 
 ```bash
@@ -197,22 +197,22 @@ each method, filled in.
 ./scripts/install-agent-service.sh http://your-panel:1001 <token>
 ```
 
-Creates `agent/.venv`, writes `agent/.env`, installs a `netscan-agent` systemd
+Creates `agent/.venv`, writes `agent/.env`, installs a `cherubyte-agent` systemd
 unit with `CAP_NET_RAW` and no root. The key lives in
-`~/.local/state/netscan-agent/`.
+`~/.local/state/cherubyte-agent/`.
 
 **Docker** (Linux host):
 
 ```bash
-docker run -d --name netscan-agent --network host \
+docker run -d --name cherubyte-agent --network host \
   --cap-add NET_RAW --cap-add NET_ADMIN \
-  -v netscan-agent:/var/lib/netscan-agent \
-  -e NETSCAN_AGENT_PANEL_URL=http://your-panel:1001 \
-  -e NETSCAN_AGENT_ENROL_TOKEN=<token> \
-  ghcr.io/nobrega8/netscan-agent:latest
+  -v cherubyte-agent:/var/lib/cherubyte-agent \
+  -e CHERUBYTE_AGENT_PANEL_URL=http://your-panel:1001 \
+  -e CHERUBYTE_AGENT_ENROL_TOKEN=<token> \
+  ghcr.io/nobrega8/cherubyte-agent:latest
 ```
 
-**Windows** — download `netscan-agent.exe` from the releases page, then from an
+**Windows** — download `cherubyte-agent.exe` from the releases page, then from an
 elevated PowerShell:
 
 ```powershell
@@ -225,7 +225,7 @@ Installs to Program Files, registers a service, keeps its key in ProgramData.
 The token is single-use, valid 24 h, spent once on first start for a long-lived
 key of which the panel stores only a hash. Agents push outbound over HTTP —
 nothing needs to be opened on the network the agent sits on, and pointing one at
-someone else's panel is just a different `NETSCAN_AGENT_PANEL_URL`.
+someone else's panel is just a different `CHERUBYTE_AGENT_PANEL_URL`.
 </details>
 
 <details>
@@ -263,7 +263,7 @@ sudo backend/.venv/bin/python backend/run.py
 ## Configuration
 
 Everything is editable in **Settings** and stored in the database; `backend/.env`
-(`NETSCAN_*`, see `.env.example`) sets the initial values. Scan-related settings
+(`CHERUBYTE_*`, see `.env.example`) sets the initial values. Scan-related settings
 are pushed to every agent with each report.
 
 - **Subnets** — empty auto-detects the agent's `/24`, or list CIDRs. ARP only
@@ -310,7 +310,7 @@ The panel serves the API at `/api/*`, an SSE feed at `/api/stream`, uploads at
   size-capped, validated by their leading bytes, and served under a locked-down
   CSP. CORS is off by default.
 
-Still — don't put NetScan directly on the public internet. A VPN or an
+Still — don't put Cherubyte directly on the public internet. A VPN or an
 authenticating reverse proxy in front is the right posture.
 
 ---
@@ -351,4 +351,4 @@ is — each entry anchored to the failure that produced it.
 
 [MIT](LICENSE). The UI font is [Inter](https://rsms.me/inter/) under the SIL Open
 Font License 1.1, self-hosted in `frontend/public/fonts/` with its license file
-next to it. NetScan makes no external font requests.
+next to it. Cherubyte makes no external font requests.
