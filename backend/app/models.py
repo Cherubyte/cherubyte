@@ -9,6 +9,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -477,6 +478,8 @@ class ConnectionHistory(Base):
     """Append-only log of join/leave transitions per device."""
 
     __tablename__ = "connection_history"
+    # the presence grid reads one device's history inside a time window
+    __table_args__ = (Index("ix_conn_history_device_ts", "device_id", "timestamp"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     device_id: Mapped[int] = mapped_column(

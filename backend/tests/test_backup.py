@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
+from app.database import engine
 from app.models import User
 from app.services import backup
 
@@ -38,6 +39,13 @@ async def test_round_trip_restores_rows_and_files(session, uploads, tmp_path):
 
     summary = backup.restore(archive)
     assert summary["uploads"] == 1
+
+    # In production, restore() swapping the file is safe because the whole
+    # process exits right after (see its docstring) and comes back up with a
+    # fresh connection pool. The test suite doesn't restart, so do the
+    # equivalent here — otherwise every later test sharing this engine keeps
+    # talking to the old, now-detached file the swap renamed away.
+    await engine.dispose()
 
     # the db file was swapped under us — read it fresh
     import sqlite3
