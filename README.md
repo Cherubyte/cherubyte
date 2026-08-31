@@ -184,24 +184,42 @@ networking the "host" is the Linux VM. The panel is fine anywhere.
 </details>
 
 <details>
-<summary>Installing an agent (Linux · Docker · Windows)</summary>
+<summary>Installing an agent (Linux · macOS · Windows · Docker)</summary>
 
 An agent needs two things: a panel URL and an enrolment token that panel minted.
 Everything else is configured in the panel and sent back with every report.
 Mint a token in **Settings ▸ Agents** — the page prints the exact command for
 each method, filled in.
 
-**Linux / Raspberry Pi** (from a clone of this repo):
+The native installers each drop **one binary** and register it with the system's
+own service manager. No Python, no virtualenv, no Docker. Download the binary
+for your platform from the
+[releases page](https://github.com/nobrega8/netscan/releases/latest).
+
+**Linux** (systemd):
 
 ```bash
-./scripts/install-agent-service.sh http://your-panel:1001 <token>
+sudo ./install-service.sh --panel http://your-panel:1001 --token <token>
+# logs:   journalctl -u netscan-agent -f
+# remove: sudo ./uninstall-service.sh
 ```
 
-Creates `agent/.venv`, writes `agent/.env`, installs a `netscan-agent` systemd
-unit with `CAP_NET_RAW` and no root. The key lives in
-`~/.local/state/netscan-agent/`.
+**macOS** (launchd):
 
-**Docker** (Linux host):
+```bash
+sudo ./install-daemon.sh --panel http://your-panel:1001 --token <token>
+# logs:   tail -f /var/log/netscan-agent.log
+# remove: sudo ./uninstall-daemon.sh
+```
+
+**Windows**, from an elevated PowerShell:
+
+```powershell
+.\install-service.ps1 -PanelUrl http://your-panel:1001 -EnrolToken <token>
+# remove: .\uninstall-service.ps1
+```
+
+**Docker** (Linux host), if you would rather:
 
 ```bash
 docker run -d --name netscan-agent --network host \
@@ -212,20 +230,25 @@ docker run -d --name netscan-agent --network host \
   ghcr.io/nobrega8/netscan-agent:latest
 ```
 
-**Windows** — download `netscan-agent.exe` from the releases page, then from an
-elevated PowerShell:
+Every installer writes the same `agent.env` and keeps the enrolment key outside
+the install directory, so upgrading the binary never loses it:
 
-```powershell
-.\install-service.ps1 -PanelUrl http://your-panel:1001 -EnrolToken <token>
-```
+| | Config and state |
+|---|---|
+| Linux | `/etc/netscan-agent/agent.env` · `/var/lib/netscan-agent` |
+| macOS | `/Library/Application Support/NetScan Agent/` |
+| Windows | `%ProgramData%\NetScan Agent\` |
 
-Installs to Program Files, registers a service, keeps its key in ProgramData.
-`.\uninstall-service.ps1` removes it.
+Environment variables override the file, which is what keeps the Docker
+instructions working unchanged.
 
 The token is single-use, valid 24 h, spent once on first start for a long-lived
-key of which the panel stores only a hash. Agents push outbound over HTTP —
-nothing needs to be opened on the network the agent sits on, and pointing one at
-someone else's panel is just a different `NETSCAN_AGENT_PANEL_URL`.
+key of which the panel stores only a hash. Losing the state means needing a
+*fresh* token — `--purge` on the uninstallers removes it deliberately.
+
+Agents push outbound over HTTP — nothing needs to be opened on the network the
+agent sits on, and pointing one at someone else's panel is just a different
+panel URL.
 </details>
 
 <details>

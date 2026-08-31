@@ -38,21 +38,37 @@ Write-Host "Installing to $InstallDir"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path $ExePath -Destination (Join-Path $InstallDir 'netscan-agent.exe') -Force
 
-# The state directory holds the key issued at enrolment. Without it the agent
-# re-enrols on every start, and enrolment tokens are single-use — so the second
-# start would fail. It is deliberately outside the install directory so an
-# upgrade cannot wipe it.
-$StateDir = Join-Path $env:ProgramData 'NetScan Agent'
-New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
+# ProgramData holds both the configuration and the key issued at enrolment.
+# Outside the install directory on purpose: an upgrade replaces the binary, and
+# losing the key would mean needing a fresh enrolment token, since tokens are
+# single use.
+$DataDir = Join-Path $env:ProgramData 'NetScan Agent'
+New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 
-# Settings live in the machine environment so the service picks them up, and so
-# the token is not visible in the service's command line (where any user can
-# read it with `sc qc` or Task Manager).
-[Environment]::SetEnvironmentVariable('NETSCAN_AGENT_PANEL_URL',  $PanelUrl,   'Machine')
-[Environment]::SetEnvironmentVariable('NETSCAN_AGENT_ENROL_TOKEN', $EnrolToken, 'Machine')
-[Environment]::SetEnvironmentVariable('NETSCAN_AGENT_NAME',        $Name,       'Machine')
-[Environment]::SetEnvironmentVariable('NETSCAN_AGENT_STATE_FILE',
-    (Join-Path $StateDir 'agent.json'), 'Machine')
+# Configuration goes in a FILE, not in machine environment variables.
+#
+# The Service Control Manager caches its environment block, so a machine
+# variable written here is invisible to the service registered moments later,
+# until the machine reboots. The service would start on the built-in defaults,
+# never find a panel, and sit there reporting itself alive — a failure with no
+# error anywhere. A file also keeps the token out of the service's command
+# line, where any user could read it with `sc qc` or Task Manager.
+$ConfigFile = Join-Path $DataDir 'agent.env'
+@(
+    "NETSCAN_AGENT_PANEL_URL=$PanelUrl"
+    "NETSCAN_AGENT_ENROL_TOKEN=$EnrolToken"
+    "NETSCAN_AGENT_NAME=$Name"
+) | Set-Content -Path $ConfigFile -Encoding UTF8
+
+# Administrators and SYSTEM only: it carries the enrolment token, and the key
+# file beside it is a bearer credential for this network's inventory.
+$acl = Get-Acl $ConfigFile
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($who in 'BUILTIN\Administrators', 'NT AUTHORITY\SYSTEM') {
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule(
+        $who, 'FullControl', 'Allow')))
+}
+Set-Acl -Path $ConfigFile -AclObject $acl
 
 if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Write-Host 'Service already exists — stopping it to upgrade'
@@ -77,7 +93,8 @@ Start-Service -Name $ServiceName
 Write-Host ''
 Write-Host "NetScan agent installed and started as '$Name'." -ForegroundColor Green
 Write-Host "  Panel:  $PanelUrl"
-Write-Host "  State:  $StateDir"
+Write-Host "  Config: $ConfigFile"
+Write-Host "  State:  $DataDir"
 Write-Host "  Health: http://127.0.0.1:1002/health"
 Write-Host ''
 Write-Host 'It should appear on the panel''s Agents page within a minute.'
