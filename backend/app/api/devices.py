@@ -23,7 +23,7 @@ from ..models import (
     MacAddress,
     OpenPort,
 )
-from ..services import duplicates, wol
+from ..services import duplicates, uptime, wol
 from ._uploads import save_image_upload
 from ..schemas import (
     AbsorbMacRequest,
@@ -227,6 +227,17 @@ async def device_history(
         .limit(limit)
     )
     return list(res.scalars())
+
+
+@router.get("/{device_id}/uptime")
+async def device_uptime_route(
+    device_id: int,
+    session: AsyncSession = Depends(get_session),
+    days: int = Query(30, ge=1, le=365),
+):
+    """Fraction of the last `days` this device was online (from its join/leave
+    history). `ratio` is null when there isn't enough history yet."""
+    return await uptime.device_uptime(session, device_id, days)
 
 
 async def _fold_into(session: AsyncSession, target_id: int, src_id: int) -> None:

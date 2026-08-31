@@ -89,6 +89,10 @@ export const api = {
   wakeDevice: (id: number) => req<{ ok: boolean; mac: string }>(`/devices/${id}/wake`, { method: "POST" }),
   deleteDevice: (id: number) => req<void>(`/devices/${id}`, { method: "DELETE" }),
   deviceHistory: (id: number) => req<Connection[]>(`/devices/${id}/history`),
+  deviceUptime: (id: number, days = 30) =>
+    req<{ days: number; ratio: number | null; since: string; now: string; samples: number }>(
+      `/devices/${id}/uptime?days=${days}`,
+    ),
   mergeDevices: (targetId: number, sourceIds: number[]) =>
     req<Device>(`/devices/${targetId}/merge`, {
       method: "POST",

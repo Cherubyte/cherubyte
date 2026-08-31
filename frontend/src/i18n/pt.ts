@@ -182,6 +182,8 @@ export const pt: Record<keyof typeof en, string> = {
   "device.fact.system": "Sistema",
   "device.fact.owner": "Responsável",
   "device.fact.firstSeen": "1ª deteção",
+  "device.fact.uptime": "Online",
+  "device.fact.uptimeDays": "{n}d",
   "device.seenAgo": "visto {ago}",
   "device.section.identity": "Identidade",
   "device.field.nickname": "Nickname",
