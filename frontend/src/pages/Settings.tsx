@@ -21,7 +21,7 @@ import {
   Wave,
 } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
-import { useTheme } from "../hooks/useTheme";
+import { useTheme, type ThemePref } from "../hooks/useTheme";
 import { copyText } from "../lib/ports";
 import { timeAgo } from "../lib/format";
 import { useT, useLocale, type MessageKey } from "../i18n";
@@ -130,7 +130,7 @@ function SettingsNav({
 function InterfaceSection() {
   const t = useT();
   const [locale, setLocale] = useLocale();
-  const { light, setLight } = useTheme();
+  const { pref, setPref } = useTheme();
   return (
     <section className="panel mb-3 p-4">
       <SectionHeader title={t("settings.cat.interface")} />
@@ -148,14 +148,17 @@ function InterfaceSection() {
             ))}
           </select>
         </Field>
-        <div className="flex items-center justify-between border-t border-fg/10 pt-3">
-          <span className="label text-fg-3">{t("settings.iface.darkMode")}</span>
-          <Toggle
-            label={t("settings.iface.darkMode")}
-            checked={!light}
-            onChange={(v) => setLight(!v)}
-          />
-        </div>
+        <Field label={t("settings.iface.theme")}>
+          <select
+            className="input"
+            value={pref}
+            onChange={(e) => setPref(e.target.value as ThemePref)}
+          >
+            <option value="system">{t("settings.iface.theme.system")}</option>
+            <option value="light">{t("settings.iface.theme.light")}</option>
+            <option value="dark">{t("settings.iface.theme.dark")}</option>
+          </select>
+        </Field>
       </div>
     </section>
   );
@@ -1130,7 +1133,13 @@ function AgentsSection() {
             <div>
               <span className="label text-fg-3">{t("agents.install.linux")}</span>
               <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
-{`./scripts/install-agent-service.sh ${panelUrl} ${token}`}
+{`sudo ./install-service.sh --panel ${panelUrl} --token ${token}`}
+              </pre>
+            </div>
+            <div>
+              <span className="label text-fg-3">{t("agents.install.macos")}</span>
+              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
+{`sudo ./install-daemon.sh --panel ${panelUrl} --token ${token}`}
               </pre>
             </div>
             <div>

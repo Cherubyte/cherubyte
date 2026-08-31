@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Installs the Cherubyte agent as a Windows service.
+  Installs the NetScan agent as a Windows service.
 
 .DESCRIPTION
   The agent is one executable and a service registration. It needs no Python,
@@ -17,42 +17,58 @@ param(
     [Parameter(Mandatory = $true)][string] $PanelUrl,
     [Parameter(Mandatory = $true)][string] $EnrolToken,
     [string] $Name = $env:COMPUTERNAME,
-    [string] $InstallDir = "$env:ProgramFiles\Cherubyte Agent",
+    [string] $InstallDir = "$env:ProgramFiles\NetScan Agent",
     [string] $ExePath
 )
 
 $ErrorActionPreference = 'Stop'
-$ServiceName = 'CherubyteAgent'
+$ServiceName = 'NetScanAgent'
 
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
         ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw 'Run this from an elevated PowerShell — registering a service needs it.'
 }
 
-if (-not $ExePath) { $ExePath = Join-Path $PSScriptRoot 'cherubyte-agent.exe' }
+if (-not $ExePath) { $ExePath = Join-Path $PSScriptRoot 'netscan-agent.exe' }
 if (-not (Test-Path $ExePath)) {
-    throw "cherubyte-agent.exe not found at $ExePath. Download it from the panel's Agents page, or pass -ExePath."
+    throw "netscan-agent.exe not found at $ExePath. Download it from the panel's Agents page, or pass -ExePath."
 }
 
 Write-Host "Installing to $InstallDir"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-Copy-Item -Path $ExePath -Destination (Join-Path $InstallDir 'cherubyte-agent.exe') -Force
+Copy-Item -Path $ExePath -Destination (Join-Path $InstallDir 'netscan-agent.exe') -Force
 
-# The state directory holds the key issued at enrolment. Without it the agent
-# re-enrols on every start, and enrolment tokens are single-use — so the second
-# start would fail. It is deliberately outside the install directory so an
-# upgrade cannot wipe it.
-$StateDir = Join-Path $env:ProgramData 'Cherubyte Agent'
-New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
+# ProgramData holds both the configuration and the key issued at enrolment.
+# Outside the install directory on purpose: an upgrade replaces the binary, and
+# losing the key would mean needing a fresh enrolment token, since tokens are
+# single use.
+$DataDir = Join-Path $env:ProgramData 'NetScan Agent'
+New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 
-# Settings live in the machine environment so the service picks them up, and so
-# the token is not visible in the service's command line (where any user can
-# read it with `sc qc` or Task Manager).
-[Environment]::SetEnvironmentVariable('CHERUBYTE_AGENT_PANEL_URL',  $PanelUrl,   'Machine')
-[Environment]::SetEnvironmentVariable('CHERUBYTE_AGENT_ENROL_TOKEN', $EnrolToken, 'Machine')
-[Environment]::SetEnvironmentVariable('CHERUBYTE_AGENT_NAME',        $Name,       'Machine')
-[Environment]::SetEnvironmentVariable('CHERUBYTE_AGENT_STATE_FILE',
-    (Join-Path $StateDir 'agent.json'), 'Machine')
+# Configuration goes in a FILE, not in machine environment variables.
+#
+# The Service Control Manager caches its environment block, so a machine
+# variable written here is invisible to the service registered moments later,
+# until the machine reboots. The service would start on the built-in defaults,
+# never find a panel, and sit there reporting itself alive — a failure with no
+# error anywhere. A file also keeps the token out of the service's command
+# line, where any user could read it with `sc qc` or Task Manager.
+$ConfigFile = Join-Path $DataDir 'agent.env'
+@(
+    "NETSCAN_AGENT_PANEL_URL=$PanelUrl"
+    "NETSCAN_AGENT_ENROL_TOKEN=$EnrolToken"
+    "NETSCAN_AGENT_NAME=$Name"
+) | Set-Content -Path $ConfigFile -Encoding UTF8
+
+# Administrators and SYSTEM only: it carries the enrolment token, and the key
+# file beside it is a bearer credential for this network's inventory.
+$acl = Get-Acl $ConfigFile
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($who in 'BUILTIN\Administrators', 'NT AUTHORITY\SYSTEM') {
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule(
+        $who, 'FullControl', 'Allow')))
+}
+Set-Acl -Path $ConfigFile -AclObject $acl
 
 if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Write-Host 'Service already exists — stopping it to upgrade'
@@ -66,7 +82,7 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
 # then fail on start with error 1053.
 # LocalSystem, because the ARP sweep needs raw sockets. Everything else the
 # agent does is outbound HTTP.
-$exe = Join-Path $InstallDir 'cherubyte-agent.exe'
+$exe = Join-Path $InstallDir 'netscan-agent.exe'
 & $exe --startup auto install
 if ($LASTEXITCODE -ne 0) { throw "Service registration failed ($LASTEXITCODE)." }
 # Restart on failure rather than staying down: a network that is briefly gone
@@ -75,9 +91,10 @@ sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/15000/res
 
 Start-Service -Name $ServiceName
 Write-Host ''
-Write-Host "Cherubyte agent installed and started as '$Name'." -ForegroundColor Green
+Write-Host "NetScan agent installed and started as '$Name'." -ForegroundColor Green
 Write-Host "  Panel:  $PanelUrl"
-Write-Host "  State:  $StateDir"
+Write-Host "  Config: $ConfigFile"
+Write-Host "  State:  $DataDir"
 Write-Host "  Health: http://127.0.0.1:1002/health"
 Write-Host ''
 Write-Host 'It should appear on the panel''s Agents page within a minute.'

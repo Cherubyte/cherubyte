@@ -1,18 +1,64 @@
-"""Agent configuration. Everything comes from the environment — the agent has
-no database and no UI of its own, by design: it is the half that may need raw
-sockets and host networking, so it holds as little as possible."""
+"""Agent configuration.
 
+Two sources, in this order: the environment, then a config file at a
+well-known per-OS path. The environment wins, so a container keeps being
+configured with `-e` and nothing changes for Docker.
+
+**Why a file at all, rather than environment variables everywhere.** On Windows
+a service does not reliably see machine environment variables set after boot:
+the Service Control Manager caches its environment block, so a variable written
+by an installer is invisible to the service it just registered until the
+machine reboots. The agent would start with the built-in defaults, never find a
+panel, and report itself healthy-but-idle — which is exactly what happened, and
+what the CI check was too weak to catch.
+
+A file is also the same mechanism on all three platforms, so the Windows,
+systemd and launchd installers differ only in where they write it.
+"""
+
+import os
+import sys
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-STATE_DIR = Path("/var/lib/cherubyte-agent")
+
+
+def config_dir() -> Path:
+    """Where an installer writes `agent.env`."""
+    if sys.platform == "win32":
+        return Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "NetScan Agent"
+    if sys.platform == "darwin":
+        return Path("/Library/Application Support/NetScan Agent")
+    return Path("/etc/netscan-agent")
+
+
+def state_dir() -> Path:
+    """Where the key issued at enrolment is kept between restarts.
+
+    Deliberately outside the install directory on every platform, so upgrading
+    the binary cannot lose the key — and enrolment tokens are single-use, so
+    losing it means needing a fresh one.
+    """
+    if sys.platform == "win32":
+        return config_dir()
+    if sys.platform == "darwin":
+        return Path("/Library/Application Support/NetScan Agent")
+    return Path("/var/lib/netscan-agent")
+
+
+CONFIG_FILE = config_dir() / "agent.env"
+STATE_DIR = state_dir()
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env", env_prefix="CHERUBYTE_AGENT_", extra="ignore"
+        # A repo checkout keeps working from agent/.env; an installed agent
+        # reads the file its installer wrote. Both are optional.
+        env_file=(BASE_DIR / ".env", CONFIG_FILE),
+        env_prefix="NETSCAN_AGENT_",
+        extra="ignore",
     )
 
     # Where the panel is, and how this agent proves who it is. The enrolment
