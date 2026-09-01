@@ -5,6 +5,7 @@ export type DeviceType =
   | "pc"
   | "laptop"
   | "server"
+  | "vm"
   | "phone"
   | "voip"
   | "tablet"
@@ -314,6 +315,7 @@ export interface AppSettings {
   weekly_summary_enabled: boolean;
   weekly_summary_weekday: number;
   weekly_summary_hour: number;
+  onboarding_dismissed: boolean;
 }
 
 export interface AlertRule {

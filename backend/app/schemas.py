@@ -263,6 +263,7 @@ class SettingsOut(BaseModel):
     weekly_summary_enabled: bool = False
     weekly_summary_weekday: int = 0
     weekly_summary_hour: int = 9
+    onboarding_dismissed: bool = False
 
 
 class SettingsIn(BaseModel):
@@ -307,6 +308,7 @@ class SettingsIn(BaseModel):
     weekly_summary_enabled: bool | None = None
     weekly_summary_weekday: int | None = None
     weekly_summary_hour: int | None = None
+    onboarding_dismissed: bool | None = None
 
 
 class AccountOut(ORMModel):
