@@ -557,7 +557,16 @@ export function Settings() {
       ),
   });
   const testFb = useMutation({
-    mutationFn: api.testFingerbank,
+    mutationFn: async () => {
+      // Testing an unsaved key the user just typed used to silently test
+      // whatever was already on disk instead — save it first so Test always
+      // checks what's on screen.
+      if (form.fingerbank_api_key) {
+        await api.updateSettings({ fingerbank_api_key: form.fingerbank_api_key });
+        qc.invalidateQueries({ queryKey: ["settings"] });
+      }
+      return api.testFingerbank();
+    },
     onSuccess: (r) => {
       if (r.status === "ok") {
         toast({

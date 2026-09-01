@@ -51,6 +51,7 @@ class DeviceType(str, enum.Enum):
     pc = "pc"
     laptop = "laptop"
     server = "server"
+    vm = "vm"
 
     # phones, tablets, things you carry
     phone = "phone"

@@ -9,6 +9,9 @@ _VENDOR_HINTS: list[tuple[tuple[str, ...], DeviceType]] = [
     (("samsung",), DeviceType.phone),
     (("xiaomi", "huawei", "oneplus", "oppo", "vivo", "realme"), DeviceType.phone),
     (("raspberry",), DeviceType.server),
+    # hypervisor NIC vendors — a confident signal since these OUI prefixes are
+    # only ever handed out to virtual, never physical, network adapters
+    (("vmware", "virtualbox", "innotek gmbh", "qemu", "xensource", "parallels"), DeviceType.vm),
     (("intel", "dell", "asus", "gigabyte", "msi", "lenovo", "hewlett"), DeviceType.pc),
     (("tp-link", "netgear", "ubiquiti", "mikrotik", "zyxel", "avm", "fritz"), DeviceType.router),
     (("yealink", "grandstream", "polycom", "snom", "fanvil", "avaya", "mitel"), DeviceType.voip),
@@ -175,6 +178,7 @@ ICON_FOR_TYPE: dict[DeviceType, str] = {
     DeviceType.pc: "monitor",
     DeviceType.laptop: "laptop",
     DeviceType.server: "server",
+    DeviceType.vm: "cube",
     DeviceType.phone: "smartphone",
     DeviceType.voip: "phone-call",
     DeviceType.tablet: "tablet",
