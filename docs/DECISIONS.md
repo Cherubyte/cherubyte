@@ -38,15 +38,20 @@ in, which is the one thing a customer will not grant. Pushing also means the sam
 agent works unchanged against a panel hosted anywhere — pointing at a different
 panel is one environment variable, and no relay is needed for it.
 
-## The wire contract is a shared package, not two copies
+## The wire contract lives here; the agent repo vendors a pinned copy
 
-`protocol/` is installed by both images. They ship separately and can be upgraded
-separately, so a duplicated schema would not diverge loudly — it would diverge in
-one field, on one release, with **both sides reporting success**.
+`protocol/` in this repo is the source of truth — the panel imports it, and it
+is the half that *defines* what a report may contain. The agent
+([Cherubyte/cherubyte-agent](https://github.com/Cherubyte/cherubyte-agent))
+carries a vendored copy: `protocol/UPSTREAM` there pins the commit it was taken
+from, `scripts/sync-protocol.sh` re-copies it, and a CI job fails on any drift.
+A duplicated schema would not diverge loudly — it would diverge in one field, on
+one release, with **both sides reporting success** — so a wire change is
+deliberately two commits: land it here, then bump the pin and re-sync there.
 
-`agent/tests/test_contract.py` compares the scanner's observable fields against
-the wire's and fails by name if the scanner grows a signal the protocol cannot
-carry. Verified by adding one:
+The agent repo's `agent/tests/test_contract.py` compares the scanner's
+observable fields against the wire's and fails by name if the scanner grows a
+signal the protocol cannot carry. Verified by adding one:
 
 ```
 AssertionError: the scanner observes {'snmp_sysdescr'}, which no wire field carries
@@ -285,3 +290,30 @@ the window down to ~240 points before it goes over the wire rather than shipping
 a week of raw minutes. The panel job carries `misfire_grace_time=45`: a reading
 delayed by a busy event loop is worth more than the APScheduler default of
 dropping anything more than a second late.
+
+## The agent moved to its own repository; the panel serves it
+
+`agent/` and `site/` are gone from this repo — the agent is
+[Cherubyte/cherubyte-agent](https://github.com/Cherubyte/cherubyte-agent), the
+site is [Cherubyte/cherubyte-site](https://github.com/Cherubyte/cherubyte-site).
+The two halves already shipped as separate images and upgraded independently;
+the repo split just makes that the default.
+
+`protocol/` stays here (see "The wire contract lives here" above). The panel no
+longer opens raw sockets or imports `scapy`/`zeroconf`, so its systemd unit
+drops `CAP_NET_RAW`/`CAP_NET_ADMIN` and keeps only `CAP_NET_BIND_SERVICE`.
+
+**Getting an agent still starts in the panel.** `services/agent_release.py`
+reads the agent repo's latest GitHub release, and `/api/agents/download/{platform}`
+streams the binary from the panel's own origin — so an operator installs an
+agent without visiting GitHub, and a panel that can reach GitHub can hand the
+binary to a machine that cannot. `/api/agents/installer/{platform}` proxies the
+matching installer, which now writes its unit inline, so a native install is:
+
+```
+curl -fsSL PANEL/api/agents/download/linux -o cherubyte-agent && chmod +x cherubyte-agent
+curl -fsSL PANEL/api/agents/installer/linux | sudo bash -s -- --panel PANEL --token TOK --binary ./cherubyte-agent
+```
+
+A GitHub outage degrades Settings ▸ Agents to the Docker and `git clone` paths;
+it does not break the page.

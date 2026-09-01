@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from cherubyte_protocol import (
     PROTOCOL_VERSION,
     AgentReport,
@@ -22,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import Agent, HostTempSample, WanSample, iso_utc, utcnow
+from ..services import agent_release
 from ..services import agents as agent_service
 from ..services import wan, wol
 from ..scheduler import note_report
@@ -155,6 +157,50 @@ async def list_agents(
         }
         for a in rows
     ]
+
+
+@router.get("/release")
+async def agent_release_info(_=Depends(current_account)):
+    """The latest agent build the panel can hand out — version, per-platform
+    download links (served by the panel itself, see below), and the fallbacks."""
+    info = await agent_release.latest()
+    return {
+        "tag": info["tag"],
+        "published_at": info["published_at"],
+        "platforms": [p for p in agent_release.PLATFORMS if p in info["assets"]],
+        "checked_at": info["checked_at"],
+        "error": info["error"],
+        "repo_url": info["repo_url"],
+        "docker_image": info["docker_image"],
+    }
+
+
+@router.get("/download/{platform}")
+async def agent_download(platform: str, _=Depends(current_account)):
+    """Stream the agent binary for `platform` from the panel's own origin."""
+    path = await agent_release.asset_path(platform)
+    if path is None:
+        raise HTTPException(
+            404,
+            "No agent build available for this platform yet — "
+            f"see {agent_release.REPO_URL}/releases",
+        )
+    return FileResponse(
+        path,
+        media_type="application/octet-stream",
+        filename=agent_release.DOWNLOAD_NAME[platform],
+    )
+
+
+@router.get("/installer/{platform}")
+async def agent_installer(platform: str, _=Depends(current_account)):
+    """The per-platform installer script, proxied from the agent repo — so a
+    native install is `curl <panel>/…/installer/linux | sudo bash -s -- …`."""
+    script = await agent_release.installer_script(platform)
+    if script is None:
+        raise HTTPException(404, "No installer for this platform.")
+    media = "text/plain" if platform == "windows" else "text/x-shellscript"
+    return Response(script, media_type=media)
 
 
 @router.post("/tokens")

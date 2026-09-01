@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/Cherubyte/cherubyte/actions/workflows/ci.yml"><img src="https://github.com/Cherubyte/cherubyte/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/Cherubyte/cherubyte/actions/workflows/agent-windows.yml"><img src="https://github.com/Cherubyte/cherubyte/actions/workflows/agent-windows.yml/badge.svg" alt="Agent (Windows)"></a>
+  <a href="https://github.com/Cherubyte/cherubyte-agent"><img src="https://img.shields.io/badge/agent-Cherubyte%2Fcherubyte--agent-555?logo=github" alt="Agent repo"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/node-20%2B-339933?logo=nodedotjs&logoColor=white" alt="Node 20+">
@@ -125,13 +125,16 @@ Cherubyte does the same job on your own hardware.
 ## Two halves
 
 Cherubyte is a **panel** and one or more **agents**, and the split is the point.
+They are two programs in two repositories — this one is the panel; the agent is
+[**Cherubyte/cherubyte-agent**](https://github.com/Cherubyte/cherubyte-agent).
 
 An **agent** sits on the network it watches and does the scanning — an ARP sweep,
 mDNS, SSDP, the kernel's neighbour table — which needs raw sockets and a place on
 that LAN. It holds nothing but its own key.
 
-The **panel** stores the history, classifies devices, raises alerts and serves
-the web UI on port **1001**. It needs no privileges and never touches a monitored
+The **panel** stores the history, classifies devices, raises alerts, serves the
+web UI on port **1001**, and hands out the agent build for each platform from
+**Settings ▸ Agents**. It needs no raw sockets and never touches a monitored
 network, so it can live anywhere — a Raspberry Pi, a NAS, someone else's box.
 
 Everything crossing the wire is something an agent *saw*. Naming, presence and
@@ -146,22 +149,29 @@ them is a panel upgrade that reaches every agent already in the field.
 git clone https://github.com/Cherubyte/cherubyte.git
 cd cherubyte
 
-# builds the panel + the bundled agent, creates the database,
-# prompts for an admin account, installs both as systemd services
-./scripts/setup.sh --service --agent
+# builds the panel, creates the database, prompts for an admin
+# account, installs the panel as a systemd service
+./scripts/setup.sh --service
 ```
 
-Then open **<http://localhost:1001>**, sign in, and enrol the agent:
+Then open **<http://localhost:1001>**, sign in, and add an agent:
 
-1. **Settings ▸ Agents ▸ New agent** — copy the token.
-2. `./scripts/install-agent-service.sh http://localhost:1001 <token>`
+1. **Settings ▸ Agents ▸ New agent** — mint a token.
+2. The page prints the filled-in command for each platform — Docker, or a
+   native binary the panel serves and installs:
+
+   ```bash
+   curl -fsSL http://localhost:1001/api/agents/download/linux -o cherubyte-agent && chmod +x cherubyte-agent
+   curl -fsSL http://localhost:1001/api/agents/installer/linux | sudo bash -s -- \
+     --panel http://localhost:1001 --token <token> --binary ./cherubyte-agent
+   ```
 
 The first scan lands a few seconds later. Cherubyte does not scan until an agent
 is enrolled and reporting.
 
 ```bash
 sudo systemctl {status,restart,stop} cherubyte          # the panel
-sudo systemctl {status,restart,stop} cherubyte-agent    # the scanner
+sudo systemctl {status,restart,stop} cherubyte-agent    # the scanner (installed above)
 journalctl -u cherubyte -f
 ```
 
@@ -191,86 +201,42 @@ networking the "host" is the Linux VM. The panel is fine anywhere.
 </details>
 
 <details>
-<summary>Installing an agent (Linux · macOS · Windows · Docker)</summary>
+<summary>Adding an agent</summary>
 
-An agent needs two things: a panel URL and an enrolment token that panel minted.
-Everything else is configured in the panel and sent back with every report.
-Mint a token in **Settings ▸ Agents** — the page prints the exact command for
-each method, filled in.
+An agent needs a panel URL and an enrolment token. Everything else is configured
+in the panel and sent back with every report. Mint a token in **Settings ▸
+Agents** — the page prints the filled-in command for each method.
 
-The native installers each drop **one binary** and register it with the system's
-own service manager. No Python, no virtualenv, no Docker. Download the binary
-for your platform from the
-[releases page](https://github.com/Cherubyte/cherubyte/releases/latest).
-
-**Linux** (systemd):
-
-```bash
-sudo ./install-service.sh --panel http://your-panel:1001 --token <token>
-# logs:   journalctl -u cherubyte-agent -f
-# remove: sudo ./uninstall-service.sh
-```
-
-**macOS** (launchd):
-
-```bash
-sudo ./install-daemon.sh --panel http://your-panel:1001 --token <token>
-# logs:   tail -f /var/log/cherubyte-agent.log
-# remove: sudo ./uninstall-daemon.sh
-```
-
-**Windows**, from an elevated PowerShell:
-
-```powershell
-.\install-service.ps1 -PanelUrl http://your-panel:1001 -EnrolToken <token>
-# remove: .\uninstall-service.ps1
-```
-
-**Docker** (Linux host), if you would rather:
-
-```bash
-docker run -d --name cherubyte-agent --network host \
-  --cap-add NET_RAW --cap-add NET_ADMIN \
-  -v cherubyte-agent:/var/lib/cherubyte-agent \
-  -e CHERUBYTE_AGENT_PANEL_URL=http://your-panel:1001 \
-  -e CHERUBYTE_AGENT_ENROL_TOKEN=<token> \
-  ghcr.io/cherubyte/cherubyte-agent:latest
-```
-
-Every installer writes the same `agent.env` and keeps the enrolment key outside
-the install directory, so upgrading the binary never loses it:
-
-| | Config and state |
-|---|---|
-| Linux | `/etc/cherubyte-agent/agent.env` · `/var/lib/cherubyte-agent` |
-| macOS | `/Library/Application Support/Cherubyte Agent/` |
-| Windows | `%ProgramData%\Cherubyte Agent\` |
-
-Environment variables override the file, which is what keeps the Docker
-instructions working unchanged.
+- **Native binary** — the panel serves the build for each platform and the
+  matching installer, so an install is two `curl`s (see *Get started* above).
+  The agent lives at `/usr/local/bin/cherubyte-agent`, its config at
+  `/etc/cherubyte-agent/agent.env` (Linux) / `%ProgramData%\Cherubyte Agent\`
+  (Windows) / `/Library/Application Support/Cherubyte Agent/` (macOS), and the
+  enrolment key outside the install directory so upgrading the binary never
+  loses it.
+- **Docker** — `ghcr.io/cherubyte/cherubyte-agent:latest`, `network_mode: host`
+  with `NET_RAW`/`NET_ADMIN`; keep the state volume.
+- **From source** — clone
+  [Cherubyte/cherubyte-agent](https://github.com/Cherubyte/cherubyte-agent).
 
 The token is single-use, valid 24 h, spent once on first start for a long-lived
-key of which the panel stores only a hash. Losing the state means needing a
-*fresh* token — `--purge` on the uninstallers removes it deliberately.
-
-Agents push outbound over HTTP — nothing needs to be opened on the network the
-agent sits on, and pointing one at someone else's panel is just a different
-panel URL.
+key the panel stores only as a hash. Losing the state means needing a *fresh*
+token — `--purge` on the uninstallers removes it deliberately. Agents push
+outbound over HTTP; nothing needs opening on the network the agent sits on.
 </details>
 
 <details>
 <summary>Running the panel without systemd</summary>
 
-The ARP scan and binding port 1001 both need network privileges. The systemd
-unit is the recommended path; otherwise:
+The panel scans nothing — it only needs to bind the privileged port 1001. The
+systemd unit is the recommended path; otherwise:
 
 ```bash
-# capabilities on the venv's python (a real file, not a symlink)
-sudo setcap 'cap_net_raw,cap_net_admin,cap_net_bind_service+eip' \
-  "$(readlink -f backend/.venv/bin/python)"
+# one capability on the venv's python (a real file, not a symlink)
+sudo setcap 'cap_net_bind_service+eip' "$(readlink -f backend/.venv/bin/python)"
 
-# ...or run as root
-sudo backend/.venv/bin/python backend/run.py
+# ...or use a high port
+CHERUBYTE_PORT=8001 backend/.venv/bin/python backend/run.py
 ```
 
 - `./scripts/start.sh` — production, everything on `:1001`
@@ -283,10 +249,9 @@ sudo backend/.venv/bin/python backend/run.py
 
 - Linux (developed on a Raspberry Pi; anything with Python 3.11+)
 - Python 3.11+ and Node.js 20+ to build
-- The agent needs `CAP_NET_RAW`; the panel needs `CAP_NET_BIND_SERVICE` for port
-  1001 — the systemd units grant both without root
-- Optional: `snmp` (net-snmp) on the agent's host for SNMP queries — bundled in
-  the Docker image, `apt install snmp` otherwise
+- The panel needs only `CAP_NET_BIND_SERVICE` for port 1001 — the systemd unit
+  grants it without root (the agent, in its own repo, is the half that needs raw
+  sockets)
 
 ---
 
@@ -319,13 +284,15 @@ are pushed to every agent with each report.
 ```
 backend/   FastAPI + APScheduler + SQLAlchemy (async)   the panel  → :1001
 frontend/  React + TypeScript + Vite + Tailwind         the web UI
-agent/     FastAPI + scapy + zeroconf                    the scanner → :1002 (health only)
-protocol/  pydantic models — the agent↔panel wire contract
+protocol/  pydantic models — the agent↔panel wire contract (also vendored
+           into the agent repo, drift-checked)
 ```
 
 The panel serves the API at `/api/*`, an SSE feed at `/api/stream`, uploads at
-`/uploads/*`, and the compiled SPA for everything else. Agents push reports to
-`/api/agents/{id}/report` and never listen for the panel.
+`/uploads/*`, the agent builds at `/api/agents/download/*`, and the compiled SPA
+for everything else. Agents push reports to `/api/agents/{id}/report` and never
+listen for the panel. The scanner is
+[Cherubyte/cherubyte-agent](https://github.com/Cherubyte/cherubyte-agent).
 
 ---
 
@@ -353,7 +320,6 @@ authenticating reverse proxy in front is the right posture.
 
 ```bash
 cd backend  && .venv/bin/pytest      # panel tests, no network
-cd agent    && .venv/bin/pytest      # agent tests
 cd frontend && npm run build         # runs tsc --noEmit first
 ```
 
@@ -381,11 +347,12 @@ draft, not a decision.
 
 **Before 1.0**
 
-- **Cut the first release** — the GHCR images and semver tags are wired up in CI
-  but no release has been cut, so `docker compose up` needs a `build` first until
-  one is (`docs/RELEASING.md`).
-- **Deploy the site** (`site/`, Cloudflare) and run the Windows agent on real
-  hardware once — it's CI-tested but never hand-installed.
+- **Cut the first panel release** — the GHCR image and semver tags are wired up
+  in CI but no release has been cut, so `docker compose up` needs a `build`
+  first until one is (`docs/RELEASING.md`). The agent already releases from its
+  own repo.
+- **Run the Windows agent on real hardware once** — it's CI-tested but never
+  hand-installed.
 
 ---
 
