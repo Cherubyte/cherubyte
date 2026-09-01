@@ -17,6 +17,7 @@ import {
   Power,
   Radar,
   Send,
+  DownloadIcon,
   Shield,
   ThermoIcon,
   Trash,
@@ -1268,6 +1269,11 @@ function AgentsSection() {
     queryFn: api.agents,
     refetchInterval: 30_000,
   });
+  const release = useQuery({
+    queryKey: ["agent-release"],
+    queryFn: api.agentRelease,
+    staleTime: 300_000,
+  });
   const mint = useMutation({
     mutationFn: () => api.createEnrolToken(),
     onSuccess: (r) => {
@@ -1325,7 +1331,8 @@ function AgentsSection() {
           <p className="mono mt-2 text-[11px] text-fg-3">
             {t("agents.token.hint", { hours: 24 })}
           </p>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-3">
+            {/* Docker — one command, nothing to download */}
             <div>
               <span className="label text-fg-3">{t("agents.install.docker")}</span>
               <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
@@ -1334,25 +1341,62 @@ function AgentsSection() {
   -v cherubyte-agent:/var/lib/cherubyte-agent \\
   -e CHERUBYTE_AGENT_PANEL_URL=${panelUrl} \\
   -e CHERUBYTE_AGENT_ENROL_TOKEN=${token} \\
-  ghcr.io/cherubyte/cherubyte-agent:latest`}
+  ${release.data?.docker_image ?? "ghcr.io/cherubyte/cherubyte-agent:latest"}`}
               </pre>
             </div>
+
+            {/* Native binary — served by this panel */}
+            {release.data && !release.data.error && release.data.platforms.length > 0 && (
+              <div>
+                <span className="label text-fg-3">
+                  {t("agents.install.native")}
+                  {release.data.tag && (
+                    <span className="mono ml-1.5 normal-case text-fg-3">{release.data.tag}</span>
+                  )}
+                </span>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {release.data.platforms.map((p) => (
+                    <a
+                      key={p}
+                      href={api.agentDownloadUrl(p)}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      <DownloadIcon size={12} />
+                      {t(`agents.dl.${p}` as MessageKey)}
+                    </a>
+                  ))}
+                </div>
+                {release.data.platforms.map((p) => (
+                  <pre
+                    key={p}
+                    className="mono mt-2 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2"
+                  >
+{p === "windows"
+  ? `# ${t("agents.install.windows")}  (elevated PowerShell)
+curl.exe -fsSL ${panelUrl}/api/agents/download/windows -o cherubyte-agent.exe
+curl.exe -fsSL ${panelUrl}/api/agents/installer/windows -o install.ps1
+.\\install.ps1 -PanelUrl ${panelUrl} -EnrolToken ${token} -ExePath .\\cherubyte-agent.exe`
+  : `# ${t(p === "macos" ? "agents.install.macos" : "agents.install.linux")}
+curl -fsSL ${panelUrl}/api/agents/download/${p} -o cherubyte-agent && chmod +x cherubyte-agent
+curl -fsSL ${panelUrl}/api/agents/installer/${p} | sudo bash -s -- \\
+  --panel ${panelUrl} --token ${token} --binary ./cherubyte-agent`}
+                  </pre>
+                ))}
+                <p className="mono mt-1.5 text-[10.5px] text-fg-3">{t("agents.native.hint")}</p>
+              </div>
+            )}
+
+            {release.data?.error && (
+              <p className="mono text-[11px] text-fg-3">
+                {t("agents.native.unavailable", { err: release.data.error })}
+              </p>
+            )}
+
+            {/* From source */}
             <div>
-              <span className="label text-fg-3">{t("agents.install.linux")}</span>
+              <span className="label text-fg-3">{t("agents.install.source")}</span>
               <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
-{`sudo ./install-service.sh --panel ${panelUrl} --token ${token}`}
-              </pre>
-            </div>
-            <div>
-              <span className="label text-fg-3">{t("agents.install.macos")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
-{`sudo ./install-daemon.sh --panel ${panelUrl} --token ${token}`}
-              </pre>
-            </div>
-            <div>
-              <span className="label text-fg-3">{t("agents.install.windows")}</span>
-              <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
-{`.\\install-service.ps1 -PanelUrl ${panelUrl} -EnrolToken ${token}`}
+{`git clone ${release.data?.repo_url ?? "https://github.com/Cherubyte/cherubyte-agent"}`}
               </pre>
             </div>
           </div>

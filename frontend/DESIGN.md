@@ -140,4 +140,5 @@ set + the drawn `AppMark`).
 
 ## Not in scope
 
-The marketing site (`site/`), `docs/` brand assets, and the README brand imagery.
+The marketing site ([Cherubyte/cherubyte-site](https://github.com/Cherubyte/cherubyte-site)),
+`docs/` brand assets, and the README brand imagery.
