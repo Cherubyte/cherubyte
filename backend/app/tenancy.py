@@ -30,6 +30,32 @@ TENANT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{2,63}$")
 
 current_tenant: ContextVar[str | None] = ContextVar("current_tenant", default=None)
 
+# Agent keys and enrolment tokens minted for a tenant carry the tenant in
+# front: `t.<tenant>.<random>`. The edge routes an agent's request on that
+# prefix alone — no lookup per report, and no shared table of every tenant's
+# secrets for the edge to hold. The prefix is not secret and adds nothing to
+# the hash; it is an address, and the random part after it is the key.
+#
+# The separator is a dot because it is the one character neither side can
+# contain: a tenant id is [a-z0-9_-] and token_urlsafe emits [A-Za-z0-9_-],
+# both of which include `_` and `-`. With either of those as the separator,
+# tenant `abc_d` + random `R…` and tenant `abc` + random `d_R…` are the same
+# string, and a regex leaning either way hands the edge the wrong tenant.
+SECRET_PREFIX_RE = re.compile(r"^t\.([a-z0-9][a-z0-9_-]{2,63})\.([A-Za-z0-9_-]{16,})$")
+
+
+def tenant_from_secret(secret: object) -> str | None:
+    """The tenant an agent secret was minted for, or None for a plain one.
+
+    A malformed prefix reads as None rather than as a partial tenant: the
+    edge then has no tenant to forward, and the origin refuses. The rule is
+    mirrored in the Worker; change one and change both.
+    """
+    if not isinstance(secret, str):
+        return None
+    m = SECRET_PREFIX_RE.fullmatch(secret)
+    return m.group(1) if m else None
+
 
 def validate_tenant_id(value: object) -> str:
     """The id if it is safe to use as a path segment, else ValueError."""

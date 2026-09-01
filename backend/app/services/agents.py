@@ -26,6 +26,7 @@ from cherubyte_protocol import AgentConfig
 
 from ..config import settings
 from ..models import Agent, EnrolmentToken, utcnow
+from ..tenancy import current_tenant
 
 logger = logging.getLogger("cherubyte.agents")
 
@@ -43,7 +44,17 @@ def hash_secret(value: str) -> str:
 
 
 def new_secret() -> str:
-    return secrets.token_urlsafe(32)
+    """A fresh key or enrolment token.
+
+    Hosted, it carries the tenant in front — `t.<tenant>.<random>` — so the
+    edge can route the agent that presents it without looking anything up.
+    Self-hosted there is no tenant and the secret is what it always was. The
+    prefix is not entropy and not secret; the 32 random bytes after it are.
+    The dot is the one character neither part can contain (see tenancy.py).
+    """
+    random = secrets.token_urlsafe(32)
+    tenant = current_tenant.get()
+    return f"t.{tenant}.{random}" if tenant else random
 
 
 async def issue_token(session: AsyncSession, label: str | None = None) -> str:
