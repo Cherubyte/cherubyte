@@ -12,6 +12,7 @@ import socket
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 
 from .config import settings
 from . import arp_sniffer, dhcp_sniffer, discovery, snmp
@@ -257,11 +258,18 @@ def _merge_passive_hosts(
     hosts: dict[str, Host], targets: list[tuple[str, str | None]]
 ) -> None:
     """Fold in anything arp_sniffer overheard that this cycle's active sweep
-    didn't already find — same identity, just observed rather than solicited."""
+    didn't already find — same identity, just observed rather than solicited.
+
+    arp_sniffer never forgets a MAC it has ever seen, so a sighting has to be
+    recent enough that the host could plausibly still be there — otherwise a
+    device seen once, long ago, would read as online forever."""
     if not settings.enable_passive_arp:
         return
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        seconds=settings.passive_arp_ttl_seconds
+    )
     for mac, seen in arp_sniffer.all_hosts().items():
-        if mac in hosts:
+        if mac in hosts or seen.last_seen < cutoff:
             continue
         cidr = next((c for c, _ in targets if _in_subnet(seen.ip, c)), None)
         if cidr is None:

@@ -1,5 +1,7 @@
 """Folding the passive ARP sniffer's sightings into a sweep's host list."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from cherubyte_agent import arp_sniffer, scanner
@@ -12,6 +14,7 @@ TARGETS = [("192.168.1.0/24", None)]
 @pytest.fixture(autouse=True)
 def _clean(monkeypatch):
     monkeypatch.setattr(scanner.settings, "enable_passive_arp", True)
+    monkeypatch.setattr(scanner.settings, "passive_arp_ttl_seconds", 300)
     arp_sniffer._hosts.clear()
     yield
     arp_sniffer._hosts.clear()
@@ -54,3 +57,27 @@ def test_disabled_means_nothing_is_merged(monkeypatch):
     hosts: dict[str, Host] = {}
     _merge_passive_hosts(hosts, TARGETS)
     assert hosts == {}
+
+
+def test_a_sighting_older_than_the_ttl_is_not_merged():
+    """A MAC seen once, long ago, must not read as online forever — the
+    sniffer's cache never expires on its own, so the merge has to."""
+    arp_sniffer._hosts["aa:bb:cc:00:00:01"] = PassiveHost(
+        mac="aa:bb:cc:00:00:01",
+        ip="192.168.1.50",
+        last_seen=datetime.now(timezone.utc) - timedelta(seconds=301),
+    )
+    hosts: dict[str, Host] = {}
+    _merge_passive_hosts(hosts, TARGETS)
+    assert hosts == {}
+
+
+def test_a_sighting_within_the_ttl_is_merged():
+    arp_sniffer._hosts["aa:bb:cc:00:00:01"] = PassiveHost(
+        mac="aa:bb:cc:00:00:01",
+        ip="192.168.1.50",
+        last_seen=datetime.now(timezone.utc) - timedelta(seconds=299),
+    )
+    hosts: dict[str, Host] = {}
+    _merge_passive_hosts(hosts, TARGETS)
+    assert "aa:bb:cc:00:00:01" in hosts
