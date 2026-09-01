@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     enable_port_probe: bool = True
     enable_dhcp_sniffer: bool = True
     enable_passive_arp: bool = True
+    # A passive sighting older than this cannot vouch for a host still being
+    # there — keeps arp_sniffer's never-forgets cache from pinning a device
+    # online long after it has actually left.
+    passive_arp_ttl_seconds: int = 300
     enable_snmp: bool = False
     snmp_community: str = "public"
 
