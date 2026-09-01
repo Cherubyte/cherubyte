@@ -335,12 +335,11 @@ def _parse_ptr_response(data: bytes) -> str | None:
     return None
 
 
-def llmnr_name(ip: str, timeout: float = 0.8) -> str | None:
-    """RFC 4795 reverse lookup — LLMNR is Windows' successor to NetBIOS name
-    resolution, still answered by many current hosts (including some where
-    NetBIOS-over-TCP/IP has been turned off). Unlike mDNS's reverse lookup
-    (restricted by RFC 6762 to self-assigned 169.254/16 addresses only),
-    LLMNR answers PTR queries for a host's regular address."""
+def _ptr_query(ip: str, server: str, port: int, timeout: float) -> str | None:
+    """A DNS/LLMNR-format PTR query for `ip`'s reverse name, sent to
+    `(server, port)`. Shared by llmnr_name() (server=ip, port=5355) and
+    gateway_reverse_dns() (server=the gateway, port=53) — same wire format,
+    different destination."""
     octets = ip.split(".")
     if len(octets) != 4:
         return None
@@ -353,7 +352,7 @@ def llmnr_name(ip: str, timeout: float = 0.8) -> str | None:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(timeout)
     try:
-        s.sendto(query, (ip, 5355))
+        s.sendto(query, (server, port))
         data, _ = s.recvfrom(2048)
     except (socket.timeout, OSError):
         return None
@@ -364,6 +363,27 @@ def llmnr_name(ip: str, timeout: float = 0.8) -> str | None:
         return _parse_ptr_response(data)
     except Exception:  # noqa: BLE001
         return None
+
+
+def llmnr_name(ip: str, timeout: float = 0.8) -> str | None:
+    """RFC 4795 reverse lookup — LLMNR is Windows' successor to NetBIOS name
+    resolution, still answered by many current hosts (including some where
+    NetBIOS-over-TCP/IP has been turned off). Unlike mDNS's reverse lookup
+    (restricted by RFC 6762 to self-assigned 169.254/16 addresses only),
+    LLMNR answers PTR queries for a host's regular address."""
+    return _ptr_query(ip, server=ip, port=5355, timeout=timeout)
+
+
+def gateway_reverse_dns(ip: str, gateway: str, timeout: float = 0.8) -> str | None:
+    """A standard unicast DNS PTR query sent straight to the gateway, bypassing
+    whatever local resolver `_reverse_dns()` (socket.gethostbyaddr) goes
+    through. Works around a common, well-documented default: systemd-resolved
+    answers a PTR query for an RFC1918 address out of its own negative cache
+    rather than forwarding it upstream, unless the DHCP lease supplied a
+    matching routing domain — so the OS resolver can report nothing even
+    though the router itself (almost always also the LAN's DNS server) would
+    happily answer the same query directly."""
+    return _ptr_query(ip, server=gateway, port=53, timeout=timeout)
 
 
 # --------------------------------------------------------------------------- HTTP
