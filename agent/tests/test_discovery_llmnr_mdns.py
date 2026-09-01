@@ -108,6 +108,57 @@ def test_llmnr_name_returns_none_when_the_socket_times_out(monkeypatch):
     assert discovery.llmnr_name("192.168.1.5") is None
 
 
+# -------------------------------------------------- gateway_reverse_dns() targeting
+
+def test_gateway_reverse_dns_queries_the_gateway_on_port_53(monkeypatch):
+    """The whole point: unlike llmnr_name() (queries the host itself, port
+    5355), this must go to the gateway, on standard DNS port 53 — bypassing
+    whatever the OS resolver would have done."""
+    import socket as socket_module
+
+    sent: dict = {}
+
+    class RecordingSocket:
+        def settimeout(self, t):
+            pass
+
+        def sendto(self, data, addr):
+            sent["addr"] = addr
+
+        def recvfrom(self, *a):
+            raise socket_module.timeout()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(socket_module, "socket", lambda *a, **kw: RecordingSocket())
+    discovery.gateway_reverse_dns("192.168.1.50", gateway="192.168.1.1")
+    assert sent["addr"] == ("192.168.1.1", 53)
+
+
+def test_llmnr_name_queries_the_host_itself_on_port_5355(monkeypatch):
+    import socket as socket_module
+
+    sent: dict = {}
+
+    class RecordingSocket:
+        def settimeout(self, t):
+            pass
+
+        def sendto(self, data, addr):
+            sent["addr"] = addr
+
+        def recvfrom(self, *a):
+            raise socket_module.timeout()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(socket_module, "socket", lambda *a, **kw: RecordingSocket())
+    discovery.llmnr_name("192.168.1.50")
+    assert sent["addr"] == ("192.168.1.50", 5355)
+
+
 # --------------------------------------------------------- dynamic mDNS type union
 
 def test_discover_mdns_types_returns_what_the_network_enumeration_finds(monkeypatch):

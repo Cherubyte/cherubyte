@@ -182,6 +182,19 @@ def _route_for(cidr: str) -> tuple[str | None, bool]:
     return (str(iface) if iface else None), gw in ("0.0.0.0", "", None)
 
 
+def _gateway_for(ip: str) -> str | None:
+    """The gateway the OS would route through to reach `ip` — almost always
+    also the LAN's DNS server, and so a fallback reverse-DNS target when the
+    OS resolver itself comes up empty (see discovery.gateway_reverse_dns)."""
+    from scapy.all import conf
+
+    try:
+        _, _, gw = conf.route.route(ip)
+    except Exception:  # noqa: BLE001
+        return None
+    return gw if gw not in ("0.0.0.0", "", None) else None
+
+
 def _scan_targets() -> list[tuple[str, str | None]]:
     """Every (CIDR, iface) pair to sweep. Multiple configured subnets win;
     then a single `subnet`; then auto-detection.
@@ -497,6 +510,14 @@ def _probe_host(host: Host) -> Host:
     """
     if settings.enable_reverse_dns:
         host.hostname = _reverse_dns(host.ip)
+        if not host.hostname:
+            # The OS resolver came back with nothing — on many self-hosted
+            # Linux boxes that's systemd-resolved silently refusing to
+            # forward a private-range PTR query rather than the network
+            # actually lacking one. Ask the gateway directly instead.
+            gw = _gateway_for(host.ip)
+            if gw:
+                host.hostname = discovery.gateway_reverse_dns(host.ip, gw)
 
     if 139 in host.open_ports or 445 in host.open_ports:
         host.netbios_name = discovery.netbios_name(host.ip)
