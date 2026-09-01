@@ -108,12 +108,14 @@ class Host:
 _identified_at: dict[str, float] = {}   # mac -> monotonic clock
 _known_ips: set[str] = set()            # IPs seen in a previous cycle
 _last_full_sweep: float | None = None
+_offlink_warned: set[str] = set()       # CIDRs we've already logged the routed-subnet warning for
 
 
 def reset_scan_caches() -> None:
     """Forget the cadence state (used by tests and after a config change)."""
     _identified_at.clear()
     _known_ips.clear()
+    _offlink_warned.clear()
     global _last_full_sweep
     _last_full_sweep = None
 
@@ -156,24 +158,56 @@ def _due_for_full_sweep(now: float) -> bool:
 
 # ---------------------------------------------------------------- subnet / ARP
 
+def _route_for(cidr: str) -> tuple[str | None, bool]:
+    """Ask the OS routing table how a destination in `cidr` is actually
+    reached: which interface, and whether it's on that interface's own
+    network (on-link) or beyond a gateway.
+
+    This matters because ARP is link-local — it can only ever find a host
+    that's on-link. A routed destination answers pings (routing works fine)
+    but never an ARP broadcast, which is why a subnet reachable "by IP" can
+    still show zero devices: the fix there isn't a setting, it's another
+    agent that actually lives on that network — Cherubyte is a panel and one
+    or more agents by design (see the README's Architecture section).
+    """
+    from scapy.all import conf
+
+    try:
+        net = ipaddress.ip_network(cidr, strict=False)
+        probe = str(next(net.hosts(), net.network_address))
+        iface, _, gw = conf.route.route(probe)
+    except Exception:  # noqa: BLE001
+        return None, True  # unknown -> assume on-link, i.e. today's behaviour
+    return (str(iface) if iface else None), gw in ("0.0.0.0", "", None)
+
+
 def _scan_targets() -> list[tuple[str, str | None]]:
     """Every (CIDR, iface) pair to sweep. Multiple configured subnets win;
-    then a single `subnet`; then auto-detection."""
+    then a single `subnet`; then auto-detection.
+
+    An operator-pinned `interface` always wins outright. Otherwise each
+    subnet resolves its *own* interface from the routing table — a box with
+    more than one NIC (or a VLAN sub-interface) needs the ARP sweep for each
+    configured subnet to go out the interface that's actually on that
+    subnet, not whichever one scapy would pick by default.
+    """
+    pinned = settings.interface or None
     if settings.subnets:
-        iface = settings.interface or None
         out: list[tuple[str, str | None]] = []
         for s in settings.subnets:
             cidr = (s.get("cidr") or "").strip()
             if not cidr:
                 continue
             try:
-                out.append((str(ipaddress.ip_network(cidr, strict=False)), iface))
+                cidr = str(ipaddress.ip_network(cidr, strict=False))
             except ValueError:
                 logger.warning("ignoring invalid configured subnet %r", cidr)
+                continue
+            out.append((cidr, pinned or _route_for(cidr)[0]))
         if out:
             return out
     if settings.subnet:
-        return [(settings.subnet, settings.interface or None)]
+        return [(settings.subnet, pinned or _route_for(settings.subnet)[0])]
     return [_detect_subnet()]
 
 
@@ -238,26 +272,54 @@ def _arp_scan(full_sweep: bool = True) -> list[Host]:
                 h.subnet = cidr
 
     for cidr, iface in targets:
+        _, on_link = _route_for(cidr)
         logger.info("discovery sweep %s (iface=%s)", cidr, iface)
 
-        # 1) active ARP sweep
-        pkt = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=cidr)
-        try:
-            answered, _ = srp(
-                pkt, timeout=settings.arp_timeout, verbose=False, iface=iface, retry=2
+        if on_link:
+            # 1) active ARP sweep — a broadcast, so only useful on-link (ARP
+            #    doesn't cross a router; see _route_for).
+            pkt = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=cidr)
+            try:
+                answered, _ = srp(
+                    pkt, timeout=settings.arp_timeout, verbose=False, iface=iface, retry=2
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("ARP sweep failed for %s: %s", cidr, exc)
+                answered = []
+            for _, rcv in answered:
+                _tag(rcv.hwsrc.lower(), rcv.psrc, cidr)
+        elif cidr not in _offlink_warned:
+            _offlink_warned.add(cidr)
+            logger.warning(
+                "%s is reached through a gateway, not on-link on this agent's "
+                "interface(s) — skipping the ARP broadcast there (ARP cannot "
+                "cross a router, even though ping/IP reachability works fine). "
+                "Reliable discovery there needs a Cherubyte agent running on "
+                "that network — run one agent per subnet rather than adding a "
+                "routed subnet to this agent's list.",
+                cidr,
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("ARP sweep failed for %s: %s", cidr, exc)
-            answered = []
-        for _, rcv in answered:
-            _tag(rcv.hwsrc.lower(), rcv.psrc, cidr)
 
         # 2) ICMP ping sweep — wakes / reaches hosts that ignore our raw ARP,
         #    and populates the kernel neighbour table for step 3
         try:
-            _ping_sweep(cidr, known_only=not full_sweep)
+            pinged = _ping_sweep(cidr, known_only=not full_sweep)
         except Exception as exc:  # noqa: BLE001
             logger.debug("ping sweep failed: %s", exc)
+            pinged = []
+
+        if not on_link and pinged:
+            # No ARP means no MAC will ever surface for these — the OS
+            # neighbour table stays empty for a routed destination — so this
+            # ping result is the only liveness signal this subnet can offer.
+            # Reported, not turned into a Host: Cherubyte's device identity is
+            # MAC-keyed throughout, and there's no MAC here to key it with.
+            logger.info(
+                "%s: %d host(s) answered ping with no discoverable MAC (%s)",
+                cidr,
+                len(pinged),
+                ", ".join(sorted(pinged)[:10]) + ("…" if len(pinged) > 10 else ""),
+            )
 
     # 3) merge the kernel ARP / neighbour table (anything the OS has seen)
     for ip, mac in _neighbour_table().items():
@@ -299,26 +361,31 @@ def _ping_targets(cidr: str, known_only: bool) -> list[str]:
     return targets
 
 
-def _ping_sweep(cidr: str, known_only: bool = False) -> None:
+def _ping_sweep(cidr: str, known_only: bool = False) -> list[str]:
     """OS-level ICMP sweep — fast, parallel, and it refreshes the kernel
     neighbour table (which _neighbour_table then reads). Avoids scapy's slow
-    per-destination ARP resolution."""
+    per-destination ARP resolution.
+
+    Returns the addresses that answered, so a caller who can't get a MAC any
+    other way (a routed subnet — see _route_for) still has a cheap liveness
+    signal to report."""
     import subprocess
 
     targets = _ping_targets(cidr, known_only)
 
-    def ping(ip: str) -> None:
+    def ping(ip: str) -> str | None:
         try:
-            subprocess.run(
+            res = subprocess.run(
                 ["ping", "-c", "1", "-W", "1", "-n", "-q", ip],
                 capture_output=True,
                 timeout=2,
             )
+            return ip if res.returncode == 0 else None
         except (OSError, subprocess.SubprocessError):
-            pass
+            return None
 
     with ThreadPoolExecutor(max_workers=64) as ex:
-        list(ex.map(ping, targets))
+        return [ip for ip in ex.map(ping, targets) if ip]
 
 
 def _neighbour_table() -> dict[str, str]:

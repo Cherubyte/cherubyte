@@ -295,9 +295,13 @@ Everything is editable in **Settings** and stored in the database; `backend/.env
 (`CHERUBYTE_*`, see `.env.example`) sets the initial values. Scan-related settings
 are pushed to every agent with each report.
 
-- **Subnets** — empty auto-detects the agent's `/24`, or list CIDRs. ARP only
-  reaches the agent's own link; routed subnets fall back to ping + the OS ARP
-  table and may be partial.
+- **Subnets** — empty auto-detects the agent's `/24`, or list CIDRs; each
+  resolves its own interface, for boxes with more than one NIC or VLAN. ARP
+  only reaches the agent's own link — a routed subnet (through a gateway, a
+  VPN peer pool) falls back to ping + the OS neighbour table, which finds
+  little or nothing since there's no MAC to see across a router. Run one
+  agent per subnet for reliable discovery there, rather than adding a routed
+  subnet to an existing agent's list.
 - **Scan interval / offline-after / re-identify interval** — discovery runs every
   scan; the heavier identification is spaced out, immediate for new devices.
 - **History retention** — event and connection tables are purged daily; default
