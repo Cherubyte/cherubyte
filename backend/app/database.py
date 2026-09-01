@@ -9,8 +9,8 @@ that would silently reach a shared database refuse instead.
 
 from __future__ import annotations
 
-import asyncio
 import logging
+import threading
 from collections import OrderedDict
 from collections.abc import AsyncGenerator
 from pathlib import Path
@@ -105,14 +105,19 @@ class _TenantEngines:
         self._open: OrderedDict[str, tuple[AsyncEngine, async_sessionmaker[AsyncSession]]] = (
             OrderedDict()
         )
-        self._lock = asyncio.Lock()
+        # A thread lock, not an asyncio one, on purpose. Nothing inside the
+        # critical section awaits — creating an engine is synchronous — so a
+        # blocking lock costs nothing, and an asyncio.Lock binds to the first
+        # event loop that touches it, which is the wrong loop the moment a
+        # test client or a worker thread opens a tenant first.
+        self._lock = threading.Lock()
 
     async def get(
         self, tenant_id: str, *, create: bool = False
     ) -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
         tenant_id = validate_tenant_id(tenant_id)
         evicted: list[AsyncEngine] = []
-        async with self._lock:
+        with self._lock:
             found = self._open.get(tenant_id)
             if found is not None:
                 self._open.move_to_end(tenant_id)
@@ -137,8 +142,15 @@ class _TenantEngines:
             await old.dispose()
         return entry
 
+    async def drop(self, tenant_id: str) -> None:
+        """Forget one tenant's engine, disposing it if it was open."""
+        with self._lock:
+            entry = self._open.pop(tenant_id, None)
+        if entry is not None:
+            await entry[0].dispose()
+
     async def dispose_all(self) -> None:
-        async with self._lock:
+        with self._lock:
             engines = [eng for eng, _ in self._open.values()]
             self._open.clear()
         for eng in engines:
@@ -169,6 +181,22 @@ async def session_for(tenant_id: str) -> AsyncSession:
 
 async def dispose_tenants() -> None:
     await _tenants.dispose_all()
+
+
+async def discard_tenant(tenant_id: str) -> None:
+    """Remove a tenant's database, and the engine that had it open.
+
+    For a provisioning that failed halfway, and later for offboarding. The
+    WAL sidecars go with it: a `.db-wal` left behind is data that the next
+    provisioning of the same id would silently inherit.
+    """
+    tenant_id = validate_tenant_id(tenant_id)
+    await _tenants.drop(tenant_id)
+    base = str(tenant_db_path(tenant_id))
+    for suffix in ("", "-wal", "-shm"):
+        p = Path(base + suffix)
+        if p.exists():
+            p.unlink()
 
 
 # ── the request's session ──────────────────────────────────────────────────

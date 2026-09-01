@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     # box. Past the cap the least recently used is disposed and reopened on
     # its next request, a few milliseconds later.
     tenant_engine_cache: int = 32
+    # Provisioning, multi-tenant only. The control plane creates a tenant
+    # through POST /api/tenants carrying this key in `provision_header`. Empty
+    # admits nobody — forgetting to set it must lock provisioning, not open
+    # it, which is the same rule the edge applies to its own secrets.
+    provision_key: str = ""
+    provision_header: str = "X-Cherubyte-Provision-Key"
 
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
