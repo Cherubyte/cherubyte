@@ -24,6 +24,7 @@ from ..models import (
     DeviceType,
     Event,
     EventLevel,
+    HostTempSample,
     User,
     WanSample,
     utcnow,
@@ -209,6 +210,28 @@ async def build_exposition(session: AsyncSession, *, version: str = "unknown") -
             1 if agent.last_healthy else 0,
             help="1 when the agent's last sweep was not degraded.",
             labels=labels,
+        )
+
+    # --- host temperature -------------------------------------------
+    agent_names = {a.id: a.name for a in agents}
+    recent_temps = (
+        await session.execute(
+            select(HostTempSample)
+            .where(HostTempSample.timestamp >= now - timedelta(minutes=15))
+            .order_by(HostTempSample.timestamp.desc())
+        )
+    ).scalars().all()
+    seen_hosts: set[int | None] = set()
+    for sample in recent_temps:
+        if sample.agent_id in seen_hosts:
+            continue
+        seen_hosts.add(sample.agent_id)
+        host = "panel" if sample.agent_id is None else agent_names.get(sample.agent_id, str(sample.agent_id))
+        m.gauge(
+            "cherubyte_host_temperature_celsius",
+            sample.temp_c,
+            help="Most recent CPU/SoC temperature of a panel/agent host, °C.",
+            labels={"host": host},
         )
 
     # --- internet -----------------------------------------------------

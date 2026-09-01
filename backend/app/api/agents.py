@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import Agent, WanSample, iso_utc, utcnow
+from ..models import Agent, HostTempSample, WanSample, iso_utc, utcnow
 from ..services import agents as agent_service
 from ..services import wan, wol
 from ..scheduler import note_report
@@ -101,6 +101,15 @@ async def receive_report(
         if sample.public_ip:
             agent.public_ip = sample.public_ip
             agent.public_ip_at = sample.at or utcnow()
+
+    if report.host_temp_c is not None:
+        session.add(
+            HostTempSample(
+                agent_id=agent.id,
+                temp_c=report.host_temp_c,
+                timestamp=report.sent_at or utcnow(),
+            )
+        )
     await session.commit()
     await wan.record(report.wan)
 

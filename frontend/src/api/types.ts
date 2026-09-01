@@ -344,6 +344,27 @@ export interface WanStatus {
   points: WanPoint[];
 }
 
+export interface HostTempPoint {
+  t: string;
+  c: number;
+}
+
+export interface HostTempSeries {
+  key: string;
+  label: string;
+  kind: "panel" | "agent";
+  current: number | null;
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  points: HostTempPoint[];
+}
+
+export interface HostMetrics {
+  hours: number;
+  series: HostTempSeries[];
+}
+
 export interface MergeSuggestion {
   reason: string;
   confidence: string;

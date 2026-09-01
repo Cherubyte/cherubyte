@@ -42,6 +42,8 @@ const UI: Record<string, string> = {
   // not vendored from Phosphor like the rest of this file — a plain circle +
   // up-arrow, stroked rather than filled, for the "Update" settings tab.
   "Update": '<circle cx="128" cy="128" r="96" fill="none" stroke="currentColor" stroke-width="16"/><path d="M128 168 V88 M100 118 L128 88 L156 118" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>',
+  // likewise hand-drawn — a thermometer for the "Monitor" settings tab.
+  "Thermo": '<path d="M120 40a24 24 0 0 1 48 0v92a44 44 0 1 1-48 0Z" fill="none" stroke="currentColor" stroke-width="16"/><path d="M144 96v72" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>',
 };
 
 const DEVICE: Record<DeviceType, string> = {
@@ -118,6 +120,7 @@ export const Sun = (p: P) => <Icon {...p} d={UI["Sun"]} />;
 export const Moon = (p: P) => <Icon {...p} d={UI["Moon"]} />;
 export const Power = (p: P) => <Icon {...p} d={UI["Power"]} />;
 export const UpdateIcon = (p: P) => <Icon {...p} d={UI["Update"]} />;
+export const ThermoIcon = (p: P) => <Icon {...p} d={UI["Thermo"]} />;
 
 export function DeviceTypeIcon({ type, size = 14, className }: P & { type: DeviceType }) {
   return <Icon size={size} className={className} d={DEVICE[type] ?? DEVICE.unknown} />;

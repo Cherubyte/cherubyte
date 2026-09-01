@@ -622,6 +622,26 @@ class WanSample(Base):
     target: Mapped[str] = mapped_column(String(64), default="")
 
 
+class HostTempSample(Base):
+    """One CPU/SoC temperature reading of a host that feeds this panel — the
+    panel's own machine (`agent_id` NULL) or an agent's (`agent_id` set), for
+    the Settings ▸ Monitor chart. As dense as `wan_samples`: one row per minute
+    per host, so the retention purge trims it the same way."""
+
+    __tablename__ = "host_temp_samples"
+    __table_args__ = (Index("ix_host_temp_agent_ts", "agent_id", "timestamp"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+    # NULL means "the panel host itself".
+    agent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agents.id", ondelete="CASCADE"), index=True
+    )
+    temp_c: Mapped[float] = mapped_column(Float)
+
+
 class PendingWake(Base):
     """A Wake-on-LAN request queued for the agents. Every agent that reports
     within a short window after the request sends the magic packet — only the

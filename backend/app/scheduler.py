@@ -7,7 +7,9 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .config import settings
+from .models import utcnow
 from .services.digest import run_weekly
+from .services.hoststat import record_panel_temp
 from .services.retention import run_purge
 from .services.update import check as check_for_update
 
@@ -17,14 +19,13 @@ scheduler = AsyncIOScheduler()
 _PURGE_JOB_ID = "history-purge"
 _DIGEST_JOB_ID = "weekly-digest"
 _UPDATE_JOB_ID = "update-check"
+_HOST_TEMP_JOB_ID = "host-temp-sample"
 
 _state: dict = {"last_scan": None, "running": False}
 
 
 def note_report() -> None:
     """Record that an agent just reported, for the dashboard's "last scan"."""
-    from .models import utcnow
-
     _state["last_scan"] = utcnow()
 
 
@@ -54,6 +55,18 @@ def start() -> None:
         id=_UPDATE_JOB_ID,
         max_instances=1,
         coalesce=True,
+    )
+    # The panel is the one host no agent reports for, so it samples its own
+    # sensor. Agents send theirs on every sweep. A generous misfire grace so a
+    # busy event loop delays a reading rather than dropping it silently.
+    scheduler.add_job(
+        record_panel_temp,
+        "interval",
+        seconds=60,
+        id=_HOST_TEMP_JOB_ID,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=45,
     )
     scheduler.start()
     logger.info("Scheduler started (retention=%sd)", settings.retention_days)
