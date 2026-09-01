@@ -61,6 +61,26 @@ class Settings(BaseSettings):
     # Storage
     database_url: str = f"sqlite+aiosqlite:///{DATA_DIR / 'cherubyte.db'}"
 
+    # Multi-tenant, for the hosted panel. Off by default: a self-hosted panel
+    # is one database and none of this applies. When on there is no default
+    # database at all — every request has to name a tenant, and one that does
+    # not is refused rather than served from somewhere shared, because in
+    # multi-tenant mode a shared database is exactly the thing that must not
+    # exist.
+    multi_tenant: bool = False
+    # One SQLite file per tenant lives here, named `<tenant_id>.db`. The id is
+    # a path segment, which is why tenancy.validate_tenant_id() is strict.
+    tenants_dir: str = str(DATA_DIR / "tenants")
+    # The header the edge sets once it has resolved the tenant. Honoured only
+    # in multi-tenant mode, and only because the origin is reachable through
+    # the tunnel alone: on a panel anyone can reach, a header is not evidence.
+    tenant_header: str = "X-Cherubyte-Tenant"
+    # Engines to keep open. Each holds a connection and SQLite's page cache,
+    # and that — not CPU — is what decides how many tenants fit in a small
+    # box. Past the cap the least recently used is disposed and reopened on
+    # its next request, a few milliseconds later.
+    tenant_engine_cache: int = 32
+
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
     subnet: str = ""

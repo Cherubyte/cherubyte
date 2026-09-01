@@ -12,10 +12,11 @@ from fastapi.staticfiles import StaticFiles
 from .api import api_router
 from .api.settings import _load_from_db
 from .config import APP_VERSION, UPLOAD_DIR, settings
-from .database import SessionLocal, init_db
+from .database import SessionLocal, dispose_tenants, init_db
 from .scheduler import scheduler, start as start_scheduler
 from .services import mqtt, oui, update
 from .services.retention import run_purge
+from .tenancy import TenantMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +27,22 @@ logger = logging.getLogger("cherubyte")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.multi_tenant:
+        # There is no default database to initialise and no one set of
+        # settings to load. Everything below this branch — the scheduler, MQTT,
+        # retention, the update check — is single-tenant work that opens
+        # SessionLocal(), which in this mode refuses; it comes back per tenant
+        # with the per-tenant scheduler. Until then, multi-tenant mode is the
+        # request path and nothing else, and says so.
+        logger.warning(
+            "Cherubyte up on :%s — multi-tenant; background jobs are off until "
+            "the per-tenant scheduler lands",
+            settings.port,
+        )
+        yield
+        await dispose_tenants()
+        return
+
     await init_db()
     async with SessionLocal() as session:
         await _load_from_db(session)
@@ -49,6 +66,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Cherubyte", version=APP_VERSION, lifespan=lifespan)
+
+# Outermost, so the tenant is known before anything else looks at the request.
+# Only in multi-tenant mode: a self-hosted panel never reads the header, so a
+# stray one cannot mean anything there.
+if settings.multi_tenant:
+    app.add_middleware(TenantMiddleware)
 
 # The SPA is served from this same origin in production, and in development the
 # Vite server proxies /api and /uploads server-side — neither makes a
