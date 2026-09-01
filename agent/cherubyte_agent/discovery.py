@@ -7,6 +7,7 @@ Signals collected:
   * mDNS / DNS-SD  -> friendly name, model code, service types  (zeroconf)
   * SSDP / UPnP    -> friendlyName, manufacturer, modelName      (raw UDP + XML)
   * NetBIOS        -> Windows/SMB name                           (raw UDP 137)
+  * LLMNR          -> Windows name, NetBIOS's modern replacement (raw UDP 5355)
   * HTTP banner    -> Server header + <title>                    (socket)
 """
 
@@ -63,6 +64,22 @@ _MDNS_TYPES = [
     "_esphomelib._tcp.local.",
     "_matter._tcp.local.",
 ]
+
+
+def _discover_mdns_types(zc, timeout: float) -> set[str]:
+    """Every service type actually advertised on the network (RFC 6763 §9's
+    meta-query), beyond our curated `_MDNS_TYPES` list — the only way to catch
+    a device (Hue, Ring, Roku, and the rest of the smart-home zoo) that
+    advertises a type nobody thought to hardcode."""
+    try:
+        from zeroconf import ZeroconfServiceTypes
+    except Exception:  # noqa: BLE001
+        return set()
+    try:
+        return set(ZeroconfServiceTypes.find(zc=zc, timeout=timeout))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("mDNS service-type enumeration failed: %s", exc)
+        return set()
 
 
 def mdns_scan(duration: float = 4.0) -> dict[str, Identity]:
@@ -131,8 +148,11 @@ def mdns_scan(duration: float = 4.0) -> dict[str, Identity]:
     zc = None
     try:
         zc = Zeroconf()
+        discovered = _discover_mdns_types(zc, timeout=min(2.0, duration))
+        types = sorted(set(_MDNS_TYPES) | discovered)
+
         listener = Listener()
-        browsers = [ServiceBrowser(zc, t, listener) for t in _MDNS_TYPES]
+        browsers = [ServiceBrowser(zc, t, listener) for t in types]
         import time
 
         time.sleep(duration)
@@ -251,6 +271,97 @@ def netbios_name(ip: str, timeout: float = 0.8) -> str | None:
             if suffix == 0x20 and not group and not best:  # file server service
                 best = raw
         return best
+    except Exception:  # noqa: BLE001
+        return None
+
+
+# -------------------------------------------------------------------------- LLMNR
+
+def _encode_dns_name(name: str) -> bytes:
+    out = bytearray()
+    for label in name.split("."):
+        if not label:
+            continue
+        out += bytes([len(label)]) + label.encode("ascii")
+    return bytes(out) + b"\x00"
+
+
+def _decode_dns_name(data: bytes, offset: int) -> tuple[str, int]:
+    """A DNS name starting at `offset`, following compression pointers (RFC
+    1035 §4.1.4). Returns (name, offset just past the name *as it appears in
+    the stream* — i.e. past the pointer, not into the jump)."""
+    labels: list[str] = []
+    pos = offset
+    end: int | None = None       # where reading resumes in the original stream
+    hops = 0
+    while True:
+        if pos >= len(data):
+            raise ValueError("truncated DNS name")
+        length = data[pos]
+        if length == 0:
+            pos += 1
+            break
+        if length & 0xC0 == 0xC0:  # compression pointer
+            if end is None:
+                end = pos + 2
+            hops += 1
+            if hops > 20:           # guard against a pointer loop
+                raise ValueError("DNS name compression loop")
+            pos = ((length & 0x3F) << 8) | data[pos + 1]
+            continue
+        pos += 1
+        labels.append(data[pos:pos + length].decode("ascii", "ignore"))
+        pos += length
+    return ".".join(labels), (end if end is not None else pos)
+
+
+def _parse_ptr_response(data: bytes) -> str | None:
+    """The name from the first PTR answer in a DNS/LLMNR-format response, or
+    None. Split out from llmnr_name() so the wire-format parsing is testable
+    without a real socket."""
+    ancount = struct.unpack(">H", data[6:8])[0]
+    if ancount < 1:
+        return None
+    _, pos = _decode_dns_name(data, 12)
+    pos += 4  # QTYPE + QCLASS
+    for _ in range(ancount):
+        _, pos = _decode_dns_name(data, pos)
+        rtype, _, _, rdlength = struct.unpack(">HHIH", data[pos:pos + 10])
+        pos += 10
+        if rtype == 12:  # PTR
+            name, _ = _decode_dns_name(data, pos)
+            return name.rstrip(".") or None
+        pos += rdlength
+    return None
+
+
+def llmnr_name(ip: str, timeout: float = 0.8) -> str | None:
+    """RFC 4795 reverse lookup — LLMNR is Windows' successor to NetBIOS name
+    resolution, still answered by many current hosts (including some where
+    NetBIOS-over-TCP/IP has been turned off). Unlike mDNS's reverse lookup
+    (restricted by RFC 6762 to self-assigned 169.254/16 addresses only),
+    LLMNR answers PTR queries for a host's regular address."""
+    octets = ip.split(".")
+    if len(octets) != 4:
+        return None
+    qname = ".".join(reversed(octets)) + ".in-addr.arpa"
+
+    header = struct.pack(">HHHHHH", 0x1357, 0x0000, 1, 0, 0, 0)
+    question = _encode_dns_name(qname) + struct.pack(">HH", 12, 1)  # PTR, IN
+    query = header + question
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(timeout)
+    try:
+        s.sendto(query, (ip, 5355))
+        data, _ = s.recvfrom(2048)
+    except (socket.timeout, OSError):
+        return None
+    finally:
+        s.close()
+
+    try:
+        return _parse_ptr_response(data)
     except Exception:  # noqa: BLE001
         return None
 

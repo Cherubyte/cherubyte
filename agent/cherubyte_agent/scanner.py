@@ -84,6 +84,7 @@ class Host:
     ssdp_vendor: str | None = None
     ssdp_model: str | None = None
     netbios_name: str | None = None
+    llmnr_name: str | None = None
     http_server: str | None = None
     http_title: str | None = None
     ttl_os: str | None = None
@@ -501,6 +502,8 @@ def _probe_host(host: Host) -> Host:
         host.netbios_name = discovery.netbios_name(host.ip)
     else:
         host.netbios_name = discovery.netbios_name(host.ip, timeout=0.5)
+
+    host.llmnr_name = discovery.llmnr_name(host.ip)
 
     if host.open_ports.keys() & {80, 8080, 443}:
         banner = discovery.http_banner(host.ip)
