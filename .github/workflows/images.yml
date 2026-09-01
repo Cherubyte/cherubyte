@@ -1,6 +1,7 @@
-name: Images
+name: Image
 
-# Builds the two images; publishes them to GHCR.
+# Builds the panel image and publishes it to GHCR. (The agent image lives in
+# github.com/Cherubyte/cherubyte-agent and builds there.)
 #
 #   pull request      ->  build only, one arch, and check the panel actually starts
 #   release           ->  build + publish  :latest  :X.Y  :X.Y.Z  :sha-<commit>
@@ -15,8 +16,7 @@ name: Images
 on:
   pull_request:
     paths:
-      - "Dockerfile.*"
-      - "agent/**"
+      - "Dockerfile.panel"
       - "backend/**"
       - "frontend/**"
       - "protocol/**"
@@ -36,14 +36,9 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - image: cherubyte-agent
-            dockerfile: Dockerfile.agent
-          - image: cherubyte-panel
-            dockerfile: Dockerfile.panel
+    env:
+      IMAGE: cherubyte-panel
+      DOCKERFILE: Dockerfile.panel
     steps:
       - uses: actions/checkout@v4
 
@@ -67,7 +62,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -79,7 +74,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: ${{ env.DOCKERFILE }}
           # Multi-arch only when publishing. On a pull request this builds one
           # arch: the point there is to catch a Dockerfile that no longer builds.
           platforms: ${{ env.PUBLISH == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
@@ -87,14 +82,14 @@ jobs:
           load: ${{ env.PUBLISH != 'true' }}
           tags: ${{ steps.meta.outputs.tags || 'cherubyte-ci:test' }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+          cache-from: type=gha,scope=${{ env.IMAGE }}
+          cache-to: type=gha,scope=${{ env.IMAGE }},mode=max
 
       - name: The image actually starts
         # A build that succeeds and an image that runs are different claims, and
         # only the panel can be checked without a network to scan. Runs on pull
         # requests, where the image is loaded locally rather than pushed.
-        if: env.PUBLISH != 'true' && matrix.image == 'cherubyte-panel'
+        if: env.PUBLISH != 'true'
         run: |
           docker run -d --name check -p 1001:1001 cherubyte-ci:test
           for i in $(seq 1 20); do

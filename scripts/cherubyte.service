@@ -16,11 +16,10 @@ ExecStart=__CHERUBYTE_ROOT__/backend/.venv/bin/python run.py
 Restart=always
 RestartSec=3
 
-# Corre como o utilizador mas com as capabilities necessárias:
-#   CAP_NET_RAW / CAP_NET_ADMIN  -> scan ARP (scapy)
-#   CAP_NET_BIND_SERVICE         -> bind na porta 1001 (privilegiada)
-AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+# The panel scans nothing — that is the agent's job, in its own process. The
+# only privilege it needs is to bind the privileged port 1001.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 NoNewPrivileges=yes
 
 [Install]

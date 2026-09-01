@@ -25,9 +25,10 @@ tagged `:edge` and `:sha-<commit>`.
    `--generate-notes` drafts the changelog from merged PRs; edit before
    publishing if you want.
 
-3. **Watch the build.** Publishing the release triggers `Images`, which builds
-   `cherubyte-panel` and `cherubyte-agent` for `linux/amd64` + `linux/arm64` (QEMU,
-   ~20 min per image) and pushes them.
+3. **Watch the build.** Publishing the release triggers `Image`, which builds
+   `cherubyte-panel` for `linux/amd64` + `linux/arm64` (QEMU, ~20 min) and pushes
+   it. (The agent releases from its own repo,
+   [Cherubyte/cherubyte-agent](https://github.com/Cherubyte/cherubyte-agent).)
 
    ```bash
    gh run watch
@@ -41,10 +42,10 @@ tagged `:edge` and `:sha-<commit>`.
 
 ## First release
 
-The GHCR packages are created by the first successful push. They are private by
-default — make each one public once (GitHub → your profile → Packages →
-`cherubyte-panel` / `cherubyte-agent` → Package settings → Change visibility), or the
-README's `docker run` fails with `denied` for anyone not logged in.
+The GHCR package is created by the first successful push. It is private by
+default — make `cherubyte-panel` public once (GitHub → your profile → Packages →
+`cherubyte-panel` → Package settings → Change visibility), or `docker compose
+up` fails with `denied` for anyone not logged in.
 
 ## What can go wrong
 

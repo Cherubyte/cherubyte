@@ -8,8 +8,11 @@
 #
 # The images are pulled from GHCR by default — `docker compose up -d` needs no
 # local build. Override with PANEL_IMAGE / AGENT_IMAGE (e.g. `:edge` for the tip
-# of main, or `:0.5` to pin a minor), or run `docker compose build` to build
-# from this checkout instead.
+# of main, or `:0.5` to pin a minor).
+#
+# `docker compose build` builds the panel from this checkout. The agent image is
+# built in github.com/Cherubyte/cherubyte-agent — to build it locally, clone
+# that repo and `docker build -f Dockerfile.agent .` there.
 
 services:
   panel:
@@ -39,10 +42,6 @@ services:
 
   agent:
     image: ${AGENT_IMAGE:-ghcr.io/cherubyte/cherubyte-agent:latest}
-    pull_policy: missing
-    build:
-      context: .
-      dockerfile: Dockerfile.agent
     container_name: cherubyte-agent
     restart: unless-stopped
     depends_on:

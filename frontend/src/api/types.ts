@@ -391,3 +391,15 @@ export interface EnrolToken {
   token: string;
   expires_in_hours: number;
 }
+
+export type AgentPlatform = "linux" | "macos" | "windows";
+
+export interface AgentRelease {
+  tag: string | null;
+  published_at: string | null;
+  platforms: AgentPlatform[];
+  checked_at: string | null;
+  error: string | null;
+  repo_url: string;
+  docker_image: string;
+}

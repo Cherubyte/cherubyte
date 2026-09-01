@@ -3,6 +3,8 @@ import type {
   AccountRole,
   ApiToken,
   AgentRow,
+  AgentPlatform,
+  AgentRelease,
   AlertRule,
   AppSettings,
   AuthStatus,
@@ -199,6 +201,9 @@ export const api = {
   mergeSuggestions: () => req<MergeSuggestion[]>("/devices/merge-suggestions"),
 
   agents: () => req<AgentRow[]>("/agents"),
+  agentRelease: () => req<AgentRelease>("/agents/release"),
+  agentDownloadUrl: (platform: AgentPlatform) => `${BASE}/agents/download/${platform}`,
+  agentInstallerUrl: (platform: AgentPlatform) => `${BASE}/agents/installer/${platform}`,
   createEnrolToken: (label?: string) =>
     req<EnrolToken>(`/agents/tokens${label ? `?label=${encodeURIComponent(label)}` : ""}`, {
       method: "POST",

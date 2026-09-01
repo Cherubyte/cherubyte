@@ -2,31 +2,31 @@
 # Cherubyte — one-shot setup after cloning.
 #
 # Builds the panel (backend venv + compiled frontend), creates the database and
-# the first admin account. Optionally builds the bundled agent and installs the
-# systemd unit so it runs at boot.
+# the first admin account, and optionally installs the systemd unit so it runs
+# at boot.
 #
 #   ./scripts/setup.sh                       # interactive
 #   ./scripts/setup.sh --service             # + install & start at boot
-#   ./scripts/setup.sh --service --agent     # + a local scanner on this box
 #
 #   CHERUBYTE_ADMIN_USERNAME=me CHERUBYTE_ADMIN_PASSWORD=secret123 \
 #     ./scripts/setup.sh --service           # unattended
 #
+# The agent is a separate program — github.com/Cherubyte/cherubyte-agent, or
+# Settings ▸ Agents in the panel for the one-line install.
+#
 # Flags:
 #   --service    install + start the systemd unit at the end
-#   --agent      also build the bundled agent venv (a scanner on this machine)
 #   --no-admin   skip creating the admin account
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 
-WANT_SERVICE=0 WANT_AGENT=0 WANT_ADMIN=1
+WANT_SERVICE=0 WANT_ADMIN=1
 for a in "$@"; do
   case "$a" in
     --service)  WANT_SERVICE=1 ;;
-    --agent)    WANT_AGENT=1 ;;
     --no-admin) WANT_ADMIN=0 ;;
-    -h|--help)  sed -n '2,20p' "$0"; exit 0 ;;
+    -h|--help)  sed -n '2,22p' "$0"; exit 0 ;;
     *) echo "unknown flag: $a  (try --help)"; exit 2 ;;
   esac
 done
@@ -61,15 +61,6 @@ if [ "$WANT_ADMIN" = 1 ]; then
   ( cd backend && .venv/bin/python manage.py create-admin "${ADMIN_USER:-admin}" )
 fi
 
-# --- optional bundled agent ------------------------------------------------
-if [ "$WANT_AGENT" = 1 ]; then
-  echo ">> Agent venv + dependencies"
-  python3 -m venv agent/.venv
-  agent/.venv/bin/pip -q install --upgrade pip
-  agent/.venv/bin/pip -q install -r agent/requirements.txt
-  agent/.venv/bin/pip -q install ./protocol
-fi
-
 # --- optional systemd unit ------------------------------------------------
 if [ "$WANT_SERVICE" = 1 ]; then
   echo ">> Installing /etc/systemd/system/cherubyte.service"
@@ -88,8 +79,5 @@ echo " Panel → http://$(hostname -I 2>/dev/null | awk '{print $1}'):1001"
 [ "$WANT_SERVICE" = 1 ] || echo " Start it:  ./scripts/start.sh"
 echo
 echo " Cherubyte does not scan on its own — enrol an agent:"
-echo "   Panel ▸ Config ▸ Agents ▸ New agent  (copy the token)"
-if [ "$WANT_AGENT" = 1 ]; then
-  echo "   ./scripts/install-agent-service.sh http://localhost:1001 <token>"
-fi
+echo "   Settings ▸ Agents ▸ New agent  (download + one-line install)"
 echo "──────────────────────────────────────────────"
