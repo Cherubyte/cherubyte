@@ -22,6 +22,14 @@ def test_falls_back_to_a_generic_name_when_nothing_else_exists():
     assert best_name(h(hostname="localhost")) == "localhost"
 
 
+def test_llmnr_name_is_used_when_nothing_stronger_is_available():
+    assert best_name(h(llmnr_name="DESKTOP-AB12")) == "DESKTOP-AB12"
+
+
+def test_netbios_wins_over_llmnr():
+    assert best_name(h(netbios_name="LAPTOP", llmnr_name="DESKTOP-AB12")) == "LAPTOP"
+
+
 def test_no_signal_at_all():
     assert best_name(h()) is None
 

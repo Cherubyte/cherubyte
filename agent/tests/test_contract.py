@@ -33,6 +33,7 @@ def a_host() -> Host:
     host.ssdp_vendor = "Apple"
     host.ssdp_model = "MacBook"
     host.netbios_name = "PORTATIL"
+    host.llmnr_name = "PORTATIL-LLMNR"
     host.http_server = "nginx"
     host.http_title = "Home"
     host.ttl_os = "unix"
