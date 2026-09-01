@@ -58,6 +58,7 @@ _BOOL_KEYS = (
     "metrics_enabled",
     "enable_snmp",
     "topology_enabled",
+    "onboarding_dismissed",
 )
 
 _PERSISTED = (
@@ -200,6 +201,7 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         weekly_summary_enabled=cfg.weekly_summary_enabled,
         weekly_summary_weekday=cfg.weekly_summary_weekday,
         weekly_summary_hour=cfg.weekly_summary_hour,
+        onboarding_dismissed=cfg.onboarding_dismissed,
     )
 
 
@@ -341,6 +343,11 @@ async def update_settings(
     if "topology_enabled" in data and data["topology_enabled"] is not None:
         cfg.topology_enabled = bool(data["topology_enabled"])
         await _set(session, "topology_enabled", "true" if cfg.topology_enabled else "false")
+    if "onboarding_dismissed" in data and data["onboarding_dismissed"] is not None:
+        cfg.onboarding_dismissed = bool(data["onboarding_dismissed"])
+        await _set(
+            session, "onboarding_dismissed", "true" if cfg.onboarding_dismissed else "false"
+        )
 
     digest_touched = False
     if "weekly_summary_enabled" in data and data["weekly_summary_enabled"] is not None:

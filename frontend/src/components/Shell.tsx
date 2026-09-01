@@ -11,6 +11,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
 import { RollingValue } from "./ui";
 import { CommandPalette } from "./CommandPalette";
+import { Onboarding } from "./Onboarding";
 import { hms } from "../lib/format";
 import { AppMark, Moon, Search, Sun } from "./Glyph";
 import { motion, useReducedMotion, snappy, fade } from "../lib/motion";
@@ -203,6 +204,7 @@ export function Shell() {
     <>
       {isMobile ? <MobileShell /> : <DesktopShell />}
       <CommandPalette />
+      <Onboarding />
     </>
   );
 }
