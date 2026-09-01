@@ -5,6 +5,7 @@ export type DeviceType =
   | "pc"
   | "laptop"
   | "server"
+  | "vm"
   | "phone"
   | "voip"
   | "tablet"

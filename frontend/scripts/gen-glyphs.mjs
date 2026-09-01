@@ -53,6 +53,7 @@ const DEVICES = {
   hub: "share-network",
   pc: "desktop",
   laptop: "laptop",
+  vm: "cube",
   phone: "device-mobile",
   voip: "phone-call",
   tablet: "device-tablet",

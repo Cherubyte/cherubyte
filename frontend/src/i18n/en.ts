@@ -519,6 +519,7 @@ export const en = {
   "type.speaker": "Speaker",
   "type.wearable": "Wearable",
   "type.server": "Server",
+  "type.vm": "Virtual machine",
   "type.car": "Car",
   "type.voip": "VoIP phone",
   "type.ereader": "eReader",
@@ -588,7 +589,7 @@ export const en = {
 
   // ── settings: fingerbank test ─────────────────────────────────
   "settings.fingerbank.test": "Test",
-  "settings.fingerbank.testHint": "Sends one lookup with a known fingerprint to check the key.",
+  "settings.fingerbank.testHint": "Saves the key above (if changed) and sends one lookup with a known fingerprint to check it.",
   "settings.fingerbank.result.ok": "Fingerbank is working",
   "settings.fingerbank.result.no_key": "No API key set",
   "settings.fingerbank.result.invalid_key": "API key rejected",
