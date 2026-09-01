@@ -2,11 +2,13 @@
 
 ARP is link-local: it can never find a host that's reachable only through a
 gateway, even though ping/IP routing works fine for it (see `_route_for`'s
-docstring in scanner.py). These tests pin two things: (1) each configured
+docstring in scanner.py). These tests pin three things: (1) each configured
 subnet resolves its own interface from the OS routing table, so a multi-NIC
-box sweeps each subnet on the right interface, and (2) a subnet the routing
-table says is off-link skips the doomed ARP broadcast (the ping + neighbour
-table fallback still runs), with a one-time diagnostic explaining why.
+box sweeps each subnet on the right interface; (2) a subnet the routing table
+says is off-link skips the doomed ARP broadcast (the ping + neighbour table
+fallback still runs), with a one-time diagnostic explaining why; and (3) a
+ping reply from such a subnet is still reported as a liveness signal, without
+ever being turned into a MAC-keyed Host.
 """
 
 import pytest
@@ -114,14 +116,14 @@ def test_a_pinned_interface_overrides_per_subnet_routing(monkeypatch):
 
 # ------------------------------------------------------- _arp_scan / off-link skip
 
-def _patch_arp_scan_dependencies(monkeypatch, on_link_map, srp_result=None):
+def _patch_arp_scan_dependencies(monkeypatch, on_link_map, srp_result=None, ping_result=None):
     import scapy.all as scapy_all
 
     monkeypatch.setattr(scanner.settings, "interface", "")
     monkeypatch.setattr(scanner.settings, "enable_passive_arp", False)
     monkeypatch.setattr(scapy_all.conf.route, "route", _fake_route(on_link_map))
     monkeypatch.setattr(scapy_all, "srp", lambda *a, **kw: (srp_result or [], []))
-    monkeypatch.setattr(scanner, "_ping_sweep", lambda *a, **kw: None)
+    monkeypatch.setattr(scanner, "_ping_sweep", lambda *a, **kw: list(ping_result or []))
     monkeypatch.setattr(scanner, "_neighbour_table", lambda: {})
     monkeypatch.setattr(scanner, "_local_host", lambda iface: None)
 
@@ -177,3 +179,59 @@ def test_the_off_link_warning_is_logged_only_once(monkeypatch, caplog):
 
     warnings = [r for r in caplog.records if "192.168.80.0/24" in r.message]
     assert len(warnings) == 1
+
+
+# ------------------------------------------------- off-link ping-only liveness
+
+def test_an_off_link_subnet_reports_ping_only_hosts(monkeypatch, caplog):
+    """No MAC will ever surface for a routed subnet, but a ping reply is still
+    a cheap, honest "something is alive here" signal — logged, never turned
+    into a Host (there's no MAC to key one with)."""
+    monkeypatch.setattr(scanner.settings, "subnets", [{"cidr": "192.168.80.0/24"}])
+    _patch_arp_scan_dependencies(
+        monkeypatch,
+        {"192.168.80.0/24": ("eth0", "172.172.20.1")},
+        ping_result=["192.168.80.5", "192.168.80.9"],
+    )
+
+    with caplog.at_level("INFO"):
+        hosts = scanner._arp_scan()
+
+    assert hosts == [], "a ping reply alone must never become a Device — no MAC to key it with"
+    info = [r for r in caplog.records if r.levelname == "INFO" and "192.168.80.0/24" in r.message]
+    assert any("2" in r.message and "192.168.80.5" in r.message for r in info)
+
+
+def test_an_off_link_subnet_with_no_ping_replies_stays_quiet(monkeypatch, caplog):
+    monkeypatch.setattr(scanner.settings, "subnets", [{"cidr": "192.168.80.0/24"}])
+    _patch_arp_scan_dependencies(
+        monkeypatch, {"192.168.80.0/24": ("eth0", "172.172.20.1")}, ping_result=[]
+    )
+
+    with caplog.at_level("INFO"):
+        scanner._arp_scan()
+
+    info = [
+        r
+        for r in caplog.records
+        if r.levelname == "INFO" and "answered ping" in r.message
+    ]
+    assert info == []
+
+
+def test_an_on_link_subnet_never_gets_the_ping_only_report(monkeypatch, caplog):
+    """The ping-only report is specifically for subnets ARP can't reach — an
+    on-link subnet gets real MACs through the ARP sweep / neighbour table, so
+    this log line would just be noise there."""
+    monkeypatch.setattr(scanner.settings, "subnets", [{"cidr": "192.168.1.0/24"}])
+    _patch_arp_scan_dependencies(
+        monkeypatch,
+        {"192.168.1.0/24": ("eth0", "0.0.0.0")},
+        ping_result=["192.168.1.5"],
+    )
+
+    with caplog.at_level("INFO"):
+        scanner._arp_scan()
+
+    info = [r for r in caplog.records if "answered ping" in r.message]
+    assert info == []

@@ -292,21 +292,34 @@ def _arp_scan(full_sweep: bool = True) -> list[Host]:
             _offlink_warned.add(cidr)
             logger.warning(
                 "%s is reached through a gateway, not on-link on this agent's "
-                "interface(s) — skipping the ARP broadcast there (ARP cannot cross "
-                "a router, even though ping/IP reachability works fine). Falling "
-                "back to ping + the OS neighbour table only, which will find little "
-                "or nothing unless something on the path proxies ARP for it. "
-                "Discovering devices on that network reliably needs a Cherubyte "
-                "agent running on it, not just adding it to this agent's subnets.",
+                "interface(s) — skipping the ARP broadcast there (ARP cannot "
+                "cross a router, even though ping/IP reachability works fine). "
+                "Reliable discovery there needs a Cherubyte agent running on "
+                "that network — run one agent per subnet rather than adding a "
+                "routed subnet to this agent's list.",
                 cidr,
             )
 
         # 2) ICMP ping sweep — wakes / reaches hosts that ignore our raw ARP,
         #    and populates the kernel neighbour table for step 3
         try:
-            _ping_sweep(cidr, known_only=not full_sweep)
+            pinged = _ping_sweep(cidr, known_only=not full_sweep)
         except Exception as exc:  # noqa: BLE001
             logger.debug("ping sweep failed: %s", exc)
+            pinged = []
+
+        if not on_link and pinged:
+            # No ARP means no MAC will ever surface for these — the OS
+            # neighbour table stays empty for a routed destination — so this
+            # ping result is the only liveness signal this subnet can offer.
+            # Reported, not turned into a Host: Cherubyte's device identity is
+            # MAC-keyed throughout, and there's no MAC here to key it with.
+            logger.info(
+                "%s: %d host(s) answered ping with no discoverable MAC (%s)",
+                cidr,
+                len(pinged),
+                ", ".join(sorted(pinged)[:10]) + ("…" if len(pinged) > 10 else ""),
+            )
 
     # 3) merge the kernel ARP / neighbour table (anything the OS has seen)
     for ip, mac in _neighbour_table().items():
@@ -348,26 +361,31 @@ def _ping_targets(cidr: str, known_only: bool) -> list[str]:
     return targets
 
 
-def _ping_sweep(cidr: str, known_only: bool = False) -> None:
+def _ping_sweep(cidr: str, known_only: bool = False) -> list[str]:
     """OS-level ICMP sweep — fast, parallel, and it refreshes the kernel
     neighbour table (which _neighbour_table then reads). Avoids scapy's slow
-    per-destination ARP resolution."""
+    per-destination ARP resolution.
+
+    Returns the addresses that answered, so a caller who can't get a MAC any
+    other way (a routed subnet — see _route_for) still has a cheap liveness
+    signal to report."""
     import subprocess
 
     targets = _ping_targets(cidr, known_only)
 
-    def ping(ip: str) -> None:
+    def ping(ip: str) -> str | None:
         try:
-            subprocess.run(
+            res = subprocess.run(
                 ["ping", "-c", "1", "-W", "1", "-n", "-q", ip],
                 capture_output=True,
                 timeout=2,
             )
+            return ip if res.returncode == 0 else None
         except (OSError, subprocess.SubprocessError):
-            pass
+            return None
 
     with ThreadPoolExecutor(max_workers=64) as ex:
-        list(ex.map(ping, targets))
+        return [ip for ip in ex.map(ping, targets) if ip]
 
 
 def _neighbour_table() -> dict[str, str]:
