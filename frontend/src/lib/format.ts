@@ -82,7 +82,7 @@ export function hostRef(ip: string | null | undefined): string {
 /** Device types grouped for the picker — the order here is also the order the
  *  flat list and the stats page use. */
 export const DEVICE_TYPE_GROUPS: { key: MessageKey; types: DeviceType[] }[] = [
-  { key: "type.group.computers", types: ["pc", "laptop", "server"] },
+  { key: "type.group.computers", types: ["pc", "laptop", "server", "vm"] },
   { key: "type.group.mobile", types: ["phone", "voip", "tablet", "ereader", "wearable"] },
   { key: "type.group.entertainment", types: ["tv", "projector", "media", "display", "console", "speaker"] },
   { key: "type.group.network", types: ["router", "access_point", "hub"] },
@@ -109,6 +109,7 @@ export const TYPE_CODE: Record<DeviceType, string> = {
   pc: "PC",
   laptop: "LT",
   server: "SV",
+  vm: "VM",
   phone: "PH",
   voip: "VP",
   tablet: "TB",

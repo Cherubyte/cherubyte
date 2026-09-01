@@ -520,6 +520,7 @@ export const pt: Record<keyof typeof en, string> = {
   "type.speaker": "Coluna",
   "type.wearable": "Wearable",
   "type.server": "Servidor",
+  "type.vm": "Máquina virtual",
   "type.car": "Carro",
   "type.voip": "Telefone VoIP",
   "type.ereader": "eReader",
@@ -589,7 +590,7 @@ export const pt: Record<keyof typeof en, string> = {
 
   // ── settings: fingerbank test ─────────────────────────────────
   "settings.fingerbank.test": "Testar",
-  "settings.fingerbank.testHint": "Faz uma consulta com um fingerprint conhecido para validar a chave.",
+  "settings.fingerbank.testHint": "Guarda a chave acima (se alterada) e faz uma consulta com um fingerprint conhecido para a validar.",
   "settings.fingerbank.result.ok": "O Fingerbank está a funcionar",
   "settings.fingerbank.result.no_key": "Sem chave de API definida",
   "settings.fingerbank.result.invalid_key": "Chave de API recusada",
