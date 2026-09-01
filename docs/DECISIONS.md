@@ -263,3 +263,25 @@ Handing it to *every* reporting agent rather than routing by subnet keeps the
 panel from having to track which agent owns which L2 segment — a mapping that is
 already fuzzy for routed subnets. A randomised MAC is refused up front: the
 device isn't using it while it's asleep, so the packet would wake nothing.
+
+## Host temperature: the panel samples itself, agents ride the report
+
+Settings ▸ Monitor charts CPU/SoC temperature for every host in the deployment.
+An agent already phones home every sweep, so its reading is one more optional
+field on `AgentReport` (`host_temp_c`, v5 — a lockstep bump like the others).
+The panel is the one host nothing reports for, so it samples its own sensor on a
+60-second APScheduler job and writes the same `host_temp_samples` table with a
+NULL `agent_id`.
+
+Reading the sensor is dependency-free and Linux-only: `/sys/class/thermal/
+thermal_zone*/`, preferring a zone whose `type` names a package/CPU sensor and
+falling back to the hottest. A host with nothing readable (most containers,
+macOS, Windows) reports `None` and simply drops off the chart — there is no
+config flag to forget to set.
+
+`host_temp_samples` is as dense as `wan_samples` (a row a minute per host), so
+the retention purge trims it on the same cutoff, and `/api/host-metrics` buckets
+the window down to ~240 points before it goes over the wire rather than shipping
+a week of raw minutes. The panel job carries `misfire_grace_time=45`: a reading
+delayed by a busy event loop is worth more than the APScheduler default of
+dropping anything more than a second late.

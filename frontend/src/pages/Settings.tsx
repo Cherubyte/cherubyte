@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import clsx from "clsx";
 import { api } from "../api/client";
-import type { AccountRole, AlertRule, SubnetCfg } from "../api/types";
+import type { AccountRole, AlertRule, HostTempPoint, HostTempSeries, SubnetCfg } from "../api/types";
 import { AUTH_KEY, useAuth, useCanWrite, useIsAdmin } from "../auth/AuthProvider";
 import { Badge, Button, Field, Redacted, SectionHeader, Toggle } from "../components/ui";
 import {
@@ -18,6 +18,7 @@ import {
   Radar,
   Send,
   Shield,
+  ThermoIcon,
   Trash,
   UpdateIcon,
   Wave,
@@ -47,6 +48,7 @@ type SettingsCat =
   | "history"
   | "update"
   | "agents"
+  | "monitor"
   | "interface"
   | "account"
   | "accounts";
@@ -66,9 +68,10 @@ const SETTINGS_CATS: {
   { k: "history", code: "05", labelKey: "settings.cat.history", Icon: LogIcon },
   { k: "update", code: "06", labelKey: "settings.cat.update", Icon: UpdateIcon },
   { k: "agents", code: "07", labelKey: "settings.cat.agents", Icon: Wave, writeOnly: true },
-  { k: "interface", code: "08", labelKey: "settings.cat.interface", Icon: Image },
-  { k: "account", code: "09", labelKey: "settings.cat.account", Icon: Shield },
-  { k: "accounts", code: "10", labelKey: "settings.cat.accounts", Icon: PeopleIcon, adminOnly: true },
+  { k: "monitor", code: "08", labelKey: "settings.cat.monitor", Icon: ThermoIcon },
+  { k: "interface", code: "09", labelKey: "settings.cat.interface", Icon: Image },
+  { k: "account", code: "10", labelKey: "settings.cat.account", Icon: Shield },
+  { k: "accounts", code: "11", labelKey: "settings.cat.accounts", Icon: PeopleIcon, adminOnly: true },
 ];
 
 /** Categories that edit the shared settings form and so need the Save bar. */
@@ -127,6 +130,194 @@ function SettingsNav({
         );
       })}
     </nav>
+  );
+}
+
+/** Settings ▸ Monitor: CPU/SoC temperature of the panel host and every agent
+ *  host, on one chart each. The panel samples its own sensor every minute (see
+ *  the scheduler); agents send theirs on every sweep. Read-only, so no Save bar. */
+function MonitorSection() {
+  const t = useT();
+  const [hours, setHours] = useState(24);
+  const q = useQuery({
+    queryKey: ["host-metrics", hours],
+    queryFn: () => api.hostMetrics(hours),
+    refetchInterval: 60_000,
+  });
+  const series = q.data?.series ?? [];
+  const ranges: [number, MessageKey][] = [
+    [24, "settings.monitor.range.24h"],
+    [168, "settings.monitor.range.7d"],
+  ];
+
+  return (
+    <section className="panel mb-3 p-4">
+      <SectionHeader
+        title={t("settings.section.monitor")}
+        sub={t("settings.monitor.sub")}
+        actions={
+          <div className="flex gap-0.5 rounded-lg bg-surface-2 p-0.5">
+            {ranges.map(([h, k]) => (
+              <button
+                key={h}
+                onClick={() => setHours(h)}
+                className={clsx(
+                  "rounded-md px-2.5 py-1 text-[11px] transition-colors",
+                  hours === h ? "bg-bg text-fg" : "text-fg-3 hover:text-fg-2",
+                )}
+              >
+                {t(k)}
+              </button>
+            ))}
+          </div>
+        }
+      />
+
+      {q.isLoading ? (
+        <div className="space-y-3">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-40 animate-pulse rounded-xl bg-surface-2" />
+          ))}
+        </div>
+      ) : series.length === 0 ? (
+        <p className="mono text-[12px] text-fg-3">{t("settings.monitor.empty")}</p>
+      ) : (
+        <div className="space-y-3">
+          {series.map((s) => (
+            <TempCard key={s.key} s={s} hours={hours} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TempCard({ s, hours }: { s: HostTempSeries; hours: number }) {
+  const t = useT();
+  const label = s.kind === "panel" ? t("settings.monitor.panel") : s.label;
+  const hot = (s.max ?? 0) >= 85;
+  const deg = (v: number | null, digits = 0) =>
+    v === null ? "—" : t("settings.monitor.degrees", { n: v.toFixed(digits) });
+
+  return (
+    <div className="rounded-xl bg-surface-2 p-3.5">
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-display text-[13px] text-fg">{label}</span>
+        <span
+          className={clsx(
+            "font-display text-[20px] leading-none tnum",
+            hot ? "text-alert" : "text-fg",
+          )}
+        >
+          {deg(s.current, 1)}
+        </span>
+        <span className="mono ml-auto text-[10.5px] text-fg-3">
+          {t("settings.monitor.min")} {deg(s.min)} · {t("settings.monitor.avg")} {deg(s.avg)} ·{" "}
+          {t("settings.monitor.max")} {deg(s.max)}
+        </span>
+      </div>
+      {s.points.length >= 2 ? (
+        <TempChart points={s.points} hours={hours} hot={hot} label={label} />
+      ) : (
+        <p className="mono py-6 text-center text-[11px] text-fg-3">
+          {t("settings.monitor.empty")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** A hand-rolled SVG line chart — same house style as the dashboard sparkline,
+ *  scaled up with axes. Monochrome; the line only goes alert-red when the run
+ *  is running hot. */
+function TempChart({
+  points,
+  hours,
+  hot,
+  label,
+}: {
+  points: HostTempPoint[];
+  hours: number;
+  hot: boolean;
+  label: string;
+}) {
+  const t = useT();
+  const W = 640;
+  const H = 150;
+  const padL = 30;
+  const padR = 6;
+  const padT = 8;
+  const padB = 18;
+
+  const xs = points.map((p) => new Date(p.t).getTime());
+  const cs = points.map((p) => p.c);
+  const t0 = xs[0];
+  const t1 = xs[xs.length - 1];
+
+  const rawLo = Math.min(...cs);
+  const rawHi = Math.max(...cs);
+  const span = Math.max(8, rawHi - rawLo);
+  const mid = (rawHi + rawLo) / 2;
+  const lo = Math.floor(mid - span / 2 - 1);
+  const hi = Math.ceil(mid + span / 2 + 1);
+
+  const x = (ms: number) => padL + ((ms - t0) / Math.max(1, t1 - t0)) * (W - padL - padR);
+  const y = (c: number) => padT + (1 - (c - lo) / (hi - lo)) * (H - padT - padB);
+
+  const line = points
+    .map((p, i) => `${i ? "L" : "M"}${x(xs[i]).toFixed(1)} ${y(p.c).toFixed(1)}`)
+    .join("");
+  const area = `${line}L${x(t1).toFixed(1)} ${(H - padB).toFixed(1)}L${x(t0).toFixed(1)} ${(H - padB).toFixed(1)}Z`;
+  const stroke = hot ? "rgb(var(--alert))" : "rgb(var(--fg-2))";
+
+  const yTicks = [hi, Math.round(mid), lo];
+  const fmtTime = (ms: number) => {
+    const d = new Date(ms);
+    return hours <= 48
+      ? d.toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })
+      : d.toLocaleDateString(intlLocale(), { day: "2-digit", month: "2-digit" });
+  };
+  const xTicks = [0, 1, 2, 3].map((i) => t0 + ((t1 - t0) * i) / 3);
+  const rangeLabel = hours <= 48 ? t("settings.monitor.range.24h") : t("settings.monitor.range.7d");
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="h-[150px] w-full"
+      role="img"
+      aria-label={t("settings.monitor.chartLabel", { label, range: rangeLabel })}
+    >
+      {yTicks.map((c, i) => (
+        <g key={i}>
+          <line
+            x1={padL}
+            x2={W - padR}
+            y1={y(c)}
+            y2={y(c)}
+            stroke="rgb(var(--fg) / 0.08)"
+            strokeWidth={1}
+          />
+          <text x={0} y={y(c) + 3} className="mono" fontSize={8} fill="rgb(var(--fg-3))">
+            {c}°
+          </text>
+        </g>
+      ))}
+      {xTicks.map((ms, i) => (
+        <text
+          key={i}
+          x={x(ms)}
+          y={H - 4}
+          textAnchor={i === 0 ? "start" : i === 3 ? "end" : "middle"}
+          className="mono"
+          fontSize={8}
+          fill="rgb(var(--fg-3))"
+        >
+          {fmtTime(ms)}
+        </text>
+      ))}
+      <path d={area} fill={stroke} opacity={0.08} />
+      <path d={line} fill="none" stroke={stroke} strokeWidth={1.5} strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -394,6 +585,7 @@ export function Settings() {
       <div className="min-w-0">
       {cat === "agents" && canWrite && <AgentsSection />}
       {cat === "update" && <UpdateSection isAdmin={isAdmin} />}
+      {cat === "monitor" && <MonitorSection />}
       {cat === "interface" && <InterfaceSection />}
       {cat === "account" && <AccountCard />}
       {cat === "accounts" && isAdmin && (

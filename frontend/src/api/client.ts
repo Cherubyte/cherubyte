@@ -10,6 +10,7 @@ import type {
   Brand,
   BrandCount,
   Connection,
+  HostMetrics,
   Device,
   DeviceType,
   EventItem,
@@ -194,6 +195,7 @@ export const api = {
     req<{ ok: boolean; summary: string[] }>("/settings/digest/test", { method: "POST" }),
 
   wan: (hours = 24) => req<WanStatus>(`/wan?hours=${hours}`),
+  hostMetrics: (hours = 24) => req<HostMetrics>(`/host-metrics?hours=${hours}`),
   mergeSuggestions: () => req<MergeSuggestion[]>("/devices/merge-suggestions"),
 
   agents: () => req<AgentRow[]>("/agents"),

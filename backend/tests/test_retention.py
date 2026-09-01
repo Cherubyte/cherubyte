@@ -32,7 +32,7 @@ async def test_purge_removes_only_rows_past_the_cutoff(session):
     removed = await retention.purge(session, days=90)
     await session.commit()
 
-    assert removed == {"events": 2, "connections": 2, "wan": 0}
+    assert removed == {"events": 2, "connections": 2, "wan": 0, "host_temp": 0}
     assert await session.scalar(select(func.count(Event.id))) == 2
     assert await session.scalar(select(func.count(ConnectionHistory.id))) == 2
 
@@ -44,7 +44,7 @@ async def test_zero_days_keeps_everything(session):
     removed = await retention.purge(session, days=0)
     await session.commit()
 
-    assert removed == {"events": 0, "connections": 0, "wan": 0}
+    assert removed == {"events": 0, "connections": 0, "wan": 0, "host_temp": 0}
     assert await session.scalar(select(func.count(Event.id))) == 2
 
 
@@ -64,6 +64,7 @@ async def test_purge_on_an_empty_database_is_a_no_op(session):
         "events": 0,
         "connections": 0,
         "wan": 0,
+        "host_temp": 0,
     }
 
 
@@ -82,3 +83,20 @@ async def test_purge_also_prunes_wan_samples(session):
 
     assert removed["wan"] == 1
     assert await session.scalar(select(func.count(WanSample.id))) == 1
+
+
+@pytest.mark.asyncio
+async def test_purge_also_prunes_host_temp_samples(session):
+    """Host-temperature sampling is a row a minute per host, like WAN."""
+    from app.models import HostTempSample
+
+    now = datetime.now(timezone.utc)
+    session.add(HostTempSample(agent_id=None, temp_c=47.0, timestamp=now))
+    session.add(HostTempSample(agent_id=None, temp_c=51.0, timestamp=now - timedelta(days=120)))
+    await session.commit()
+
+    removed = await retention.purge(session, days=90)
+    await session.commit()
+
+    assert removed["host_temp"] == 1
+    assert await session.scalar(select(func.count(HostTempSample.id))) == 1

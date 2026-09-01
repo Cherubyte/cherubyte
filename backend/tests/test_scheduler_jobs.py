@@ -35,6 +35,7 @@ async def test_every_expected_job_is_registered(started_scheduler):
         "history-purge",
         "weekly-digest",
         "update-check",
+        "host-temp-sample",
     }, "scanning and the WAN probe belong to the agent now, not to this scheduler"
 
 
