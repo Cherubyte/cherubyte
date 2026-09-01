@@ -46,6 +46,7 @@ def best_name(obs: HostObservation) -> str | None:
         obs.ssdp_name,
         obs.hostname,
         obs.netbios_name,
+        obs.llmnr_name,
         obs.http_title,
     ]
     good = [clean_name(c) for c in ordered if c and not looks_generic(c)]

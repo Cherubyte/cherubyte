@@ -30,7 +30,8 @@
 **Everything at a glance.** Open the panel and you know, in seconds, what's online
 now, who's home, what's new since last time, and whether anything needs a look.
 
-**It knows what things are.** Reverse DNS, mDNS, SSDP, NetBIOS, HTTP banners, TCP
+**It knows what things are.** Reverse DNS, mDNS (every service type actually on
+the network, not a fixed list), SSDP, NetBIOS, LLMNR, HTTP banners, TCP
 fingerprints, MAC vendor, passive DHCP fingerprinting, an optional
 [Fingerbank](https://fingerbank.org/) lookup and TTL hints combine into a type,
 a brand and an OS for each device — phone, laptop, TV, console, camera, NAS,

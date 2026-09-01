@@ -28,7 +28,9 @@ from pydantic import BaseModel, Field
 #: v3: adds `HostObservation.snmp_sysname` / `snmp_sysdescr` and
 #:     `HostObservation.lldp_neighbors` — optional SNMP / LLDP-MIB reads, so the
 #:     panel can name managed gear and draw the links between switches.
-PROTOCOL_VERSION = 3
+#: v4: adds `HostObservation.llmnr_name` — an LLMNR reverse lookup, another
+#:     name source for Windows hosts alongside NetBIOS.
+PROTOCOL_VERSION = 4
 
 __all__ = [
     "PROTOCOL_VERSION",
@@ -77,6 +79,10 @@ class HostObservation(BaseModel):
     ssdp_vendor: str | None = None
     ssdp_model: str | None = None
     netbios_name: str | None = None
+    # LLMNR (RFC 4795, UDP 5355) reverse lookup — Microsoft's successor to
+    # NetBIOS name resolution, still answered by many current Windows hosts
+    # even where NetBIOS-over-TCP/IP has been turned off.
+    llmnr_name: str | None = None
     http_server: str | None = None
     http_title: str | None = None
     ttl_os: str | None = None
