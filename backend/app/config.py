@@ -108,6 +108,9 @@ class Settings(BaseSettings):
     # most installs would just see an empty page cluttering the nav.
     topology_enabled: bool = False
     fingerbank_api_key: str = ""
+    # Set once the first-run onboarding wizard has been completed or skipped —
+    # a single flag, not per-account, since Cherubyte is one shared panel.
+    onboarding_dismissed: bool = False
 
     # Telegram notifications
     telegram_enabled: bool = True
