@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..config import settings
-from ..database import SessionLocal
+from ..database import open_session
 from ..models import (
     ApprovalStatus,
     ConnectionHistory,
@@ -728,7 +728,7 @@ async def log_event_standalone(
     message: str, *, level: EventLevel = EventLevel.info, category: str = "system"
 ) -> None:
     """Log an event from code that has no session of its own (e.g. the WAN probe)."""
-    async with SessionLocal() as session:
+    async with open_session() as session:
         await _log_event(session, message, level=level, category=category)
         await session.commit()
 
@@ -949,7 +949,7 @@ async def ingest_report(
             _scan_health["consecutive_empty"],
         )
         if first_empty:  # log the transition only, not every cycle
-            async with SessionLocal() as session:
+            async with open_session() as session:
                 await _log_event(
                     session,
                     f"Agent {agent_name} found no devices at all — "
@@ -990,7 +990,7 @@ async def ingest_report(
     # once the block exits — i.e. after the commit below — so a client that
     # reacts to "device_new" sees the device when it refetches.
     with _batch_publish():
-        async with SessionLocal() as session:
+        async with open_session() as session:
             for host in report.hosts:
                 await _reconcile_host(session, host, host.ip in gateways)
             await _expire_offline(session)

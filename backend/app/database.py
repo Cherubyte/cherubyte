@@ -12,7 +12,8 @@ from __future__ import annotations
 import logging
 import threading
 from collections import OrderedDict
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -25,7 +26,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-from .config import BASE_DIR, settings
+from .config import BASE_DIR, settings, tenant_settings
 from .tenancy import current_tenant, validate_tenant_id
 
 logger = logging.getLogger("cherubyte.db")
@@ -181,6 +182,71 @@ async def session_for(tenant_id: str) -> AsyncSession:
 
 async def dispose_tenants() -> None:
     await _tenants.dispose_all()
+
+
+def known_tenants() -> list[str]:
+    """Every provisioned tenant, read from the files themselves.
+
+    The files are the registry: there is no second list here to drift out of
+    step with what is actually on disk.
+    """
+    root = Path(settings.tenants_dir)
+    if not root.is_dir():
+        return []
+    return sorted(p.stem for p in root.glob("*.db") if validate_tenant_id_or_none(p.stem))
+
+
+def validate_tenant_id_or_none(value: str) -> bool:
+    try:
+        validate_tenant_id(value)
+    except ValueError:
+        return False
+    return True
+
+
+@asynccontextmanager
+async def open_session() -> AsyncIterator[AsyncSession]:
+    """A session for whatever tenant is in scope, for code outside a request.
+
+    Single-tenant this is the one database, exactly as `SessionLocal()` was.
+    Multi-tenant it is the current tenant's — and a caller with no tenant in
+    scope is a bug, so it raises rather than guessing.
+    """
+    if not settings.multi_tenant:
+        async with _default_sessions() as session:
+            yield session
+        return
+
+    tenant = current_tenant.get()
+    if tenant is None:
+        raise RuntimeError("open_session() outside a tenant; use scoped_to(tenant_id)")
+    _, make = await _tenants.get(tenant)
+    async with make() as session:
+        yield session
+
+
+@asynccontextmanager
+async def scoped_to(tenant_id: str) -> AsyncIterator[AsyncSession]:
+    """Run a block as one tenant: its database, and its settings.
+
+    Both halves matter. Without the settings overlay a background job would
+    read whichever tenant's retention, quiet hours and notification targets
+    happened to be loaded last — so this is where a job becomes genuinely one
+    tenant's work rather than everyone's.
+    """
+    from .api.settings import load_settings_into  # late: it imports database
+
+    tenant_id = validate_tenant_id(tenant_id)
+    token = current_tenant.set(tenant_id)
+    try:
+        _, make = await _tenants.get(tenant_id)
+        async with make() as session:
+            overlay: dict[str, object] = {}
+            with tenant_settings(overlay):
+                await load_settings_into(session)
+                yield session
+    finally:
+        current_tenant.reset(token)
 
 
 async def discard_tenant(tenant_id: str) -> None:

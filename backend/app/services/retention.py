@@ -14,7 +14,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..database import SessionLocal
+from ..database import open_session
 from ..models import Agent, ConnectionHistory, Event, HostTempSample, WanSample, utcnow
 
 logger = logging.getLogger("cherubyte.retention")
@@ -57,7 +57,7 @@ async def counts(session: AsyncSession) -> dict[str, int]:
 async def run_purge() -> dict[str, int]:
     """Scheduled entry point. Never raises — a failed purge must not kill the job."""
     try:
-        async with SessionLocal() as session:
+        async with open_session() as session:
             removed = await purge(session)
             await session.commit()
     except Exception as exc:  # noqa: BLE001

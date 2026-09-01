@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..database import SessionLocal
+from ..database import open_session
 from ..models import (
     ApprovalStatus,
     ConnectionHistory,
@@ -114,7 +114,7 @@ async def run_weekly() -> dict | None:
     if not settings.weekly_summary_enabled:
         return None
     try:
-        async with SessionLocal() as session:
+        async with open_session() as session:
             data = await collect(session)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Weekly digest failed: %s", exc)

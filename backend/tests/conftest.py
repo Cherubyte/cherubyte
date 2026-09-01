@@ -12,6 +12,13 @@ from pathlib import Path
 
 _TMP = Path(tempfile.mkdtemp(prefix="cherubyte-tests-"))
 os.environ["CHERUBYTE_DATABASE_URL"] = f"sqlite+aiosqlite:///{_TMP / 'test.db'}"
+# The suite's baseline is a single-tenant panel, and it must be that whatever
+# is in the working directory: a `.env` left by a hosted dev instance would
+# otherwise put every test into multi-tenant mode, where the shared fixture
+# below has no tenant and refuses. The tests that want the hosted mode set it
+# themselves, per test.
+os.environ["CHERUBYTE_MULTI_TENANT"] = "false"
+os.environ["CHERUBYTE_TENANTS_DIR"] = str(_TMP / "tenants")
 # pin these so tests never depend on the machine's real network
 os.environ["CHERUBYTE_SUBNET"] = "192.168.1.0/24"
 os.environ["CHERUBYTE_TELEGRAM_BOT_TOKEN"] = ""

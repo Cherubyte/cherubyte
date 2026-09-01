@@ -28,18 +28,16 @@ logger = logging.getLogger("cherubyte")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.multi_tenant:
-        # There is no default database to initialise and no one set of
-        # settings to load. Everything below this branch — the scheduler, MQTT,
-        # retention, the update check — is single-tenant work that opens
-        # SessionLocal(), which in this mode refuses; it comes back per tenant
-        # with the per-tenant scheduler. Until then, multi-tenant mode is the
-        # request path and nothing else, and says so.
-        logger.warning(
-            "Cherubyte up on :%s — multi-tenant; background jobs are off until "
-            "the per-tenant scheduler lands",
-            settings.port,
-        )
+        # No default database to initialise and no one set of settings to
+        # load: each tenant brings both, inside `scoped_to`. The scheduler
+        # runs the per-tenant jobs. MQTT stays off — its queue, worker and
+        # announced-set are process-global, so on a shared process it would
+        # publish one tenant's devices under another's discovery topics; it
+        # moves to the agent, which is on the LAN the broker is on anyway.
+        start_scheduler()
+        logger.info("Cherubyte up on :%s — hosted", settings.port)
         yield
+        scheduler.shutdown(wait=False)
         await dispose_tenants()
         return
 

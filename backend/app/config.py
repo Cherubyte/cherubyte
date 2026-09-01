@@ -1,4 +1,6 @@
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -204,4 +206,56 @@ class Settings(BaseSettings):
         return BASE_DIR.parent / "frontend" / "dist"
 
 
-settings = Settings()
+_base = Settings()
+
+# ── settings, per tenant ───────────────────────────────────────────────────
+# Most of these are overridden from the database at runtime: retention, quiet
+# hours, the Telegram chat, the ntfy topic, the Fingerbank key. Single-tenant
+# that database is the only one, so `_load_from_db` writing onto one shared
+# object is right. Hosted it is emphatically not: the first tenant to load
+# would hand every other tenant its notification targets and its API keys,
+# and every job would run on its retention.
+#
+# So a read goes through the overlay for the tenant currently in scope, and
+# falls through to the process-wide object when there is none. Every
+# `settings.foo` in the codebase becomes tenant-correct without a single call
+# site changing — the same trick as get_session(), for the same reason.
+
+_overlay: ContextVar[dict[str, object] | None] = ContextVar("settings_overlay", default=None)
+
+
+class _Settings:
+    """Reads and writes the tenant's overlay when there is one, else the base."""
+
+    def __getattr__(self, name: str):
+        overlay = _overlay.get()
+        if overlay is not None and name in overlay:
+            return overlay[name]
+        return getattr(_base, name)
+
+    def __setattr__(self, name: str, value) -> None:
+        overlay = _overlay.get()
+        if overlay is None:
+            setattr(_base, name, value)  # pydantic validates, as before
+        else:
+            # Values reaching here come from `_load_from_db`, which has already
+            # cast by key. Writing into the overlay rather than the base is
+            # what keeps one tenant's settings out of every other's.
+            overlay[name] = value
+
+
+settings = _Settings()
+
+
+@contextmanager
+def tenant_settings(overlay: dict[str, object]):
+    """Run with `overlay` as the settings of the tenant in scope.
+
+    The dict is mutated by `_load_from_db`, so pass the one being filled and
+    it stays the tenant's own.
+    """
+    token = _overlay.set(overlay)
+    try:
+        yield overlay
+    finally:
+        _overlay.reset(token)

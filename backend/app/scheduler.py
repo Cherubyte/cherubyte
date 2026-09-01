@@ -1,4 +1,18 @@
-"""APScheduler wiring for the periodic network scan."""
+"""APScheduler wiring for the panel's periodic work.
+
+Single-tenant: the jobs below, on the one database, as they always were.
+
+Hosted: the same jobs, run once per tenant inside `scoped_to`, which gives
+each pass that tenant's database *and* that tenant's settings. Two of them do
+not go per tenant at all — the update check and the panel's own temperature
+are facts about the machine, not about a customer, and writing one shared
+box's sensor reading into twenty-five inventories would be noise in all of
+them.
+
+One tenant's failure must not stop the rest, so each pass is caught and
+logged and the loop goes on. A job that dies silently for tenant seven and
+keeps working for everyone else is the failure this design has to survive.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +21,7 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .config import settings
+from .database import known_tenants, scoped_to
 from .models import utcnow
 from .services.digest import run_weekly
 from .services.hoststat import record_panel_temp
@@ -21,22 +36,76 @@ _DIGEST_JOB_ID = "weekly-digest"
 _UPDATE_JOB_ID = "update-check"
 _HOST_TEMP_JOB_ID = "host-temp-sample"
 
-_state: dict = {"last_scan": None, "running": False}
+# Per tenant, because "when did an agent last report" is one customer's answer.
+# Keyed by tenant id, and by None for the single-tenant panel. Held here rather
+# than in the database because it is a fact about this process's uptime: after
+# a restart nobody has reported yet, and that is the truthful answer.
+_state: dict[str | None, dict] = {}
+
+
+def _scan_state() -> dict:
+    from .tenancy import current_tenant
+
+    key = current_tenant.get() if settings.multi_tenant else None
+    return _state.setdefault(key, {"last_scan": None, "running": False})
 
 
 def note_report() -> None:
     """Record that an agent just reported, for the dashboard's "last scan"."""
-    _state["last_scan"] = utcnow()
+    _scan_state()["last_scan"] = utcnow()
+
+
+def last_scan():
+    return _scan_state()["last_scan"]
+
+
+def is_running() -> bool:
+    return _scan_state()["running"]
+
+
+def forget_tenant_state(tenant_id: str) -> None:
+    """Drop a tenant's scan state — for offboarding, and for tests."""
+    _state.pop(tenant_id, None)
+
+
+# ── running a job for everyone ─────────────────────────────────────────────
+
+
+async def _for_each_tenant(name: str, job) -> None:
+    tenants = known_tenants()
+    if not tenants:
+        return
+    failed = 0
+    for tenant_id in tenants:
+        try:
+            async with scoped_to(tenant_id):
+                await job()
+        except Exception:
+            failed += 1
+            logger.exception("Job %s failed for tenant %s", name, tenant_id)
+    logger.info("Job %s ran for %d tenants (%d failed)", name, len(tenants), failed)
+
+
+async def _purge_every_tenant() -> None:
+    await _for_each_tenant("history-purge", run_purge)
+
+
+async def _digest_every_tenant() -> None:
+    # `run_weekly` checks weekly_summary_enabled itself, and under scoped_to
+    # that flag is the tenant's own rather than whoever loaded last.
+    await _for_each_tenant("weekly-digest", run_weekly)
+
+
+# ── wiring ─────────────────────────────────────────────────────────────────
 
 
 def start() -> None:
+    if settings.multi_tenant:
+        _start_hosted()
+        return
+
     scheduler.add_job(
-        run_purge,
-        "interval",
-        hours=24,
-        id=_PURGE_JOB_ID,
-        max_instances=1,
-        coalesce=True,
+        run_purge, "interval", hours=24, id=_PURGE_JOB_ID, max_instances=1, coalesce=True
     )
     scheduler.add_job(
         run_weekly,
@@ -49,12 +118,7 @@ def start() -> None:
         coalesce=True,
     )
     scheduler.add_job(
-        check_for_update,
-        "interval",
-        hours=12,
-        id=_UPDATE_JOB_ID,
-        max_instances=1,
-        coalesce=True,
+        check_for_update, "interval", hours=12, id=_UPDATE_JOB_ID, max_instances=1, coalesce=True
     )
     # The panel is the one host no agent reports for, so it samples its own
     # sensor. Agents send theirs on every sweep. A generous misfire grace so a
@@ -72,12 +136,36 @@ def start() -> None:
     logger.info("Scheduler started (retention=%sd)", settings.retention_days)
 
 
-# NOTE: there is no scan job here any more, and no WAN probe. Both moved to the
-# agent, which is the half that can see a network. The panel's cadence is now
-# whatever the agents report at; `note_report` records it for the dashboard.
+def _start_hosted() -> None:
+    """The same work, once per tenant.
+
+    The digest fires hourly and each tenant's own `weekly_summary_*` decides
+    whether that hour is theirs — a single cron cannot serve tenants who
+    picked different days, and one job per tenant would mean rescheduling
+    every time somebody changed the setting.
+    """
+    scheduler.add_job(
+        _purge_every_tenant, "interval", hours=24, id=_PURGE_JOB_ID, max_instances=1, coalesce=True
+    )
+    scheduler.add_job(
+        _digest_every_tenant,
+        "cron",
+        minute=0,
+        id=_DIGEST_JOB_ID,
+        max_instances=1,
+        coalesce=True,
+    )
+    # No update check and no panel temperature: both are about this machine,
+    # and neither belongs in a customer's inventory.
+    scheduler.start()
+    logger.info("Scheduler started, hosted (%d tenants)", len(known_tenants()))
 
 
 def reschedule_digest(weekday: int, hour: int) -> None:
+    # Hosted, the digest job is hourly and reads each tenant's own weekday and
+    # hour when it runs, so there is nothing here to reschedule.
+    if settings.multi_tenant:
+        return
     if scheduler.get_job(_DIGEST_JOB_ID):
         scheduler.reschedule_job(
             _DIGEST_JOB_ID, trigger="cron", day_of_week=weekday, hour=hour, minute=0
@@ -87,11 +175,3 @@ def reschedule_digest(weekday: int, hour: int) -> None:
 def job_next_run_times() -> dict[str, object]:
     """{job_id: next_run_time} — None means the job is paused and will not fire."""
     return {j.id: j.next_run_time for j in scheduler.get_jobs()}
-
-
-def last_scan():
-    return _state["last_scan"]
-
-
-def is_running() -> bool:
-    return _state["running"]

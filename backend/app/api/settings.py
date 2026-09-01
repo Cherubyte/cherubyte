@@ -106,6 +106,13 @@ def _push_runtime() -> None:
     )
 
 
+async def load_settings_into(session: AsyncSession) -> None:
+    """Apply this database's stored settings onto whatever settings object is
+    in scope — the process-wide one self-hosted, the tenant's overlay under
+    `scoped_to`. Same code either way; the difference is where the writes land."""
+    await _load_from_db(session)
+
+
 async def _load_from_db(session: AsyncSession) -> None:
     res = await session.execute(select(Setting))
     for row in res.scalars():
