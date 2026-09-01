@@ -185,14 +185,79 @@ create-admin <name>`. Back up everything — the database and the uploads — fr
 Two containers, `ghcr.io/cherubyte/cherubyte-panel` and `-agent`, multi-arch
 (`amd64` + `arm64`).
 
+`docker-compose.yml` in this repository is the maintained one and can also build
+both images from a checkout. The example below is the same thing without the
+checkout — save it as `docker-compose.yml` in an empty directory and it is
+everything you need:
+
+```yaml
+services:
+  panel:
+    image: ghcr.io/cherubyte/cherubyte-panel:latest
+    container_name: cherubyte-panel
+    restart: unless-stopped
+
+    # The panel scans nothing, so it gets an ordinary bridge, no capabilities
+    # and one published port. It does not have to sit on the network it shows.
+    ports:
+      - "1001:1001"
+
+    environment:
+      # Containers start in UTC; the presence grid is drawn in local time.
+      TZ: Europe/Lisbon
+
+    volumes:
+      # The SQLite database and the uploads. Losing this loses your history.
+      - panel-data:/app/backend/data
+
+  agent:
+    image: ghcr.io/cherubyte/cherubyte-agent:latest
+    container_name: cherubyte-agent
+    restart: unless-stopped
+    depends_on:
+      - panel
+
+    # Discovery is a layer-2 job: the ARP sweep is broadcast, mDNS and SSDP are
+    # multicast, the neighbour table is the kernel's. On Docker's default bridge
+    # this would sweep 172.17.0.0/16 and find nothing of yours.
+    network_mode: host
+
+    cap_add:
+      - NET_RAW      # ARP sweep, DHCP sniffer, TTL probe
+      - NET_ADMIN    # promiscuous mode for the DHCP sniffer
+
+    environment:
+      TZ: Europe/Lisbon
+      # Host networking means the panel is reachable on the published port
+      # above, not by service name. A panel elsewhere is just another URL.
+      CHERUBYTE_AGENT_PANEL_URL: http://127.0.0.1:1001
+      # Minted in the panel, spent on first start — see the two commands below.
+      CHERUBYTE_AGENT_ENROL_TOKEN: ${AGENT_ENROL_TOKEN:-}
+      CHERUBYTE_AGENT_NAME: casa
+      # CHERUBYTE_AGENT_SUBNET: "192.168.1.0/24"   # empty auto-detects the /24
+
+    volumes:
+      # The key issued at enrolment. Keep it — see below.
+      - agent-state:/var/lib/cherubyte-agent
+
+volumes:
+  panel-data:
+  agent-state:
+```
+
+The two services come up in two steps, because the token only exists once the
+panel is running:
+
 ```bash
 docker compose up -d panel              # panel on http://<host>:1001
 # in the panel: Agents → new token, then:
 AGENT_ENROL_TOKEN=<token> docker compose up -d agent
 ```
 
-The agent runs `network_mode: host` (required for layer-2 discovery) with
-`NET_RAW` / `NET_ADMIN`; the panel is an ordinary bridge with no capabilities.
+One agent per network: for a second site, copy the `agent` block under a new
+name, give it its own token and its own state volume, and point it at the same
+panel.
+
 Keep the agent's state volume — without it the agent re-enrols on every restart,
 and the second restart fails because the token is already spent.
 
