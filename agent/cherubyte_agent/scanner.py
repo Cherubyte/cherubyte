@@ -84,6 +84,7 @@ class Host:
     ssdp_vendor: str | None = None
     ssdp_model: str | None = None
     netbios_name: str | None = None
+    llmnr_name: str | None = None
     http_server: str | None = None
     http_title: str | None = None
     ttl_os: str | None = None
@@ -179,6 +180,19 @@ def _route_for(cidr: str) -> tuple[str | None, bool]:
     except Exception:  # noqa: BLE001
         return None, True  # unknown -> assume on-link, i.e. today's behaviour
     return (str(iface) if iface else None), gw in ("0.0.0.0", "", None)
+
+
+def _gateway_for(ip: str) -> str | None:
+    """The gateway the OS would route through to reach `ip` — almost always
+    also the LAN's DNS server, and so a fallback reverse-DNS target when the
+    OS resolver itself comes up empty (see discovery.gateway_reverse_dns)."""
+    from scapy.all import conf
+
+    try:
+        _, _, gw = conf.route.route(ip)
+    except Exception:  # noqa: BLE001
+        return None
+    return gw if gw not in ("0.0.0.0", "", None) else None
 
 
 def _scan_targets() -> list[tuple[str, str | None]]:
@@ -496,11 +510,21 @@ def _probe_host(host: Host) -> Host:
     """
     if settings.enable_reverse_dns:
         host.hostname = _reverse_dns(host.ip)
+        if not host.hostname:
+            # The OS resolver came back with nothing — on many self-hosted
+            # Linux boxes that's systemd-resolved silently refusing to
+            # forward a private-range PTR query rather than the network
+            # actually lacking one. Ask the gateway directly instead.
+            gw = _gateway_for(host.ip)
+            if gw:
+                host.hostname = discovery.gateway_reverse_dns(host.ip, gw)
 
     if 139 in host.open_ports or 445 in host.open_ports:
         host.netbios_name = discovery.netbios_name(host.ip)
     else:
         host.netbios_name = discovery.netbios_name(host.ip, timeout=0.5)
+
+    host.llmnr_name = discovery.llmnr_name(host.ip)
 
     if host.open_ports.keys() & {80, 8080, 443}:
         banner = discovery.http_banner(host.ip)

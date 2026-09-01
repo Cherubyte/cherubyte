@@ -38,6 +38,7 @@ def to_observation(host: Host) -> HostObservation:
         ssdp_vendor=host.ssdp_vendor,
         ssdp_model=host.ssdp_model,
         netbios_name=host.netbios_name,
+        llmnr_name=host.llmnr_name,
         http_server=host.http_server,
         http_title=host.http_title,
         ttl_os=host.ttl_os,
