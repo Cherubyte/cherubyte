@@ -9,7 +9,7 @@ import { deviceTypeLabel, stringHsl, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import { TypeCode, useBrandLogos, useOsLogos } from "./TypeCode";
 import { EmptyState, SkeletonRows } from "./ui";
-import { ArrowUpRight, CaretDown, DeviceTypeIcon, Trash } from "./Glyph";
+import { ArrowUpRight, CaretDown, DeviceTypeIcon, PeopleIcon, Trash } from "./Glyph";
 import { useToast } from "./Toaster";
 
 type SortKey = "name" | "ip" | "type" | "seen";
@@ -195,6 +195,14 @@ function Row({
           <span className={clsx("truncate text-[13.5px] font-medium", dim ? "text-fg-2" : "text-fg")}>
             {d.display_name}
           </span>
+          {d.user && d.counts_for_presence && (
+            <span
+              className="hidden shrink-0 text-fg-3 sm:inline-block"
+              title={t("device.countsForPresence")}
+            >
+              <PeopleIcon size={11} />
+            </span>
+          )}
           {pending && (
             <span className="hidden shrink-0 text-[10px] font-medium text-alert sm:inline">
               {t("list.unreviewed")}

@@ -109,6 +109,8 @@ export function CommandPalette() {
         d.display_name.toLowerCase().includes(n) ||
         (d.vendor ?? "").toLowerCase().includes(n) ||
         (d.os_family ?? "").toLowerCase().includes(n) ||
+        d.device_type.toLowerCase().includes(n) ||
+        deviceTypeLabel(d.device_type).toLowerCase().includes(n) ||
         d.ips.some((i) => i.address.includes(n)) ||
         d.macs.some((m) => m.address.toLowerCase().includes(n))
       );

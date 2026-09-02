@@ -9,7 +9,7 @@ import { ArrowRight, Search } from "../components/Glyph";
 import { Readout, Redacted } from "../components/ui";
 import { motion, useReducedMotion } from "../lib/motion";
 import { useIsMobile } from "../hooks/useMediaQuery";
-import { ipInCidr, timeAgo } from "../lib/format";
+import { deviceTypeLabel, ipInCidr, timeAgo } from "../lib/format";
 import { useT, type MessageKey } from "../i18n";
 import type { Device, WanStatus } from "../api/types";
 
@@ -78,6 +78,8 @@ export function Dashboard() {
           d.display_name.toLowerCase().includes(n) ||
           (d.vendor ?? "").toLowerCase().includes(n) ||
           (d.os_family ?? "").toLowerCase().includes(n) ||
+          d.device_type.toLowerCase().includes(n) ||
+          deviceTypeLabel(d.device_type).toLowerCase().includes(n) ||
           d.ips.some((i) => i.address.includes(n)) ||
           d.macs.some((m) => m.address.toLowerCase().includes(n)) ||
           d.tags.some((g) => g.toLowerCase().includes(n)),
