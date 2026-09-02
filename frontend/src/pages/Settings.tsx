@@ -27,6 +27,7 @@ import {
 import { useToast } from "../components/Toaster";
 import { useTheme, type ThemePref } from "../hooks/useTheme";
 import { copyText } from "../lib/ports";
+import { installCommand } from "../lib/agentInstall";
 import { timeAgo } from "../lib/format";
 import { useT, useLocale, type MessageKey } from "../i18n";
 import { intlLocale, LOCALES, type Locale } from "../i18n/locale";
@@ -1345,12 +1346,11 @@ function AgentsSection() {
             <div>
               <span className="label text-fg-3">{t("agents.install.docker")}</span>
               <pre className="mono mt-1 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2">
-{`docker run -d --name cherubyte-agent --network host \\
-  --cap-add NET_RAW --cap-add NET_ADMIN \\
-  -v cherubyte-agent:/var/lib/cherubyte-agent \\
-  -e CHERUBYTE_AGENT_PANEL_URL=${panelUrl} \\
-  -e CHERUBYTE_AGENT_ENROL_TOKEN=${token} \\
-  ${release.data?.docker_image ?? "ghcr.io/cherubyte/cherubyte-agent:latest"}`}
+{installCommand("docker", {
+  panelUrl,
+  token,
+  dockerImage: release.data?.docker_image,
+})}
               </pre>
             </div>
 
@@ -1380,15 +1380,11 @@ function AgentsSection() {
                     key={p}
                     className="mono mt-2 overflow-x-auto rounded-lg bg-surface p-2.5 text-[11px] text-fg-2"
                   >
-{p === "windows"
-  ? `# ${t("agents.install.windows")}  (elevated PowerShell)
-curl.exe -fsSL ${panelUrl}/api/agents/download/windows -o cherubyte-agent.exe
-curl.exe -fsSL ${panelUrl}/api/agents/installer/windows -o install.ps1
-.\\install.ps1 -PanelUrl ${panelUrl} -EnrolToken ${token} -ExePath .\\cherubyte-agent.exe`
-  : `# ${t(p === "macos" ? "agents.install.macos" : "agents.install.linux")}
-curl -fsSL ${panelUrl}/api/agents/download/${p} -o cherubyte-agent && chmod +x cherubyte-agent
-curl -fsSL ${panelUrl}/api/agents/installer/${p} | sudo bash -s -- \\
-  --panel ${panelUrl} --token ${token} --binary ./cherubyte-agent`}
+{installCommand(p, {
+  panelUrl,
+  token,
+  heading: t(`agents.install.${p}` as MessageKey),
+})}
                   </pre>
                 ))}
                 <p className="mono mt-1.5 text-[10.5px] text-fg-3">{t("agents.native.hint")}</p>

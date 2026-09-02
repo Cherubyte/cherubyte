@@ -236,8 +236,25 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; color: r
   .btn-danger:hover { background: rgb(var(--alert)); color: rgb(var(--alert-fg)); }
 
   .btn-sm   { --h: 28px; padding: 0 11px; font-size: 12px; border-radius: 7px; }
+  .btn-xs   { --h: 24px; padding: 0 9px;  font-size: 11.5px; border-radius: 6px; gap: 5px; }
   .btn-lg   { --h: 40px; padding: 0 22px; font-size: 14px; border-radius: 9px; }
   .btn-icon { padding: 0; width: var(--h); gap: 0; }
+
+  /* ── segmented — filled pills on a translucent-grey track ─────────── */
+  .segmented {
+    display: inline-flex; flex-shrink: 0; gap: 2px; padding: 2px;
+    background: rgb(var(--fg) / .06); border-radius: 10px;
+    font-size: 12.5px; font-weight: 500; line-height: 1;
+  }
+  .segmented > button {
+    border: 0; background: transparent; font: inherit; cursor: pointer;
+    padding: 7px 12px; border-radius: 6px; color: rgb(var(--fg-2));
+    transition: color .14s var(--ease), background-color .14s var(--ease);
+  }
+  .segmented > button:hover { color: rgb(var(--fg)); }
+  .segmented > button[aria-selected="true"] {
+    background: rgb(var(--surface)); color: rgb(var(--fg)); box-shadow: var(--e1);
+  }
 
   /* ── inputs — a grey fill, no stroke; ink ring on focus ──────────── */
   .input {
@@ -338,6 +355,8 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.011em; color: r
 @keyframes overlay-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+/* the "still waiting for the agent" dot during first-run setup */
+@keyframes cb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
 
 /* ═══════════════════════════ scrollbars ══════════════════════════════ */
 ::-webkit-scrollbar { width: 12px; height: 12px; }
