@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -15,9 +16,11 @@ from sqlalchemy.orm import selectinload
 from ..config import UPLOAD_DIR, settings
 from ..database import get_session
 from ..models import (
+    ActionKind,
     ApprovalStatus,
     ConnectionHistory,
     Device,
+    DeviceAction,
     DeviceImage,
     Event,
     EventLevel,
@@ -26,7 +29,7 @@ from ..models import (
     OpenPort,
     iso_utc,
 )
-from ..services import duplicates, uptime, wol
+from ..services import device_actions, duplicates, uptime, wol
 from ._uploads import save_image_upload
 from ..schemas import (
     AbsorbMacRequest,
@@ -402,6 +405,48 @@ async def wake_device(device_id: int, session: AsyncSession = Depends(get_sessio
     )
     await session.commit()
     return {"ok": True, "mac": norm}
+
+
+def _action_out(a: DeviceAction) -> dict:
+    return {
+        "id": a.id,
+        "kind": a.kind.value,
+        "status": a.status.value,
+        "result": json.loads(a.result) if a.result else None,
+        "requested_at": iso_utc(a.requested_at),
+        "completed_at": iso_utc(a.completed_at),
+    }
+
+
+@router.post("/{device_id}/actions")
+async def queue_device_action(
+    device_id: int,
+    kind: ActionKind,
+    session: AsyncSession = Depends(get_session),
+):
+    """Queue a ping / port scan / traceroute against this device. Like Wake-on-
+    LAN, the panel can't run it itself — it's handed to the agents on their
+    next check-in, and only the one on the device's segment can reach it."""
+    device = await _get(session, device_id)
+    target = next((i for i in device.ips if i.is_primary), None) or (device.ips[0] if device.ips else None)
+    if target is None:
+        raise HTTPException(422, "Device has no IP address to probe")
+    action = device_actions.queue(device.id, kind, target.address)
+    session.add(action)
+    await session.commit()
+    return _action_out(action)
+
+
+@router.get("/{device_id}/actions")
+async def list_device_actions(
+    device_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Recent on-demand actions for this device, newest first — polled by the
+    device page while one is still pending."""
+    await _get(session, device_id)  # 404s on an unknown device
+    rows = await device_actions.recent_for_device(session, device_id)
+    return [_action_out(a) for a in rows]
 
 
 @router.post("/{device_id}/absorb-mac", response_model=DeviceOut)

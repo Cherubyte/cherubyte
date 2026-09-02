@@ -178,6 +178,32 @@ export interface Connection {
   timestamp: string;
 }
 
+export type ActionKind = "ping" | "port_scan_quick" | "port_scan_full" | "traceroute";
+export type ActionStatus = "pending" | "done" | "failed" | "expired";
+
+export interface TracerouteHop {
+  ttl: number;
+  ip: string | null;
+  rtt_ms: number | null;
+}
+
+export interface DeviceActionResultData {
+  error: string | null;
+  latency_ms: number | null;
+  packet_loss: number | null;
+  open_ports: Record<string, string>;
+  hops: TracerouteHop[];
+}
+
+export interface DeviceAction {
+  id: number;
+  kind: ActionKind;
+  status: ActionStatus;
+  result: DeviceActionResultData | null;
+  requested_at: string;
+  completed_at: string | null;
+}
+
 export interface User {
   id: number;
   name: string;
