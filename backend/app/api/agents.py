@@ -205,6 +205,62 @@ async def approve_device_code(
     return {"code": row.code, "name": row.name, "state": row.state}
 
 
+# ── self-update ────────────────────────────────────────────────────────────
+#
+# Reached with the agent's own key rather than an account cookie, because the
+# thing asking is a service on somebody's LAN at three in the morning.
+#
+# The panel serves the bytes and cannot vouch for them. It is in the path of
+# every update and is the thing most worth compromising, so what makes this
+# safe is that the agent carries the release public key compiled in and will
+# not execute anything whose digest is not in a list that key signed. The
+# panel is a delivery mechanism here, not an authority.
+
+
+@router.get("/{agent_id}/update")
+async def update_manifest(
+    agent_id: int,
+    authorization: str | None = Header(None),
+    session: AsyncSession = Depends(get_session),
+):
+    """What the current release is, and the signed digests that describe it."""
+    agent = await agent_service.authenticate(session, agent_id, _bearer(authorization))
+    if agent is None:
+        raise HTTPException(401, "Unknown agent or invalid key")
+
+    info = await agent_release.latest()
+    signed = await agent_release.signed_digests()
+    return {
+        "version": (info.get("tag") or "").lstrip("v"),
+        "tag": info.get("tag") or "",
+        "assets": {p: name for p, name in agent_release.PLATFORMS.items()},
+        # None when the release predates signing. The agent refuses to update
+        # in that case, which is deliberately its decision rather than ours.
+        "sums": signed[0].decode("utf-8", "replace") if signed else None,
+        "signature": (
+            __import__("base64").b64encode(signed[1]).decode("ascii") if signed else None
+        ),
+    }
+
+
+@router.get("/{agent_id}/update/download")
+async def update_download(
+    agent_id: int,
+    platform: str,
+    authorization: str | None = Header(None),
+    session: AsyncSession = Depends(get_session),
+):
+    """The binary itself, for an agent that has already checked the digests."""
+    agent = await agent_service.authenticate(session, agent_id, _bearer(authorization))
+    if agent is None:
+        raise HTTPException(401, "Unknown agent or invalid key")
+
+    path = await agent_release.asset_path(platform)
+    if path is None:
+        raise HTTPException(404, "No build for that platform in the current release")
+    return FileResponse(path, filename=agent_release.PLATFORMS[platform])
+
+
 @router.post("/{agent_id}/report", response_model=ReportAck)
 async def receive_report(
     agent_id: int,

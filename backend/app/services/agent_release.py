@@ -42,6 +42,13 @@ DOWNLOAD_NAME: dict[str, str] = {
     "macos": "cherubyte-agent",
     "windows": "cherubyte-agent.exe",
 }
+# The signed digest list attached to a release, and its signature. An agent
+# will not install anything whose digest is not in a list signed by the key it
+# carries, so a release without these is one no agent updates itself from.
+SUMS_NAME = "SHA256SUMS"
+SIGNATURE_NAME = "SHA256SUMS.sig"
+_sums_cache: dict[str, tuple[str, bytes, bytes]] = {}
+
 # the per-platform installer, so `curl <panel>/.../installer/linux | sudo bash`
 # is all a native install takes — no repo checkout, panel is the only host hit.
 _INSTALLER_PATH: dict[str, str] = {
@@ -58,6 +65,7 @@ _cache: dict = {
     "tag": None,
     "published_at": None,
     "assets": {},          # platform -> {"name", "url", "size"}
+    "signature_urls": {},  # SHA256SUMS / SHA256SUMS.sig -> url, when signed
     "checked_at": None,
     "error": None,
     "_fetched_monotonic": 0.0,
@@ -99,6 +107,14 @@ async def latest(*, force: bool = False) -> dict:
                 tag=body.get("tag_name"),
                 published_at=body.get("published_at"),
                 assets=assets,
+                # The signed digest list and its signature, when the release
+                # has them. Kept as URLs rather than fetched here: most callers
+                # of latest() are the settings page and do not need them.
+                signature_urls={
+                    name: by_name[name]["browser_download_url"]
+                    for name in (SUMS_NAME, SIGNATURE_NAME)
+                    if name in by_name
+                },
                 checked_at=iso_utc(utcnow()),
                 error=None,
                 _fetched_monotonic=time.monotonic(),
@@ -159,6 +175,39 @@ async def asset_path(platform: str) -> Path | None:
 
 
 _installer_cache: dict[str, str] = {}
+
+
+async def signed_digests() -> tuple[bytes, bytes] | None:
+    """The release's digest list and its signature, or None if unsigned.
+
+    Cached by tag, because every agent on every network asks for the same two
+    small files and GitHub's unauthenticated rate limit is per address.
+
+    A release without them is not an error here — older releases predate
+    signing. It is the *agent* that refuses to update from one, which is the
+    right place for that decision: the panel serves what exists and the thing
+    about to execute a binary is what insists on proof.
+    """
+    info = await latest()
+    tag = info.get("tag") or ""
+    if not tag:
+        return None
+    hit = _sums_cache.get("current")
+    if hit and hit[0] == tag:
+        return hit[1], hit[2]
+
+    urls = info.get("signature_urls") or {}
+    if SUMS_NAME not in urls or SIGNATURE_NAME not in urls:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            sums = (await client.get(urls[SUMS_NAME])).content
+            signature = (await client.get(urls[SIGNATURE_NAME])).content
+    except httpx.HTTPError as exc:
+        logger.warning("Could not fetch the release digests: %s", exc)
+        return None
+    _sums_cache["current"] = (tag, sums, signature)
+    return sums, signature
 
 
 async def installer_script(platform: str) -> str | None:
