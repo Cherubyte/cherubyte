@@ -27,6 +27,32 @@ logging.basicConfig(
 logger = logging.getLogger("cherubyte")
 
 
+async def _upgrade_every_tenant() -> None:
+    """Bring every existing tenant's schema up to date at startup.
+
+    Single-tenant does this on the one database and always has. Hosted did it
+    only when a tenant was *created*, so a deploy that added a column reached
+    new tenants and nobody else — the schema silently drifted per file, and
+    the first symptom was a query failing on one customer and not another.
+
+    Idempotent, and a few milliseconds each: create_all finds nothing to do
+    and Alembic finds nothing to run once a database is current. A tenant
+    whose upgrade fails is logged and skipped rather than taking the whole
+    service down with it, since the others are fine and one broken file
+    should not be an outage for everyone.
+    """
+    from .database import known_tenants, provision_tenant
+
+    tenants = known_tenants()
+    for tenant_id in tenants:
+        try:
+            await provision_tenant(tenant_id)
+        except Exception:
+            logger.exception("Could not upgrade the schema for %s", tenant_id)
+    if tenants:
+        logger.info("Schema checked for %d tenant(s)", len(tenants))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.multi_tenant:
@@ -36,6 +62,7 @@ async def lifespan(app: FastAPI):
         # announced-set are process-global, so on a shared process it would
         # publish one tenant's devices under another's discovery topics; it
         # moves to the agent, which is on the LAN the broker is on anyway.
+        await _upgrade_every_tenant()
         start_scheduler()
         logger.info("Cherubyte up on :%s — hosted", settings.port)
         yield

@@ -168,3 +168,64 @@ def test_last_scan_is_shared_state_when_self_hosted():
     scheduler.note_report()
     assert scheduler.last_scan() is not None
     scheduler._state.pop(None, None)
+
+
+@pytest.mark.asyncio
+async def test_every_tenant_is_brought_up_to_date_at_startup(two_tenants):
+    """A deploy that adds a column has to reach tenants that already exist.
+
+    It used to reach only the ones created afterwards, so the schema drifted
+    per file and the first symptom was a query failing for one customer and
+    not another.
+    """
+    from sqlalchemy import text
+
+    from app.database import tenant_db_path
+    from app.main import _upgrade_every_tenant
+
+    # Put one tenant back where an older release left it: the column gone and
+    # Alembic recording a revision before the one that adds it. Rewinding the
+    # version matters — create_all only creates missing *tables*, so without
+    # it the migration is the only thing that can bring a column back, and it
+    # will not re-run against a database that says it is already current.
+    # The index goes first: SQLite refuses to drop a column one depends on.
+    async with database.scoped_to("alpha") as session:
+        await session.execute(text("DROP INDEX IF EXISTS ix_mac_addresses_address_bi"))
+        await session.execute(text("ALTER TABLE mac_addresses DROP COLUMN address_bi"))
+        await session.execute(text("UPDATE alembic_version SET version_num = 'baseline'"))
+        await session.commit()
+    await database.close_tenant("alpha")
+
+    await _upgrade_every_tenant()
+
+    import sqlite3
+
+    con = sqlite3.connect(tenant_db_path("alpha"))
+    try:
+        cols = {r[1] for r in con.execute("PRAGMA table_info(mac_addresses)")}
+    finally:
+        con.close()
+    assert "address_bi" in cols
+
+
+@pytest.mark.asyncio
+async def test_one_tenant_that_will_not_upgrade_is_not_an_outage(two_tenants, caplog):
+    # The others are fine, and one broken file should not stop the service
+    # for everybody.
+    from app import database as db
+    from app.main import _upgrade_every_tenant
+
+    real = db.provision_tenant
+
+    async def flaky(tenant_id):
+        if tenant_id == "alpha":
+            raise RuntimeError("disk is on fire")
+        return await real(tenant_id)
+
+    db.provision_tenant = flaky
+    try:
+        with caplog.at_level("ERROR"):
+            await _upgrade_every_tenant()
+    finally:
+        db.provision_tenant = real
+    assert "alpha" in caplog.text
