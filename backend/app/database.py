@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from .config import BASE_DIR, settings, tenant_settings
+from . import keyring
 from .tenancy import current_tenant, validate_tenant_id
 
 logger = logging.getLogger("cherubyte.db")
@@ -239,12 +240,17 @@ async def scoped_to(tenant_id: str) -> AsyncIterator[AsyncSession]:
     tenant_id = validate_tenant_id(tenant_id)
     token = current_tenant.set(tenant_id)
     try:
+        # The key too, not just the database and the settings. A background
+        # job that ran without one would read every encrypted column as an
+        # opaque string and write plain text back over it.
+        key = await keyring.load_for(tenant_id)
         _, make = await _tenants.get(tenant_id)
-        async with make() as session:
-            overlay: dict[str, object] = {}
-            with tenant_settings(overlay):
-                await load_settings_into(session)
-                yield session
+        with keyring.using(key):
+            async with make() as session:
+                overlay: dict[str, object] = {}
+                with tenant_settings(overlay):
+                    await load_settings_into(session)
+                    yield session
     finally:
         current_tenant.reset(token)
 
@@ -268,6 +274,7 @@ async def discard_tenant(tenant_id: str) -> None:
     provisioning of the same id would silently inherit.
     """
     tenant_id = validate_tenant_id(tenant_id)
+    keyring.forget(tenant_id)
     await _tenants.drop(tenant_id)
     base = str(tenant_db_path(tenant_id))
     for suffix in ("", "-wal", "-shm"):
@@ -299,8 +306,17 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         _, make = await _tenants.get(tenant)
     except LookupError:
         raise HTTPException(404, "Unknown tenant") from None
-    async with make() as session:
-        yield session
+    try:
+        key = await keyring.load_for(tenant)
+    except keyring.KeyServiceError as exc:
+        # 503 rather than 500: the data is intact and the panel is fine, the
+        # key service is not. Serving the request without a key is the one
+        # thing that must not happen.
+        logger.error("No encryption key for %s: %s", tenant, exc)
+        raise HTTPException(503, "Encryption keys are unavailable") from None
+    with keyring.using(key):
+        async with make() as session:
+            yield session
 
 
 # ── schema ─────────────────────────────────────────────────────────────────

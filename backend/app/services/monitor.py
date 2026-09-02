@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..config import settings
+from ..crypto import blind_index
 from ..database import open_session
 from ..models import (
     ApprovalStatus,
@@ -269,7 +270,7 @@ async def _find_device_by_mac(session: AsyncSession, mac: str) -> Device | None:
     res = await session.execute(
         select(Device)
         .join(MacAddress)
-        .where(MacAddress.address == mac)
+        .where(MacAddress.address_bi == blind_index(mac))
         .options(
             selectinload(Device.macs),
             selectinload(Device.ips),
@@ -410,7 +411,7 @@ async def _reconcile_host(
     ip_row = next((i for i in device.ips if i.address == host.ip), None)
     if ip_row is None:
         existing = await session.execute(
-            select(IpAddress).where(IpAddress.address == host.ip)
+            select(IpAddress).where(IpAddress.address_bi == blind_index(host.ip))
         )
         stray = existing.scalars().first()
         if stray is not None:

@@ -15,8 +15,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
+from .crypto import EncryptedString, EncryptedText, blind_index
 from .database import Base
 
 
@@ -167,14 +168,27 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(120), unique=True)
+    # Encrypted, so the unique constraint moves to the blind index: two rows
+    # holding the same name encrypt to different ciphertext and SQLite would
+    # happily keep both.
+    name: Mapped[str] = mapped_column(EncryptedString(255, aad="users.name"))
+    name_bi: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
+
     avatar: Mapped[str | None] = mapped_column(String(255))
-    notes: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(EncryptedText(aad="users.notes"))
     # Visitas: pessoas ocasionais, listadas em separado das pessoas principais.
     is_guest: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     devices: Mapped[list[Device]] = relationship(back_populates="user")
+
+    @validates("name")
+    def _index_name(self, _key: str, value: str) -> str:
+        """The unique constraint lives on the blind index, so it has to be
+        written whenever the name is — including from `update_user`, which
+        assigns attributes in a loop and has no place to call a helper."""
+        self.name_bi = blind_index(value)
+        return value
 
 
 class Device(Base):
@@ -182,9 +196,12 @@ class Device(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # User-set nickname. When unset the display name defaults to "Marca Modelo".
-    name: Mapped[str | None] = mapped_column(String(255))
-    # Best auto-detected name (mDNS / NetBIOS / reverse-DNS / UPnP).
-    hostname: Mapped[str | None] = mapped_column(String(255))
+    name: Mapped[str | None] = mapped_column(EncryptedString(255, aad="devices.name"))
+    # Best auto-detected name (mDNS / NetBIOS / reverse-DNS / UPnP). Often a
+    # person's own name with a laptop attached to it.
+    hostname: Mapped[str | None] = mapped_column(
+        EncryptedString(255, aad="devices.hostname")
+    )
     device_type: Mapped[DeviceType] = mapped_column(
         Enum(DeviceType), default=DeviceType.unknown
     )
@@ -192,7 +209,7 @@ class Device(Base):
     model: Mapped[str | None] = mapped_column(String(255))
     os_guess: Mapped[str | None] = mapped_column(String(255))
     icon: Mapped[str | None] = mapped_column(String(64))
-    notes: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(EncryptedText(aad="devices.notes"))
 
     # Comma-separated names of auto-populated fields the user has edited by hand.
     # The scan reconciler must never overwrite a field listed here.
@@ -222,7 +239,7 @@ class Device(Base):
 
     # Free-text labels the user attaches — a room, a purpose, a person's kit.
     # Comma-separated on the column; `tag_list` / `set_tags` do the parsing.
-    tags: Mapped[str | None] = mapped_column(String(255))
+    tags: Mapped[str | None] = mapped_column(EncryptedString(255, aad="devices.tags"))
 
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     user: Mapped[User | None] = relationship(back_populates="devices")
@@ -423,13 +440,29 @@ class MacAddress(Base):
     device_id: Mapped[int] = mapped_column(
         ForeignKey("devices.id", ondelete="CASCADE"), index=True
     )
-    address: Mapped[str] = mapped_column(String(17), index=True)
+    address: Mapped[str] = mapped_column(EncryptedString(255, aad="mac_addresses.address"))
+    # Equality lookups run against this, never against `address`. Keep the two
+    # in step through `set_address()`; setting one alone is a row that cannot
+    # be found again.
+    address_bi: Mapped[str | None] = mapped_column(String(64), index=True)
     vendor: Mapped[str | None] = mapped_column(String(255))
     is_random: Mapped[bool] = mapped_column(Boolean, default=False)
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     device: Mapped[Device] = relationship(back_populates="macs")
+
+    @validates("address")
+    def _index_address(self, _key: str, value: str) -> str:
+        """Keep the blind index in step with the address, always.
+
+        A validator rather than a setter the caller must remember: an address
+        written straight to the attribute encrypts fine and then matches no
+        lookup, which surfaces much later as a device rediscovered as new
+        every scan.
+        """
+        self.address_bi = blind_index(value)
+        return value
 
 
 class IpAddress(Base):
@@ -440,12 +473,19 @@ class IpAddress(Base):
     device_id: Mapped[int] = mapped_column(
         ForeignKey("devices.id", ondelete="CASCADE"), index=True
     )
-    address: Mapped[str] = mapped_column(String(45), index=True)
+    address: Mapped[str] = mapped_column(EncryptedString(255, aad="ip_addresses.address"))
+    address_bi: Mapped[str | None] = mapped_column(String(64), index=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     device: Mapped[Device] = relationship(back_populates="ips")
+
+    @validates("address")
+    def _index_address(self, _key: str, value: str) -> str:
+        """See `MacAddress._index_address`: the pair moves together."""
+        self.address_bi = blind_index(value)
+        return value
 
 
 class OpenPort(Base):
@@ -489,8 +529,8 @@ class ConnectionHistory(Base):
         ForeignKey("devices.id", ondelete="CASCADE"), index=True
     )
     event: Mapped[str] = mapped_column(String(16))  # "join" | "leave"
-    ip: Mapped[str | None] = mapped_column(String(45))
-    mac: Mapped[str | None] = mapped_column(String(17))
+    ip: Mapped[str | None] = mapped_column(EncryptedString(255, aad="connection_history.ip"))
+    mac: Mapped[str | None] = mapped_column(EncryptedString(255, aad="connection_history.mac"))
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
@@ -502,7 +542,8 @@ class Event(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     level: Mapped[EventLevel] = mapped_column(Enum(EventLevel), default=EventLevel.info)
     category: Mapped[str] = mapped_column(String(64), default="system")
-    message: Mapped[str] = mapped_column(Text)
+    # Event text names devices and people: "Sam's iPhone joined".
+    message: Mapped[str] = mapped_column(EncryptedText(aad="events.message"))
     device_id: Mapped[int | None] = mapped_column(
         ForeignKey("devices.id", ondelete="SET NULL")
     )
@@ -527,9 +568,13 @@ class TopologyEdge(Base):
     local_device_id: Mapped[int | None] = mapped_column(
         ForeignKey("devices.id", ondelete="SET NULL")
     )
-    local_label: Mapped[str] = mapped_column(String(255), default="")
+    local_label: Mapped[str] = mapped_column(
+        EncryptedString(255, aad="topology_edges.local_label"), default=""
+    )
     local_port: Mapped[str | None] = mapped_column(String(120))
-    remote_label: Mapped[str] = mapped_column(String(255), default="")
+    remote_label: Mapped[str] = mapped_column(
+        EncryptedString(255, aad="topology_edges.remote_label"), default=""
+    )
     remote_port: Mapped[str | None] = mapped_column(String(120))
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

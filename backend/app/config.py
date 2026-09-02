@@ -95,6 +95,22 @@ class Settings(BaseSettings):
     # which shares this hostname — the tunnel routes this path to it.
     login_path: str = "/login"
 
+    # Encryption at rest, hosted only. The key for a tenant is fetched from
+    # this service rather than kept beside the data, so a stolen disk yields
+    # ciphertext and every use of a key is a line in an audit log the operator
+    # cannot quietly erase. Unset means self-hosted: no key, no encryption,
+    # and the same build either way.
+    #
+    # Configured-but-unreachable is a hard failure, never a fall back to plain
+    # text. Writing unencrypted rows into an encrypted database would mix the
+    # two irreversibly, because nothing afterwards can tell which is which.
+    key_service_url: str = ""
+    key_service_token: str = ""
+    # How long a fetched key is held in memory. Short enough that revoking a
+    # tenant's key takes effect without a restart; long enough that a busy
+    # panel is not one audit line per request.
+    key_cache_ttl: int = 300
+
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
     subnet: str = ""

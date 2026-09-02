@@ -17,6 +17,21 @@ def _db_path() -> str:
     return engine.url.database
 
 
+def _head() -> list[str]:
+    """The revision Alembic considers current, read rather than hardcoded.
+
+    These tests are about *stamping and upgrading*, not about which migration
+    happens to be last, so naming one here would break them every time a
+    migration is added — which is exactly what happened.
+    """
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    from app.config import BASE_DIR
+
+    return list(ScriptDirectory.from_config(Config(str(BASE_DIR / "alembic.ini"))).get_heads())
+
+
 async def _reset_empty() -> None:
     """Drop everything, including alembic_version, leaving a blank file."""
     async with engine.begin() as conn:
@@ -48,16 +63,16 @@ def _columns(table: str) -> set[str]:
         con.close()
 
 
-async def test_a_brand_new_database_is_stamped_at_baseline():
+async def test_a_brand_new_database_is_stamped_then_brought_to_head():
     await init_db()
-    assert _alembic_version() == ["baseline"]
+    assert _alembic_version() == _head()
     assert "counts_for_presence" in _columns("devices")
 
 
 async def test_running_init_db_twice_is_a_harmless_no_op():
     await init_db()
     await init_db()
-    assert _alembic_version() == ["baseline"]
+    assert _alembic_version() == _head()
 
 
 async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss():
@@ -86,7 +101,7 @@ async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss(
 
     await init_db()
 
-    assert _alembic_version() == ["baseline"]
+    assert _alembic_version() == _head()
     cols = _columns("devices")
     for missing in ("counts_for_presence", "model", "os_guess", "notify_policy", "tags"):
         assert missing in cols, f"{missing} was not patched in"

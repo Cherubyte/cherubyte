@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..config import settings, upload_dir
+from ..crypto import blind_index
 from ..database import get_session
 from ..models import (
     ApprovalStatus,
@@ -418,8 +419,12 @@ async def absorb_mac(
     await _get(session, device_id)
     addr = payload.address.strip().lower()
 
+    # By blind index: `address` is ciphertext and a fresh nonce every time,
+    # so comparing it would never match anything.
     mac = (
-        await session.execute(select(MacAddress).where(MacAddress.address == addr))
+        await session.execute(
+            select(MacAddress).where(MacAddress.address_bi == blind_index(addr))
+        )
     ).scalars().first()
 
     if mac is None:
