@@ -220,7 +220,16 @@ async def list_tenants(request: Request):
     out = []
     for tenant_id in known_tenants():
         path = tenant_db_path(tenant_id)
-        entry: dict = {"tenant_id": tenant_id, "bytes": path.stat().st_size}
+        # The WAL counts. In WAL mode a database that has not checkpointed
+        # keeps most of itself in the sidecar, so the main file alone reports
+        # 4 KB for a tenant holding half a megabyte — which is exactly the
+        # number an operator would use to decide the box is fine.
+        size = 0
+        for suffix in ("", "-wal", "-shm"):
+            sidecar = path.with_name(path.name + suffix)
+            if sidecar.exists():
+                size += sidecar.stat().st_size
+        entry: dict = {"tenant_id": tenant_id, "bytes": size}
         try:
             async with scoped_to(tenant_id) as session:
                 entry["devices"] = int(
