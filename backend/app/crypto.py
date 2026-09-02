@@ -143,6 +143,44 @@ def blind_index(value: str | None) -> str | None:
     return digest.hexdigest()[:32]
 
 
+# -- files -------------------------------------------------------------------
+#
+# Device photographs are the most personal thing the panel holds — pictures of
+# somebody's rooms — and they live on the same disk as everything else. The
+# magic bytes let a directory hold both encrypted and plain files, which is
+# what makes self-hosted and a part-migrated tenant work on one code path.
+#
+# One AES-GCM operation over the whole file rather than a chunked frame
+# format. Uploads are already bounded by `max_upload_bytes`, so the buffer is
+# bounded too, and a single tag means a truncated file fails to open instead
+# of silently decoding to a shorter picture.
+FILE_MAGIC = b"CBE1"
+
+
+def encrypt_bytes(data: bytes, aad: str) -> bytes:
+    key = current_key.get()
+    if key is None:
+        return data
+    nonce = os.urandom(NONCE_LEN)
+    box = AESGCM(_derive(key, b"cherubyte:enc:v1"))
+    return FILE_MAGIC + nonce + box.encrypt(nonce, data, aad.encode("ascii"))
+
+
+def decrypt_bytes(blob: bytes, aad: str) -> bytes:
+    """The file's contents, or the blob itself if it was never encrypted."""
+    if not blob.startswith(FILE_MAGIC):
+        return blob
+    key = current_key.get()
+    if key is None:
+        raise CryptoError("this file is encrypted and no key is loaded")
+    body = blob[len(FILE_MAGIC) :]
+    box = AESGCM(_derive(key, b"cherubyte:enc:v1"))
+    try:
+        return box.decrypt(body[:NONCE_LEN], body[NONCE_LEN:], aad.encode("ascii"))
+    except InvalidTag as exc:
+        raise CryptoError(f"could not decrypt a file in {aad}") from exc
+
+
 class _Encrypted(TypeDecorator):
     """Encrypt on the way in, decrypt on the way out, transparently.
 

@@ -6,11 +6,13 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .api import api_router
 from .api.settings import _load_from_db
+from . import crypto
+from .api._uploads import UPLOAD_AAD
 from .config import APP_VERSION, UPLOAD_DIR, settings, upload_dir
 from .database import SessionLocal, dispose_tenants, init_db
 from .scheduler import scheduler, start as start_scheduler
@@ -91,6 +93,19 @@ app.include_router(api_router)
 
 
 # Uploads are served by a route rather than a static mount, in both modes.
+# Guessed from the extension, which `save_image_upload` has already checked
+# against the file's actual leading bytes. Encrypted files are served from
+# memory, so there is no path for FileResponse to sniff.
+_MEDIA_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+}
+
+
 # A mount is bound to one directory at import time, and hosted there is no
 # one directory: these are photographs of somebody's home and each tenant has
 # its own. One code path, resolved per request, so the mode cannot be wrong.
@@ -111,7 +126,21 @@ async def serve_upload(name: str):
     # SPA fallback follows, and for the same reason.
     if not candidate.is_relative_to(root) or not candidate.is_file():
         raise HTTPException(404, "Not Found")
-    return FileResponse(candidate)
+
+    blob = candidate.read_bytes()
+    if not blob.startswith(crypto.FILE_MAGIC):
+        # Never encrypted: self-hosted, or written before this existed.
+        # Serving from the path keeps the range and caching headers.
+        return FileResponse(candidate)
+    try:
+        body = crypto.decrypt_bytes(blob, UPLOAD_AAD)
+    except crypto.CryptoError:
+        # The file is here and unreadable. 404 rather than 500: to the person
+        # looking at the page it is a missing picture either way, and a 500 on
+        # an <img> tag says more about the server than it needs to.
+        logger.exception("Could not decrypt %s", candidate.name)
+        raise HTTPException(404, "Not Found") from None
+    return Response(body, media_type=_MEDIA_TYPES.get(candidate.suffix.lower(), "image/jpeg"))
 
 # Uploads are user-supplied and served from our own origin. An SVG logo is a
 # document, not just a picture: opened directly it could run script here. Deny

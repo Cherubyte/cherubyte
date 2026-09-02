@@ -10,6 +10,7 @@ that silently is not loaded, a lookup that quietly matches nothing.
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 
 import pytest
@@ -43,6 +44,31 @@ async def hosted(tmp_path, monkeypatch):
     yield keys
     keyring.forget()
     await database.dispose_tenants()
+
+
+@contextlib.asynccontextmanager
+async def _unencrypted(tenant: str):
+    """A session with no key, whatever the key service would have said.
+
+    `scoped_to` fetches and installs the key itself, so wrapping it in
+    `using(None)` achieves nothing — it is set again on the inside. This is
+    how a database written before encryption existed gets built in a test.
+
+    Restores the one attribute by hand rather than using monkeypatch: undo()
+    is not selective, and rolling back here would also roll back the fixture
+    that set the tenants directory and the key source.
+    """
+
+    async def no_key(_tenant):
+        return None
+
+    original = keyring.load_for
+    keyring.load_for = no_key
+    try:
+        async with database.scoped_to(tenant) as session:
+            yield session
+    finally:
+        keyring.load_for = original
 
 
 def _raw(tenant: str, sql: str) -> list[tuple]:
@@ -305,3 +331,186 @@ async def test_a_fetched_key_is_cached_rather_than_asked_for_every_request(monke
     assert await keyring.key_for("alpha") == ALPHA_KEY
     assert len(calls) == 1
     keyring.forget()
+
+
+# -- photographs -------------------------------------------------------------
+
+
+class _Upload:
+    """The two bits of UploadFile that save_image_upload actually uses."""
+
+    def __init__(self, data: bytes):
+        self._data = data
+        self._sent = False
+
+    async def read(self, _n: int = -1) -> bytes:
+        if self._sent:
+            return b""
+        self._sent = True
+        return self._data
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"the living room" * 8
+
+
+@pytest.mark.asyncio
+async def test_a_photograph_is_not_readable_on_disk(hosted):
+    from app.api._uploads import save_image_upload
+    from app.config import upload_dir
+    from app.tenancy import current_tenant
+
+    token = current_tenant.set("alpha")
+    try:
+        with keyring.using(ALPHA_KEY):
+            dest = upload_dir(create=True) / "dev1-aaaa.png"
+            assert await save_image_upload(_Upload(PNG), dest, max_bytes=1 << 20) == "png"
+    finally:
+        current_tenant.reset(token)
+
+    on_disk = dest.read_bytes()
+    assert not on_disk.startswith(b"\x89PNG")
+    assert b"living room" not in on_disk
+    assert on_disk.startswith(crypto.FILE_MAGIC)
+
+
+@pytest.mark.asyncio
+async def test_the_photograph_comes_back_whole(hosted):
+    with keyring.using(ALPHA_KEY):
+        blob = crypto.encrypt_bytes(PNG, "uploads")
+        assert crypto.decrypt_bytes(blob, "uploads") == PNG
+
+
+@pytest.mark.asyncio
+async def test_a_truncated_photograph_fails_rather_than_decoding_short(hosted):
+    # One tag over the whole file, so a file cut in half does not quietly
+    # become half a picture.
+    with keyring.using(ALPHA_KEY):
+        blob = crypto.encrypt_bytes(PNG, "uploads")
+        with pytest.raises(CryptoError):
+            crypto.decrypt_bytes(blob[: len(blob) // 2], "uploads")
+
+
+@pytest.mark.asyncio
+async def test_another_tenants_key_will_not_open_the_photograph(hosted):
+    with keyring.using(ALPHA_KEY):
+        blob = crypto.encrypt_bytes(PNG, "uploads")
+    with keyring.using(BETA_KEY):
+        with pytest.raises(CryptoError):
+            crypto.decrypt_bytes(blob, "uploads")
+
+
+@pytest.mark.asyncio
+async def test_serving_decrypts_and_a_plain_file_still_works(hosted):
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from app.config import upload_dir
+    from app.main import serve_upload
+    from app.tenancy import TenantMiddleware, current_tenant
+
+    token = current_tenant.set("alpha")
+    try:
+        with keyring.using(ALPHA_KEY):
+            d = upload_dir(create=True)
+            (d / "secret.png").write_bytes(crypto.encrypt_bytes(PNG, "uploads"))
+            # Written before encryption existed, or self-hosted: no magic, and
+            # it has to keep working from the same directory.
+            (d / "plain.png").write_bytes(PNG)
+    finally:
+        current_tenant.reset(token)
+
+    app = FastAPI()
+    app.add_middleware(TenantMiddleware)
+    app.get("/uploads/{name:path}")(serve_upload)
+    headers = {settings.tenant_header: "alpha"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://panel") as c:
+        with keyring.using(ALPHA_KEY):
+            enc = await c.get("/uploads/secret.png", headers=headers)
+            plain = await c.get("/uploads/plain.png", headers=headers)
+
+    assert enc.status_code == 200
+    assert enc.content == PNG
+    assert enc.headers["content-type"] == "image/png"
+    assert plain.status_code == 200 and plain.content == PNG
+
+
+# -- turning it on for a database that already exists ------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_plaintext_database_can_be_brought_under_a_key(hosted):
+    from app.services.reencrypt import reencrypt
+
+    # A beta tenant from before any of this: rows written with no key.
+    async with _unencrypted("alpha") as session:
+        session.add(Device(name="Old Phone", macs=[MacAddress(address="AA:BB:CC:DD:EE:FF")]))
+        session.add(User(name="Sam"))
+        await session.commit()
+
+    assert "Old Phone" in str(_raw("alpha", "SELECT name FROM devices")[0][0])
+
+    counts = await reencrypt("alpha", old_key=None, new_key=ALPHA_KEY)
+    assert counts["devices.name"] == 1
+
+    # Unreadable on disk now.
+    assert "Old Phone" not in str(_raw("alpha", "SELECT name FROM devices")[0][0])
+    # And, the part that actually breaks if this is skipped: the blind index
+    # was rewritten too, so the device is still found by its MAC instead of
+    # being rediscovered as new on the next scan.
+    from app.services.monitor import _find_device_by_mac
+
+    with keyring.using(ALPHA_KEY):
+        async with database.scoped_to("alpha") as session:
+            found = await _find_device_by_mac(session, "aa:bb:cc:dd:ee:ff")
+            assert found is not None and found.name == "Old Phone"
+
+
+@pytest.mark.asyncio
+async def test_it_can_be_run_twice_without_harm(hosted):
+    # An interrupted run has to be safe to start again.
+    from app.services.reencrypt import reencrypt
+
+    async with _unencrypted("alpha") as session:
+        session.add(Device(name="Old Phone"))
+        await session.commit()
+
+    await reencrypt("alpha", old_key=None, new_key=ALPHA_KEY)
+    await reencrypt("alpha", old_key=ALPHA_KEY, new_key=ALPHA_KEY)
+
+    with keyring.using(ALPHA_KEY):
+        async with database.scoped_to("alpha") as session:
+            assert (await session.execute(select(Device))).scalars().one().name == "Old Phone"
+
+
+@pytest.mark.asyncio
+async def test_it_can_hand_the_data_back_on_the_way_out(hosted):
+    # Offboarding is export then delete, and an export nobody can open is not
+    # an export.
+    from app.services.reencrypt import reencrypt
+
+    async with database.scoped_to("alpha") as session:
+        session.add(Device(name="Sam's iPhone"))
+        await session.commit()
+
+    await reencrypt("alpha", old_key=ALPHA_KEY, new_key=None)
+    assert _raw("alpha", "SELECT name FROM devices")[0][0] == "Sam's iPhone"
+
+
+def test_every_encrypted_column_is_found_from_the_models():
+    # Listed by hand, a column added to a model and forgotten would stay in
+    # plain text and nothing would say so.
+    from app.services.reencrypt import encrypted_columns
+
+    found = {(t, c) for t, c, _ in encrypted_columns()}
+    for expected in (
+        ("devices", "name"),
+        ("devices", "hostname"),
+        ("devices", "notes"),
+        ("users", "name"),
+        ("mac_addresses", "address"),
+        ("ip_addresses", "address"),
+        ("events", "message"),
+    ):
+        assert expected in found
+    # And every one names itself, since the label is authenticated.
+    assert all(aad for _t, _c, aad in encrypted_columns())
