@@ -14,6 +14,7 @@ import { Approvals } from "./pages/Approvals";
 import { Dashboard } from "./pages/Dashboard";
 import { DeviceDetail } from "./pages/DeviceDetail";
 import { Distribution } from "./pages/Distribution";
+import { DistributionDetail } from "./pages/DistributionDetail";
 import { Events } from "./pages/Events";
 import { Login } from "./pages/Login";
 import { Settings } from "./pages/Settings";
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
       { path: "devices/:id", element: <DeviceDetail /> },
       { path: "approvals", element: <Approvals /> },
       { path: "distribution", element: <Distribution /> },
+      { path: "distribution/:kind/:name", element: <DistributionDetail /> },
       { path: "users", element: <Users /> },
       { path: "users/:id", element: <UserDetail /> },
       { path: "events", element: <Events /> },

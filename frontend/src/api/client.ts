@@ -5,6 +5,7 @@ import type {
   AgentRow,
   AgentPlatform,
   AgentRelease,
+  ActionKind,
   AlertRule,
   AppSettings,
   AuthStatus,
@@ -12,6 +13,7 @@ import type {
   Brand,
   BrandCount,
   Connection,
+  DeviceAction,
   HostMetrics,
   Device,
   DeviceType,
@@ -93,6 +95,9 @@ export const api = {
   approveDevice: (id: number) => req<Device>(`/devices/${id}/approve`, { method: "POST" }),
   ignoreDevice: (id: number) => req<Device>(`/devices/${id}/ignore`, { method: "POST" }),
   wakeDevice: (id: number) => req<{ ok: boolean; mac: string }>(`/devices/${id}/wake`, { method: "POST" }),
+  deviceActions: (id: number) => req<DeviceAction[]>(`/devices/${id}/actions`),
+  queueDeviceAction: (id: number, kind: ActionKind) =>
+    req<DeviceAction>(`/devices/${id}/actions?kind=${kind}`, { method: "POST" }),
   deleteDevice: (id: number) => req<void>(`/devices/${id}`, { method: "DELETE" }),
   deviceHistory: (id: number) => req<Connection[]>(`/devices/${id}/history`),
   deviceUptime: (id: number, days = 30) =>

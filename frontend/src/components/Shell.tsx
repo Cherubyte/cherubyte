@@ -12,6 +12,7 @@ import { useToast } from "./Toaster";
 import { RollingValue } from "./ui";
 import { CommandPalette } from "./CommandPalette";
 import { Onboarding } from "./Onboarding";
+import { ProgressiveBlur } from "./ProgressiveBlur";
 import { hms } from "../lib/format";
 import { AppMark, Moon, Search, Sun } from "./Glyph";
 import { motion, useReducedMotion, snappy, fade } from "../lib/motion";
@@ -346,7 +347,11 @@ function DesktopShell() {
 
       {/* content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-4 bg-bg/70 px-8 backdrop-blur-xl">
+        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-4 px-8">
+          <div className="pointer-events-none absolute -bottom-8 inset-x-0 top-0 -z-10">
+            <ProgressiveBlur strength={20} className="absolute inset-0" />
+            <div className="absolute inset-0 bg-gradient-to-b from-bg/85 from-55% to-transparent" />
+          </div>
           <h1 className="font-display text-[15px] text-fg">{t(titleKeyOf(pathname))}</h1>
           <CmdKButton />
           <div className="ml-auto flex items-center gap-5 text-[12px] text-fg-3">
@@ -421,7 +426,11 @@ function MobileShell() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-40 shrink-0 bg-bg/80 shadow-[0_1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+      <header className="sticky top-0 z-40 shrink-0 shadow-[0_1px_12px_-4px_rgba(0,0,0,0.12)]">
+        <div className="pointer-events-none absolute -bottom-8 inset-x-0 top-0 -z-10">
+          <ProgressiveBlur strength={20} className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-b from-bg/85 from-55% to-transparent" />
+        </div>
         <div className="flex h-[52px] items-center gap-2.5 px-4">
           <Wordmark compact />
           <span className="mono ml-1 text-[13px] tnum text-fg">

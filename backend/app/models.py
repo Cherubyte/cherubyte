@@ -94,6 +94,22 @@ class EventLevel(str, enum.Enum):
     alert = "alert"
 
 
+class ActionKind(str, enum.Enum):
+    """An on-demand, per-device probe — see `DeviceAction`."""
+
+    ping = "ping"
+    port_scan_quick = "port_scan_quick"
+    port_scan_full = "port_scan_full"
+    traceroute = "traceroute"
+
+
+class ActionStatus(str, enum.Enum):
+    pending = "pending"
+    done = "done"
+    failed = "failed"
+    expired = "expired"
+
+
 class AccountRole(str, enum.Enum):
     """Who may do what once login is required.
 
@@ -659,6 +675,29 @@ class PendingWake(Base):
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
+
+
+class DeviceAction(Base):
+    """An on-demand probe against one device — ping, a port scan, or a
+    traceroute — requested from the device page. Delivered to the agents the
+    same way as a `PendingWake`: any agent reporting in soon after the request
+    is handed it and tries it on its own segment. Whichever one can actually
+    reach the device posts the result back; later results for an already-done
+    row are ignored, so an off-segment agent's failure never overwrites it."""
+
+    __tablename__ = "device_actions"
+    __table_args__ = (Index("ix_device_actions_device_ts", "device_id", "requested_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"))
+    kind: Mapped[ActionKind] = mapped_column(Enum(ActionKind))
+    ip: Mapped[str] = mapped_column(String(64))
+    status: Mapped[ActionStatus] = mapped_column(Enum(ActionStatus), default=ActionStatus.pending, index=True)
+    # JSON-encoded DeviceActionResult fields (open_ports / hops / latency_ms /
+    # packet_loss / error) once an agent reports back.
+    result: Mapped[str | None] = mapped_column(Text, default=None)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
 class Setting(Base):
