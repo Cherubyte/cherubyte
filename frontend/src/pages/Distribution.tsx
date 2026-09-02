@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { DeviceType, TimelinePoint } from "../api/types";
 import { EmptyState, QueryState, Readout, SectionHeader } from "../components/ui";
@@ -179,6 +180,8 @@ function LogoBars({
   const qc = useQueryClient();
   const toast = useToast();
   const t = useT();
+  const nav = useNavigate();
+  const urlKind = kind === "brands" ? "brand" : "os";
   const key = kind === "brands" ? "brands" : "os-logos";
   const list = useQuery({ queryKey: [key], queryFn: kind === "brands" ? api.brands : api.osLogos });
   const fileRef = useRef<HTMLInputElement>(null);
@@ -227,9 +230,14 @@ function LogoBars({
       {rows.map((b) => {
         const on = onlineMap.get(b.name.toLowerCase());
         return (
-          <div key={b.name} className="group grid grid-cols-[28px_84px_1fr_44px] items-center gap-2.5">
+          <div
+            key={b.name}
+            onClick={() => nav(`/distribution/${urlKind}/${encodeURIComponent(b.name)}`)}
+            className="group grid cursor-pointer grid-cols-[28px_84px_1fr_44px] items-center gap-2.5 rounded-lg transition-colors hover:bg-surface-2"
+          >
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setTarget(b.name);
                 fileRef.current?.click();
               }}
@@ -253,7 +261,10 @@ function LogoBars({
               <span className="mono text-[11px] text-fg-2">{b.device_count}</span>
               {b.logo_url && (
                 <button
-                  onClick={() => clear.mutate(b.name)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clear.mutate(b.name);
+                  }}
                   className="text-fg-3 opacity-0 hover:text-alert group-hover:opacity-100"
                 >
                   <Close size={10} />
