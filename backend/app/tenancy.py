@@ -112,6 +112,24 @@ class TenantMiddleware:
         self.app = app
         self._header = settings.tenant_header.lower().encode("latin-1")
 
+    def _misrouted(self, scope: Scope) -> str | None:
+        """The upstream name the router meant, when it is not this process.
+
+        Only checked when this process has been given a name, which is only
+        the case during a blue/green rollout. The router is what stops two
+        panel versions writing one tenant's SQLite file; this catches the
+        router being wrong, because without it the symptom is a corrupted
+        database instead of an error.
+        """
+        if not settings.upstream_name:
+            return None
+        wanted = settings.upstream_header.lower().encode("latin-1")
+        for name, value in scope.get("headers", ()):
+            if name == wanted:
+                meant = value.decode("latin-1").strip()
+                return meant if meant != settings.upstream_name else None
+        return None
+
     def _resolve(self, scope: Scope) -> str | None:
         header_value: str | None = None
         cookie_header = ""
@@ -154,6 +172,20 @@ class TenantMiddleware:
             await self.app(scope, receive, send)
             return
 
+        meant = self._misrouted(scope)
+        if meant is not None:
+            # 421 Misdirected Request, which is exactly what this is: the
+            # request arrived at a server that is not authoritative for it.
+            logger.error(
+                "Refusing a request routed to %r; this process is %r. The router "
+                "and this process disagree about who owns the tenant, and serving "
+                "it would put two schema versions on one database.",
+                meant,
+                settings.upstream_name,
+            )
+            await _refuse(send, 421, b"Misdirected request")
+            return
+
         tenant = self._resolve(scope)
         if tenant is None and _is_page_request(scope):
             # A browser asking for a page, with no session: send it to the
@@ -183,6 +215,21 @@ def _is_page_request(scope: Scope) -> bool:
         if name == b"accept":
             return b"text/html" in value
     return False
+
+
+async def _refuse(send: Send, status: int, body: bytes) -> None:
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": [
+                (b"content-type", b"text/plain; charset=utf-8"),
+                (b"content-length", str(len(body)).encode("ascii")),
+                (b"cache-control", b"no-store"),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
 
 
 async def _redirect(send: Send, location: str) -> None:

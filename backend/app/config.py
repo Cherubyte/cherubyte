@@ -111,6 +111,19 @@ class Settings(BaseSettings):
     # panel is not one audit line per request.
     key_cache_ttl: int = 300
 
+    # This process's name in a blue/green pair, e.g. "blue" or "green". The
+    # router in front puts the name it *meant* to reach in `upstream_header`,
+    # and a mismatch is refused rather than served.
+    #
+    # That refusal is the backstop for the one thing that must never happen:
+    # two panel versions writing one tenant's SQLite file. The router is what
+    # prevents it; this is what catches the router being wrong, because the
+    # symptom otherwise is a corrupted database rather than an error.
+    #
+    # Empty means not participating, which is every single-process install.
+    upstream_name: str = ""
+    upstream_header: str = "X-Cherubyte-Upstream"
+
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
     subnet: str = ""

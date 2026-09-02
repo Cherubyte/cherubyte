@@ -9,6 +9,8 @@ that would silently reach a shared database refuse instead.
 
 from __future__ import annotations
 
+import asyncio
+
 import logging
 import threading
 from collections import OrderedDict
@@ -167,6 +169,50 @@ class _TenantEngines:
 
 _tenants = _TenantEngines()
 
+#: Tenants whose schema this process has already brought up to date. Separate
+#: from the engine cache on purpose: that is an LRU and evicts, and a tenant
+#: reopened after eviction has not changed since it was checked.
+_upgraded: set[str] = set()
+_upgrade_locks: dict[str, asyncio.Lock] = {}
+
+
+async def ensure_schema(tenant_id: str) -> None:
+    """Bring one tenant up to date, once per process.
+
+    This used to be a sweep over every tenant at startup, which was right for
+    one process and wrong for two: a new version booting alongside an old one
+    would upgrade tenants the old one was still serving, and the old code
+    would then be running against a schema it does not know.
+
+    Doing it on first touch instead puts the migration exactly where a
+    per-tenant cutover wants it — at the moment the tenant arrives here. The
+    cost is that one request per tenant per deploy pays for the upgrade.
+
+    The lock is per tenant, so two requests arriving together for a tenant
+    this process has not seen run one migration rather than two.
+    """
+    if tenant_id in _upgraded:
+        return
+    lock = _upgrade_locks.setdefault(tenant_id, asyncio.Lock())
+    async with lock:
+        if tenant_id in _upgraded:
+            return
+        eng, _ = await _tenants.get(tenant_id)
+        await init_db(eng)
+        _upgraded.add(tenant_id)
+
+
+async def _tenant_sessions(tenant_id: str) -> async_sessionmaker[AsyncSession]:
+    """A tenant's sessionmaker, with its schema checked first.
+
+    Every path to a tenant's database goes through here, so there is no entry
+    point that can serve a tenant this process has not upgraded.
+    """
+    _, make = await _tenants.get(tenant_id)
+    await ensure_schema(tenant_id)
+    return make
+
+
 
 async def engine_for(tenant_id: str, *, create: bool = False) -> AsyncEngine:
     """One tenant's engine. LookupError if it was never provisioned."""
@@ -177,11 +223,16 @@ async def engine_for(tenant_id: str, *, create: bool = False) -> AsyncEngine:
 async def session_for(tenant_id: str) -> AsyncSession:
     """A session on one tenant's database, for jobs and services that run
     outside a request. Requests get theirs from get_session()."""
-    _, make = await _tenants.get(tenant_id)
+    make = await _tenant_sessions(tenant_id)
     return make()
 
 
 async def dispose_tenants() -> None:
+    # The upgrade record goes with the engines. It is keyed by tenant id and
+    # nothing else, so a fresh set of tenant files under the same ids — which
+    # is every test — must not inherit the last run's answer.
+    _upgraded.clear()
+    _upgrade_locks.clear()
     await _tenants.dispose_all()
 
 
@@ -221,7 +272,7 @@ async def open_session() -> AsyncIterator[AsyncSession]:
     tenant = current_tenant.get()
     if tenant is None:
         raise RuntimeError("open_session() outside a tenant; use scoped_to(tenant_id)")
-    _, make = await _tenants.get(tenant)
+    make = await _tenant_sessions(tenant)
     async with make() as session:
         yield session
 
@@ -244,7 +295,7 @@ async def scoped_to(tenant_id: str) -> AsyncIterator[AsyncSession]:
         # job that ran without one would read every encrypted column as an
         # opaque string and write plain text back over it.
         key = await keyring.load_for(tenant_id)
-        _, make = await _tenants.get(tenant_id)
+        make = await _tenant_sessions(tenant_id)
         with keyring.using(key):
             async with make() as session:
                 overlay: dict[str, object] = {}
@@ -275,6 +326,8 @@ async def discard_tenant(tenant_id: str) -> None:
     """
     tenant_id = validate_tenant_id(tenant_id)
     keyring.forget(tenant_id)
+    _upgraded.discard(tenant_id)
+    _upgrade_locks.pop(tenant_id, None)
     await _tenants.drop(tenant_id)
     base = str(tenant_db_path(tenant_id))
     for suffix in ("", "-wal", "-shm"):
@@ -303,7 +356,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     if tenant is None:
         raise HTTPException(401, "No tenant")
     try:
-        _, make = await _tenants.get(tenant)
+        make = await _tenant_sessions(tenant)
     except LookupError:
         raise HTTPException(404, "Unknown tenant") from None
     try:
@@ -414,4 +467,5 @@ async def provision_tenant(tenant_id: str) -> Path:
     """
     eng = await engine_for(tenant_id, create=True)
     await init_db(eng)
+    _upgraded.add(tenant_id)
     return tenant_db_path(tenant_id)
