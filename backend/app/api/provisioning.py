@@ -21,17 +21,19 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 
 from ..config import settings
 from ..database import (
     discard_tenant,
+    known_tenants,
     provision_tenant,
     scoped_to,
     session_for,
     tenant_db_path,
 )
-from ..models import Account, AccountRole
+from ..models import Account, AccountRole, Agent, AuthSession, Device
+from ..scheduler import forget_tenant_state
 from ..services import auth
 from ..tenancy import validate_tenant_id
 from .auth import _check_password, _clean_username
@@ -145,6 +147,98 @@ async def mint_session(tenant_id: str, request: Request):
             username=account.username,
             max_age=int(auth.SESSION_TTL.total_seconds()),
         )
+
+
+@router.delete("/{tenant_id}/sessions", status_code=200)
+async def revoke_sessions(tenant_id: str, request: Request):
+    """Sign a tenant out everywhere.
+
+    What makes suspension mean anything. The registry refuses a suspended
+    tenant a *new* session, but one already issued would keep working —
+    the panel knows nothing about suspension and a session is a row in the
+    tenant's own database. So suspending deletes the rows.
+    """
+    if not settings.multi_tenant:
+        raise HTTPException(404, "Not Found")
+    if not _authorised(request.headers.get(settings.provision_header)):
+        raise HTTPException(403, "Not authorised")
+    try:
+        tenant_id = validate_tenant_id(tenant_id)
+    except ValueError:
+        raise HTTPException(422, "Invalid tenant id") from None
+    if not tenant_db_path(tenant_id).exists():
+        raise HTTPException(404, "Unknown tenant")
+
+    async with scoped_to(tenant_id) as session:
+        result = await session.execute(delete(AuthSession))
+        await session.commit()
+    revoked = int(result.rowcount or 0)
+    logger.info("Revoked %d session(s) for tenant %s", revoked, tenant_id)
+    return {"revoked": revoked}
+
+
+@router.delete("/{tenant_id}", status_code=200)
+async def delete_tenant(tenant_id: str, request: Request):
+    """Remove a tenant's database entirely.
+
+    Irreversible, and deliberately so — this is what a deletion request has
+    to actually do. `discard_tenant` takes the WAL sidecars with it: a
+    `.db-wal` left behind is data that the next tenant given this id would
+    silently inherit.
+    """
+    if not settings.multi_tenant:
+        raise HTTPException(404, "Not Found")
+    if not _authorised(request.headers.get(settings.provision_header)):
+        raise HTTPException(403, "Not authorised")
+    try:
+        tenant_id = validate_tenant_id(tenant_id)
+    except ValueError:
+        raise HTTPException(422, "Invalid tenant id") from None
+    if not tenant_db_path(tenant_id).exists():
+        raise HTTPException(404, "Unknown tenant")
+
+    await discard_tenant(tenant_id)
+    forget_tenant_state(tenant_id)
+    logger.warning("Deleted tenant %s and its database", tenant_id)
+    return {"deleted": tenant_id}
+
+
+@router.get("", status_code=200)
+async def list_tenants(request: Request):
+    """Every tenant the panel holds, with enough to spot a broken one.
+
+    Read from the files, which are the registry — there is no second list
+    here to drift out of step with what is on disk. The gateway has its own
+    records; this is the other half, and the ops panel shows them side by
+    side precisely so a disagreement between them is visible.
+    """
+    if not settings.multi_tenant:
+        raise HTTPException(404, "Not Found")
+    if not _authorised(request.headers.get(settings.provision_header)):
+        raise HTTPException(403, "Not authorised")
+
+    out = []
+    for tenant_id in known_tenants():
+        path = tenant_db_path(tenant_id)
+        entry: dict = {"tenant_id": tenant_id, "bytes": path.stat().st_size}
+        try:
+            async with scoped_to(tenant_id) as session:
+                entry["devices"] = int(
+                    (await session.execute(select(func.count(Device.id)))).scalar_one()
+                )
+                entry["agents"] = int(
+                    (await session.execute(select(func.count(Agent.id)))).scalar_one()
+                )
+                last = (
+                    await session.execute(select(func.max(Agent.last_seen)))
+                ).scalar_one_or_none()
+                entry["last_report"] = last.isoformat() if last else None
+        except Exception as exc:  # noqa: BLE001
+            # One unreadable database must not hide the other twenty-four.
+            logger.exception("Could not read tenant %s", tenant_id)
+            entry["error"] = type(exc).__name__
+        out.append(entry)
+    return {"tenants": out}
 
 
 async def _seed_account(tenant_id: str, username: str, password: str) -> None:

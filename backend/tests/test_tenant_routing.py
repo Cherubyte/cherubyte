@@ -230,3 +230,88 @@ async def test_static_assets_are_never_redirected(hosted, client):
         r = await client.get(path, headers={"accept": "text/html"})
         assert r.status_code != 302
 
+
+
+# ── the ops endpoints ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_listing_tenants_reports_enough_to_spot_a_broken_one(hosted, client):
+    await _tenant_with_owner(client, "alpha")
+    await _tenant_with_owner(client, "beta")
+
+    r = await client.get("/api/tenants", headers={settings.provision_header: KEY})
+    assert r.status_code == 200
+    rows = {t["tenant_id"]: t for t in r.json()["tenants"]}
+    assert set(rows) == {"alpha", "beta"}
+    for row in rows.values():
+        assert row["devices"] == 0
+        assert row["agents"] == 0
+        assert row["last_report"] is None
+        assert row["bytes"] > 0
+
+
+@pytest.mark.asyncio
+async def test_revoking_sessions_signs_a_tenant_out_everywhere(hosted, client):
+    await _tenant_with_owner(client, "alpha")
+    token = (
+        await client.post("/api/tenants/alpha/session", headers={settings.provision_header: KEY})
+    ).json()["token"]
+    cookie = {"cookie": f"cherubyte_session={token}"}
+    assert (await client.get("/api/auth/status", headers=cookie)).json()["account"] is not None
+
+    r = await client.request("DELETE", "/api/tenants/alpha/sessions", headers={settings.provision_header: KEY})
+    assert r.status_code == 200 and r.json()["revoked"] == 1
+
+    # The cookie still routes — it names its tenant — but it opens nothing.
+    assert (await client.get("/api/auth/status", headers=cookie)).json()["account"] is None
+
+
+@pytest.mark.asyncio
+async def test_revoking_one_tenant_does_not_sign_out_another(hosted, client):
+    await _tenant_with_owner(client, "alpha")
+    await _tenant_with_owner(client, "beta")
+    beta = (
+        await client.post("/api/tenants/beta/session", headers={settings.provision_header: KEY})
+    ).json()["token"]
+
+    await client.request("DELETE", "/api/tenants/alpha/sessions", headers={settings.provision_header: KEY})
+    r = await client.get("/api/auth/status", headers={"cookie": f"cherubyte_session={beta}"})
+    assert r.json()["account"] is not None
+
+
+@pytest.mark.asyncio
+async def test_deleting_a_tenant_removes_the_database_and_its_sidecars(hosted, client):
+    await _tenant_with_owner(client, "alpha")
+    await _tenant_with_owner(client, "beta")
+    assert (hosted / "alpha.db").is_file()
+
+    r = await client.request("DELETE", "/api/tenants/alpha", headers={settings.provision_header: KEY})
+    assert r.status_code == 200 and r.json()["deleted"] == "alpha"
+
+    # A .db-wal left behind is data the next tenant with this id would inherit.
+    for suffix in ("", "-wal", "-shm"):
+        assert not (hosted / f"alpha.db{suffix}").exists()
+    assert (hosted / "beta.db").is_file()  # untouched
+
+
+@pytest.mark.asyncio
+async def test_the_ops_endpoints_are_guarded_and_do_not_exist_self_hosted(hosted, client):
+    await _tenant_with_owner(client, "alpha")
+    for method, path in (
+        ("GET", "/api/tenants"),
+        ("DELETE", "/api/tenants/alpha/sessions"),
+        ("DELETE", "/api/tenants/alpha"),
+    ):
+        r = await client.request(method, path)
+        assert r.status_code == 403, (method, path)
+        r = await client.request(method, path, headers={settings.provision_header: "wrong"})
+        assert r.status_code == 403, (method, path)
+    # And the tenant survived every refusal.
+    assert (hosted / "alpha.db").is_file()
+
+
+@pytest.mark.asyncio
+async def test_deleting_an_unknown_tenant_is_refused(hosted, client):
+    r = await client.request("DELETE", "/api/tenants/ghost", headers={settings.provision_header: KEY})
+    assert r.status_code == 404
