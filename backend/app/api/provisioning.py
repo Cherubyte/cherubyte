@@ -149,6 +149,48 @@ async def mint_session(tenant_id: str, request: Request):
         )
 
 
+@router.post("/{tenant_id}/agents", status_code=201)
+async def mint_agent(tenant_id: str, request: Request, name: str = "", version: str = ""):
+    """Create an agent for a tenant and return its key, once.
+
+    For device-code enrolment, which hosted cannot happen in the panel. A
+    machine asking to join has no credential and therefore no tenant, so the
+    request arrives at the login window instead — and it is the *approving
+    person's* session that says which tenant this is. By then the panel just
+    needs to mint the agent.
+
+    Guarded like the rest of provisioning and reachable only from the box.
+    Nothing outside can present the key.
+    """
+    if not settings.multi_tenant:
+        raise HTTPException(404, "Not Found")
+    if not _authorised(request.headers.get(settings.provision_header)):
+        raise HTTPException(403, "Not authorised")
+    try:
+        tenant_id = validate_tenant_id(tenant_id)
+    except ValueError:
+        raise HTTPException(422, "Invalid tenant id") from None
+    if not tenant_db_path(tenant_id).exists():
+        raise HTTPException(404, "Unknown tenant")
+
+    from ..models import Agent
+    from ..services import agents as agent_service
+
+    async with scoped_to(tenant_id) as session:
+        key = agent_service.new_secret()
+        agent = Agent(
+            name=(name or "agent")[:120],
+            key_hash=agent_service.hash_secret(key),
+            version=(version or None) and version[:40],
+        )
+        session.add(agent)
+        await session.commit()
+        logger.warning("Minted agent %s (%s) for %s", agent.id, agent.name, tenant_id)
+        # The key carries the tenant in front, so every later request from
+        # this agent routes to the right panel with nothing to look up.
+        return {"agent_id": agent.id, "key": key, "name": agent.name}
+
+
 @router.delete("/{tenant_id}/sessions", status_code=200)
 async def revoke_sessions(tenant_id: str, request: Request):
     """Sign a tenant out everywhere.

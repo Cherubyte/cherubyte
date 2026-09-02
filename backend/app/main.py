@@ -162,6 +162,15 @@ async def health():
     return {"status": "ok", "version": app.version}
 
 
+# The approval page an agent's enrolment link points at. Registered before the
+# SPA fallback, which matches every path — and server-rendered, because this
+# link is typed into a browser from a terminal and has to work as a plain page
+# load with no client-side router.
+from .api.approve import router as approve_router  # noqa: E402
+
+app.include_router(approve_router)
+
+
 # --- Serve the built frontend (SPA) -----------------------------------------
 _dist = settings.frontend_dist
 

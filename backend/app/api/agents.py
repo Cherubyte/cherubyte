@@ -21,6 +21,9 @@ from cherubyte_protocol import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel
+
+from ..config import settings
 from ..database import get_session
 from ..models import Agent, HostTempSample, WanSample, iso_utc, utcnow
 from ..services import agent_release
@@ -33,6 +36,59 @@ from .deps import current_account, enforce_access
 logger = logging.getLogger("cherubyte.api.agents")
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+
+
+class DeviceCodeRequest(BaseModel):
+    """What a machine says about itself when it asks to join.
+
+    None of it is trusted: the caller has no credential yet. It exists so the
+    person approving can tell their own machine from somebody else's.
+    """
+
+    name: str = ""
+    version: str = ""
+
+
+class DeviceTokenRequest(BaseModel):
+    code: str
+    poll_secret: str
+
+
+# Enough to let a machine retry, not enough to fill the approval page. Keyed on
+# the source address and kept in memory: it guards a ten-minute window, and a
+# table for it would outlive the thing it protects.
+_RECENT: dict[str, list[float]] = {}
+_RATE_WINDOW = 300.0
+_RATE_MAX = 10
+
+
+def _client_ip(request: Request) -> str:
+    # Behind the tunnel and the gateway, so the direct peer is a loopback
+    # address and useless. The gateway sets x-forwarded-for from Cloudflare's
+    # own header, which is the first hop we did not write ourselves.
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else ""
+
+
+def _rate_limit_ok(request: Request) -> bool:
+    import time
+
+    now = time.monotonic()
+    who = _client_ip(request) or "unknown"
+    seen = [t for t in _RECENT.get(who, []) if now - t < _RATE_WINDOW]
+    if len(seen) >= _RATE_MAX:
+        _RECENT[who] = seen
+        return False
+    seen.append(now)
+    _RECENT[who] = seen
+    # Cheap sweep, so a long-lived process does not accumulate an entry per
+    # address that ever asked.
+    if len(_RECENT) > 1024:
+        for key in [k for k, v in _RECENT.items() if not v or now - v[-1] > _RATE_WINDOW]:
+            _RECENT.pop(key, None)
+    return True
 
 
 def _bearer(authorization: str | None) -> str:
@@ -54,6 +110,99 @@ async def enrol_agent(payload: EnrolRequest, session: AsyncSession = Depends(get
     agent, key = issued
     await session.commit()
     return EnrolResponse(agent_id=agent.id, key=key, name=agent.name)
+
+
+# ── device-code enrolment ──────────────────────────────────────────────────
+#
+# Unauthenticated on purpose: a machine that has not enrolled has nothing to
+# authenticate with. What stands in for a credential is a person looking at an
+# approval page and recognising the machine, so these routes are rate limited
+# and say as little as possible to a caller who guessed a code.
+
+
+@router.post("/device-code")
+async def start_device_code(
+    request: Request,
+    payload: DeviceCodeRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """Ask to join. Returns a short code, a poll secret, and where to send a
+    person to approve it."""
+    if not _rate_limit_ok(request):
+        # Otherwise anyone who can reach the panel can fill the approval page
+        # with entries for somebody to mis-click.
+        raise HTTPException(429, "Too many enrolment requests")
+
+    row, poll_secret = await agent_service.request_device_code(
+        session,
+        name=payload.name,
+        version=payload.version,
+        source_ip=_client_ip(request),
+    )
+    await session.commit()
+    base = str(settings.public_url or "").rstrip("/") or str(request.base_url).rstrip("/")
+    return {
+        "code": row.code,
+        "poll_secret": poll_secret,
+        "verification_url": f"{base}/a/{row.code}",
+        "expires_in": int(agent_service.DEVICE_CODE_TTL.total_seconds()),
+        # How often to come back. Named rather than assumed, so the panel can
+        # slow every agent down at once if this ever gets expensive.
+        "interval": 3,
+    }
+
+
+@router.post("/device-token", response_model=EnrolResponse)
+async def collect_device_code(
+    payload: DeviceTokenRequest, session: AsyncSession = Depends(get_session)
+):
+    """Collect the key, once the request has been approved."""
+    result = await agent_service.collect_device_key(
+        session, code=payload.code, poll_secret=payload.poll_secret
+    )
+    if result == "pending":
+        # 202: the request is good and the answer is not ready. Anything in
+        # the 4xx range here would tell a polling agent to give up.
+        raise HTTPException(202, "Waiting for approval")
+    if result is None:
+        raise HTTPException(403, "Invalid or expired code")
+    agent, key = result
+    await session.commit()
+    return EnrolResponse(agent_id=agent.id, key=key, name=agent.name)
+
+
+@router.get("/device-codes")
+async def list_device_codes(
+    session: AsyncSession = Depends(get_session), _=Depends(current_account)
+):
+    """Machines waiting to be approved, for the panel to show."""
+    rows = await agent_service.pending_device_codes(session)
+    return [
+        {
+            "code": r.code,
+            "name": r.name,
+            "version": r.version,
+            "source_ip": r.source_ip,
+            "state": r.state,
+            "requested_at": iso_utc(r.created_at),
+            "expires_at": iso_utc(r.expires_at),
+        }
+        for r in rows
+    ]
+
+
+@router.post("/device-codes/{code}/approve")
+async def approve_device_code(
+    code: str,
+    session: AsyncSession = Depends(get_session),
+    account=Depends(enforce_access),
+):
+    """Admit the machine behind this code."""
+    row = await agent_service.approve_device_code(session, code, account_id=getattr(account, "id", 0))
+    if row is None:
+        raise HTTPException(404, "No such code, or it has expired")
+    await session.commit()
+    return {"code": row.code, "name": row.name, "state": row.state}
 
 
 @router.post("/{agent_id}/report", response_model=ReportAck)

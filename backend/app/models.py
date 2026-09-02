@@ -635,6 +635,58 @@ class Agent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class DeviceCode(Base):
+    """A machine asking to join, waiting for somebody to say yes.
+
+    The other way to enrol. An enrolment token is a secret the operator has to
+    carry from the panel to the machine, and a secret that travels by copy and
+    paste ends up in a shell history, a ticket and a config file that outlives
+    it. Here nothing travels: the agent asks for a code, prints a link, and a
+    person who is already signed in to the panel approves it.
+
+    **Two secrets, not one, and only one of them is short.** `code` is short
+    because it goes in a URL somebody reads off a terminal; that alone is
+    guessable, so it only identifies the request. `poll_secret` is long, never
+    leaves the machine that asked, and is what actually collects the key. So
+    somebody who shoulder-reads the code can look at the approval page and
+    nothing else — they cannot take the key it issues.
+
+    Short-lived and one-shot: an approved request that is never collected
+    expires like any other, and a collected one cannot be collected again.
+    """
+
+    __tablename__ = "device_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Unambiguous alphabet, no O/0 or I/1: this is read aloud and typed.
+    code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    poll_hash: Mapped[str] = mapped_column(String(64))
+    # What the machine says about itself. Shown on the approval page, and not
+    # trusted for anything else — it is unauthenticated at the point it is set.
+    name: Mapped[str] = mapped_column(String(120), default="")
+    version: Mapped[str | None] = mapped_column(String(40))
+    # Where the request came from, so the person approving can tell their own
+    # machine from somebody else's.
+    source_ip: Mapped[str | None] = mapped_column(String(45))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[int | None] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL")
+    )
+    # Set when the agent collects its key, which it may do exactly once.
+    collected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"))
+
+    @property
+    def state(self) -> str:
+        if self.collected_at is not None:
+            return "collected"
+        if self.approved_at is not None:
+            return "approved"
+        return "pending"
+
+
 class EnrolmentToken(Base):
     """A single-use, expiring invitation for an agent to join.
 

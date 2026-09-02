@@ -124,6 +124,15 @@ class Settings(BaseSettings):
     upstream_name: str = ""
     upstream_header: str = "X-Cherubyte-Upstream"
 
+    # The address a person would type to reach this panel. Used to build the
+    # link an agent prints when it asks to be approved, which has to be the
+    # public name and not the loopback address the request arrived on.
+    #
+    # Empty falls back to the request's own base URL, which is right for a
+    # self-hosted panel reached directly and wrong behind a proxy that does
+    # not rewrite Host — hence the setting.
+    public_url: str = ""
+
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
     subnet: str = ""
