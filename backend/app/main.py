@@ -4,14 +4,14 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api import api_router
 from .api.settings import _load_from_db
-from .config import APP_VERSION, UPLOAD_DIR, settings
+from .config import APP_VERSION, UPLOAD_DIR, settings, upload_dir
 from .database import SessionLocal, dispose_tenants, init_db
 from .scheduler import scheduler, start as start_scheduler
 from .services import mqtt, oui, update
@@ -88,7 +88,30 @@ if _cors_origins:
     logger.info("CORS enabled for %s", ", ".join(_cors_origins))
 
 app.include_router(api_router)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+
+# Uploads are served by a route rather than a static mount, in both modes.
+# A mount is bound to one directory at import time, and hosted there is no
+# one directory: these are photographs of somebody's home and each tenant has
+# its own. One code path, resolved per request, so the mode cannot be wrong.
+@app.get("/uploads/{name:path}", include_in_schema=False)
+async def serve_upload(name: str):
+    try:
+        root = upload_dir().resolve()
+    except (RuntimeError, ValueError):
+        # Hosted with no tenant in scope. There is nothing to serve and no
+        # shared directory to fall back to, which is the whole point.
+        raise HTTPException(401, "No tenant") from None
+    try:
+        candidate = (root / name).resolve()
+    except (OSError, ValueError, RuntimeError):
+        raise HTTPException(404, "Not Found") from None
+    # The name is attacker-controlled and arrives percent-decoded, so resolve
+    # first and then require the result to still be inside — the same rule the
+    # SPA fallback follows, and for the same reason.
+    if not candidate.is_relative_to(root) or not candidate.is_file():
+        raise HTTPException(404, "Not Found")
+    return FileResponse(candidate)
 
 # Uploads are user-supplied and served from our own origin. An SVG logo is a
 # document, not just a picture: opened directly it could run script here. Deny

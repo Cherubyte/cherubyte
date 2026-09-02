@@ -8,6 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
+# The base. Self-hosted this *is* the uploads directory; hosted it is the
+# parent of one directory per tenant — see upload_dir() below, and never use
+# this bare in code that serves or packs files.
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -248,6 +251,33 @@ class _Settings:
 
 
 settings = _Settings()
+
+
+def upload_dir(create: bool = False) -> Path:
+    """Where this tenant's uploaded images live.
+
+    Self-hosted, the one directory it always was. Hosted, a directory per
+    tenant — because these are device photographs of somebody's home, the
+    files were served from a single shared directory with no authentication,
+    and a backup packed *every* file in it into whichever tenant asked for
+    one. Unguessable file names were the only thing separating one customer's
+    pictures from another's, and a backup download did not even need to guess.
+
+    Raises with no tenant in scope rather than falling back to the shared
+    parent, which is the fallback that caused the problem.
+    """
+    if not settings.multi_tenant:
+        return UPLOAD_DIR
+
+    from .tenancy import current_tenant, validate_tenant_id
+
+    tenant = current_tenant.get()
+    if tenant is None:
+        raise RuntimeError("upload_dir() outside a tenant")
+    path = UPLOAD_DIR / validate_tenant_id(tenant)
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 @contextmanager

@@ -17,7 +17,9 @@ def uploads(tmp_path, monkeypatch):
     """Point the backup service at a throwaway uploads dir, not the dev one."""
     up = tmp_path / "uploads"
     up.mkdir()
-    monkeypatch.setattr(backup, "UPLOAD_DIR", up)
+    # uploads now come from config.upload_dir(), which reads this in
+    # single-tenant mode; patching the constant still redirects them.
+    monkeypatch.setattr("app.config.UPLOAD_DIR", up)
     return up
 
 

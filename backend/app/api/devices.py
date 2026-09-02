@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..config import UPLOAD_DIR, settings
+from ..config import settings, upload_dir
 from ..database import get_session
 from ..models import (
     ApprovalStatus,
@@ -472,7 +472,7 @@ async def upload_image(
     if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
         raise HTTPException(400, "Unsupported image type")
     fname = f"dev{device_id}-{uuid.uuid4().hex[:12]}{ext}"
-    dest = UPLOAD_DIR / fname
+    dest = upload_dir(create=True) / fname
     await save_image_upload(file, dest, max_bytes=settings.max_upload_bytes)
     device.images.append(DeviceImage(filename=fname, is_primary=not device.images))
     await session.commit()
@@ -487,7 +487,7 @@ async def delete_image(
     img = next((i for i in device.images if i.id == image_id), None)
     if img is None:
         raise HTTPException(404, "Image not found")
-    (UPLOAD_DIR / img.filename).unlink(missing_ok=True)
+    (upload_dir() / img.filename).unlink(missing_ok=True)
     await session.delete(img)
     await session.commit()
     return await _get(session, device_id)

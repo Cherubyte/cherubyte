@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import UPLOAD_DIR, settings
+from ..config import settings, upload_dir
 from ..database import get_session
 from ..models import Device
 from ._uploads import save_image_upload
@@ -88,10 +88,10 @@ def build_router(
         # write the replacement before dropping the old one: a rejected upload
         # must not leave the brand with no logo at all
         await save_image_upload(
-            file, UPLOAD_DIR / fname, max_bytes=settings.max_upload_bytes
+            file, upload_dir(create=True) / fname, max_bytes=settings.max_upload_bytes
         )
         if row.logo:
-            (UPLOAD_DIR / row.logo).unlink(missing_ok=True)
+            (upload_dir() / row.logo).unlink(missing_ok=True)
         row.logo = fname
         await session.commit()
         counts = await _counts(session)
@@ -105,7 +105,7 @@ def build_router(
             )
         ).scalars().first()
         if row and row.logo:
-            (UPLOAD_DIR / row.logo).unlink(missing_ok=True)
+            (upload_dir() / row.logo).unlink(missing_ok=True)
             row.logo = None
             await session.commit()
 

@@ -24,7 +24,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..config import DATA_DIR, UPLOAD_DIR, settings
+from ..config import DATA_DIR, settings, upload_dir
 
 logger = logging.getLogger("cherubyte.backup")
 
@@ -46,7 +46,19 @@ def _archived_db_member(members: set[str]) -> str:
 
 
 def db_path() -> Path | None:
-    """The on-disk SQLite file, or None for an in-memory / non-sqlite URL."""
+    """The on-disk SQLite file for whoever is in scope, or None.
+
+    Hosted, `settings.database_url` names a database that does not exist —
+    there is no default one — so the tenant currently in scope decides, and a
+    caller with no tenant gets None rather than somebody else's file.
+    """
+    if settings.multi_tenant:
+        from ..database import tenant_db_path
+        from ..tenancy import current_tenant
+
+        tenant = current_tenant.get()
+        return tenant_db_path(tenant) if tenant else None
+
     url = settings.database_url
     for prefix in ("sqlite+aiosqlite:///", "sqlite:///"):
         if url.startswith(prefix):
@@ -88,12 +100,13 @@ def create(out_path: Path) -> Path:
             info = tarfile.TarInfo(_META_MEMBER)
             info.size = len(meta_bytes)
             tar.addfile(info, io.BytesIO(meta_bytes))
-            if UPLOAD_DIR.is_dir():
-                for path in sorted(UPLOAD_DIR.rglob("*")):
+            uploads = upload_dir()
+            if uploads.is_dir():
+                for path in sorted(uploads.rglob("*")):
                     if path.is_file():
                         tar.add(
                             path,
-                            arcname=f"{_UPLOADS_PREFIX}{path.relative_to(UPLOAD_DIR)}",
+                            arcname=f"{_UPLOADS_PREFIX}{path.relative_to(uploads)}",
                         )
     return out_path
 
@@ -187,13 +200,14 @@ def restore(archive: Path) -> dict:
 
         # uploads
         staged_uploads = tmp_path / "uploads"
-        if UPLOAD_DIR.exists():
-            _rotate(UPLOAD_DIR)
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        uploads = upload_dir()
+        if uploads.exists():
+            _rotate(uploads)
+        uploads.mkdir(parents=True, exist_ok=True)
         if staged_uploads.is_dir():
             for item in staged_uploads.rglob("*"):
                 if item.is_file():
-                    dest = UPLOAD_DIR / item.relative_to(staged_uploads)
+                    dest = uploads / item.relative_to(staged_uploads)
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(item, dest)
 
