@@ -42,6 +42,24 @@ async def test_queue_creates_a_pending_row_agents_pick_up(session):
 
 
 @pytest.mark.asyncio
+async def test_a_pending_row_stays_on_offer_between_slow_report_cycles(session):
+    """On a busy Wi-Fi /24 an agent's sweep-and-report cycle runs minutes
+    apart. An action queued just after one report must still be handed out at
+    the next — not dropped for being a couple of minutes old."""
+    d = await _device(session)
+    queued = await queue_device_action(d.id, ActionKind.ping, session=session)
+    await session.execute(
+        DeviceAction.__table__.update()
+        .where(DeviceAction.id == queued["id"])
+        .values(requested_at=utcnow() - timedelta(minutes=4))
+    )
+    await session.commit()
+
+    pending = await device_actions.take_pending(session)
+    assert [p.id for p in pending] == [queued["id"]]
+
+
+@pytest.mark.asyncio
 async def test_device_with_no_ip_is_refused(session):
     d = Device(device_type=DeviceType.unknown, approval_status="approved", is_online=False)
     session.add(d)

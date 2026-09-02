@@ -19,10 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import ActionKind, ActionStatus, DeviceAction, utcnow
 
-# how long a queued request is still handed to reporting agents
-PICKUP_WINDOW = timedelta(seconds=90)
-# a pending row older than this without a result is given up on
-TTL = timedelta(minutes=5)
+# A pending row is handed to every reporting agent until a result comes back
+# or this deadline passes — then it is given up on. It has to comfortably
+# exceed one agent report interval: on a busy Wi-Fi /24 a full sweep-and-report
+# cycle can take minutes, and an action queued just after one report must still
+# be on offer at the next.
+TTL = timedelta(minutes=10)
 
 
 def queue(device_id: int, kind: ActionKind, ip: str) -> DeviceAction:
@@ -43,16 +45,16 @@ async def _expire_stale(session: AsyncSession) -> None:
 
 
 async def take_pending(session: AsyncSession) -> list[DeviceActionRequest]:
-    """The actions an agent should attempt right now. Also expires rows no
-    agent picked up in time."""
+    """Every action still waiting for a result — handed to each agent that
+    reports, since only the one on the target's segment can run it and the
+    panel can't tell which that is. A row keeps being offered until its result
+    lands or `_expire_stale` gives up on it at `TTL`; an agent that already ran
+    it has flipped it off `pending` on the same report, so it is not re-offered.
+    """
     await _expire_stale(session)
-    now = utcnow()
     rows = (
         await session.execute(
-            select(DeviceAction).where(
-                DeviceAction.status == ActionStatus.pending,
-                DeviceAction.requested_at >= now - PICKUP_WINDOW,
-            )
+            select(DeviceAction).where(DeviceAction.status == ActionStatus.pending)
         )
     ).scalars().all()
     return [DeviceActionRequest(id=r.id, kind=r.kind.value, ip=r.ip) for r in rows]

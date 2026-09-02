@@ -345,12 +345,13 @@ function DesktopShell() {
         </div>
       </aside>
 
-      {/* content */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-4 px-8">
-          <div className="pointer-events-none absolute -bottom-8 inset-x-0 top-0 -z-10">
-            <ProgressiveBlur strength={20} className="absolute inset-0" />
-            <div className="absolute inset-0 bg-gradient-to-b from-bg/85 from-55% to-transparent" />
+      {/* content — the header floats over it, so the page scrolls up under a
+          transparent, heavily-blurred bar rather than stopping at an opaque one */}
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <header className="absolute inset-x-0 top-0 z-20 flex h-[60px] items-center gap-4 px-8">
+          <div className="pointer-events-none absolute -bottom-16 inset-x-0 top-0 -z-10">
+            <ProgressiveBlur strength={28} className="absolute inset-0" />
+            <div className="absolute inset-0 bg-gradient-to-b from-bg/65 to-transparent" />
           </div>
           <h1 className="font-display text-[15px] text-fg">{t(titleKeyOf(pathname))}</h1>
           <CmdKButton />
@@ -368,7 +369,7 @@ function DesktopShell() {
           {running && <div className="scan-bar" />}
         </header>
 
-        <main className="relative min-h-0 flex-1 overflow-y-auto">
+        <main className="relative min-h-0 flex-1 overflow-y-auto pt-[60px]">
           <PageBody pathname={pathname} className="mx-auto w-full max-w-[1240px] px-8 py-8">
             <Outlet />
           </PageBody>
@@ -427,9 +428,9 @@ function MobileShell() {
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <header className="sticky top-0 z-40 shrink-0 shadow-[0_1px_12px_-4px_rgba(0,0,0,0.12)]">
-        <div className="pointer-events-none absolute -bottom-8 inset-x-0 top-0 -z-10">
-          <ProgressiveBlur strength={20} className="absolute inset-0" />
-          <div className="absolute inset-0 bg-gradient-to-b from-bg/85 from-55% to-transparent" />
+        <div className="pointer-events-none absolute -bottom-16 inset-x-0 top-0 -z-10">
+          <ProgressiveBlur strength={28} className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-b from-bg/65 to-transparent" />
         </div>
         <div className="flex h-[52px] items-center gap-2.5 px-4">
           <Wordmark compact />

@@ -17,6 +17,7 @@ from ..config import UPLOAD_DIR, settings
 from ..database import get_session
 from ..models import (
     ActionKind,
+    Agent,
     ApprovalStatus,
     ConnectionHistory,
     Device,
@@ -30,6 +31,7 @@ from ..models import (
     iso_utc,
 )
 from ..services import device_actions, duplicates, uptime, wol
+from ..services.agent_nudge import poke_all
 from ._uploads import save_image_upload
 from ..schemas import (
     AbsorbMacRequest,
@@ -434,6 +436,20 @@ async def queue_device_action(
     action = device_actions.queue(device.id, kind, target.address)
     session.add(action)
     await session.commit()
+
+    # Same as Sweep: nudge every enrolled agent to run a cycle now so it picks
+    # the probe up in seconds. An agent the panel can't reach directly falls
+    # back to `scan_requested` and collects it on its next check-in.
+    agents = (
+        await session.execute(select(Agent).where(Agent.enabled.is_(True)))
+    ).scalars().all()
+    if agents:
+        poked = await poke_all(agents)
+        for agent, ok in zip(agents, poked):
+            if not ok:
+                agent.scan_requested = True
+        await session.commit()
+
     return _action_out(action)
 
 

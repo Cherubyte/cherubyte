@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 
-import httpx
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import settings
 from ..database import get_session
 from ..models import Agent, iso_utc, utcnow
+from ..services.agent_nudge import poke as _poke
 
 router = APIRouter(tags=["scan"])
 logger = logging.getLogger("cherubyte.api.scan")
@@ -30,20 +30,6 @@ def _stale_after() -> float:
     """A monitor is "blind" once no agent has reported for noticeably longer
     than one sweep interval — three of them, floored at three minutes."""
     return max(180.0, 3.0 * settings.scan_interval_seconds)
-
-
-async def _poke(agent: Agent) -> bool:
-    """Ask one agent to sweep now, directly. True if it accepted."""
-    if not agent.last_ip:
-        return False
-    url = f"http://{agent.last_ip}:{agent.health_port or 1002}/trigger"
-    try:
-        async with httpx.AsyncClient(timeout=2.5) as client:
-            r = await client.post(url)
-        return r.status_code < 400
-    except Exception as exc:  # noqa: BLE001
-        logger.info("Could not reach agent %s at %s: %s", agent.id, url, exc)
-        return False
 
 
 @router.post("/scan")
