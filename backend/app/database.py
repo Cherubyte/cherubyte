@@ -249,6 +249,17 @@ async def scoped_to(tenant_id: str) -> AsyncIterator[AsyncSession]:
         current_tenant.reset(token)
 
 
+async def close_tenant(tenant_id: str) -> None:
+    """Release a tenant's engine, leaving its files alone.
+
+    For restoring a backup: the file has to be replaced while nothing holds
+    it open, and the next request reopens whatever is there. Disposing one
+    engine is the whole operation — no other tenant is touched, and nothing
+    restarts.
+    """
+    await _tenants.drop(validate_tenant_id(tenant_id))
+
+
 async def discard_tenant(tenant_id: str) -> None:
     """Remove a tenant's database, and the engine that had it open.
 

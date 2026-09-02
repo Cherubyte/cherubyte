@@ -15,10 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 
 from ..config import settings as cfg
-from ..database import engine, get_session
+from ..database import close_tenant, engine, get_session
 from ..models import Setting
 from ..schemas import SettingsIn, SettingsOut, SubnetCfg
 from ..scheduler import reschedule_digest
+from ..tenancy import require_tenant
 from ..services import (
     action_tokens,
     agents as agent_service,
@@ -518,6 +519,23 @@ async def restore_backup(file: UploadFile, _=Depends(require_admin)):
                 _cleanup(staged)
                 raise HTTPException(413, "backup file too large")
             out.write(chunk)
+
+    if cfg.multi_tenant:
+        # The process is shared. Exiting it to reload one tenant's database
+        # would take every other tenant down with it — a denial of service any
+        # customer could trigger from their own settings page. Close just this
+        # tenant's engine, replace the file, and let the next request reopen
+        # it: no restart, and nobody else notices.
+        tenant = require_tenant()
+        await close_tenant(tenant)
+        try:
+            summary = backup_service.restore(staged)
+        except backup_service.BackupError as exc:
+            raise HTTPException(422, str(exc)) from None
+        finally:
+            _cleanup(staged)
+        logger.warning("Restored tenant %s from a backup", tenant)
+        return {"ok": True, "restarting": False, **summary}
 
     try:
         summary = backup_service.restore(staged)

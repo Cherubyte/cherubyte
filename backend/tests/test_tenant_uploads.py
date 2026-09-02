@@ -153,3 +153,59 @@ def test_a_backup_snapshots_the_tenants_own_database(hosted, tmp_path):
         current_tenant.reset(token)
     # And with nobody in scope there is no database to reach for.
     assert backup_service.db_path() is None
+
+
+# -- restoring ---------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_restoring_replaces_one_tenants_database_in_place(hosted, tmp_path):
+    # The single-tenant path ends in os._exit(0) to reload the file. On a
+    # shared process that is a denial of service any customer could trigger
+    # from their own settings page, so hosted it closes one engine instead.
+    from sqlalchemy import text
+
+    async with database.scoped_to("alpha") as session:
+        await session.execute(text("CREATE TABLE only_before (x INTEGER)"))
+        await session.commit()
+
+    out = tmp_path / "alpha.tar.gz"
+    token = current_tenant.set("alpha")
+    try:
+        backup_service.create(out)
+    finally:
+        current_tenant.reset(token)
+
+    # Change it, then put the backup back.
+    async with database.scoped_to("alpha") as session:
+        await session.execute(text("DROP TABLE only_before"))
+        await session.commit()
+
+    token = current_tenant.set("alpha")
+    try:
+        await database.close_tenant("alpha")
+        backup_service.restore(out)
+    finally:
+        current_tenant.reset(token)
+
+    async with database.scoped_to("alpha") as session:
+        rows = await session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='only_before'")
+        )
+        assert rows.first() is not None
+
+    # And beta was never touched, which is the property that matters.
+    async with database.scoped_to("beta") as session:
+        rows = await session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='only_before'")
+        )
+        assert rows.first() is None
+
+
+@pytest.mark.asyncio
+async def test_closing_a_tenant_leaves_its_files_alone(hosted):
+    path = database.tenant_db_path("alpha")
+    assert path.is_file()
+    await database.close_tenant("alpha")
+    assert path.is_file()  # unlike discard_tenant, which removes them
+    assert "alpha" not in database._tenants
