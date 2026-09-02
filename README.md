@@ -175,9 +175,20 @@ sudo systemctl {status,restart,stop} cherubyte-agent    # the scanner (installed
 journalctl -u cherubyte -f
 ```
 
-Reset a lost admin password with `cd backend && .venv/bin/python manage.py
-create-admin <name>`. Back up everything — the database and the uploads — from
-**Settings ▸ History** or `manage.py backup`.
+Scripting the whole thing instead of clicking through the UI? `manage.py
+create-agent-token [label]` mints the same enrolment token step 1 above does,
+straight from the terminal — no browser session needed:
+
+```bash
+cd backend && .venv/bin/python manage.py create-admin <name>   # unattended: $CHERUBYTE_ADMIN_PASSWORD
+TOKEN=$(.venv/bin/python manage.py create-agent-token)
+curl -fsSL http://localhost:1001/api/agents/installer/linux | sudo bash -s -- \
+  --panel http://localhost:1001 --token "$TOKEN" --binary ./cherubyte-agent
+```
+
+Reset a lost admin password with the same `create-admin` command — it also
+promotes an existing account and resets its password. Back up everything — the
+database and the uploads — from **Settings ▸ History** or `manage.py backup`.
 
 <details>
 <summary>Docker</summary>

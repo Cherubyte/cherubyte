@@ -6,6 +6,18 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 
+# This script only builds the frontend and installs the systemd unit — it
+# assumes the backend venv (and so the database) already exists. Run cold,
+# with nothing set up yet, it would install a unit whose ExecStart does not
+# exist and fail silently at boot instead of here, where the cause is obvious.
+# `./scripts/setup.sh --service` does both steps in the right order; use this
+# script on its own to (re)install the unit for a checkout already set up.
+if [ ! -x backend/.venv/bin/python ]; then
+  echo "backend/.venv not found — run ./scripts/setup.sh first" \
+       "(or ./scripts/setup.sh --service to do both in one step)." >&2
+  exit 1
+fi
+
 echo ">> A compilar o frontend…"
 ( cd frontend && npm install --no-audit --no-fund && npm run build )
 
