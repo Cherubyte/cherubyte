@@ -72,39 +72,89 @@ def require_tenant() -> str:
     return tenant
 
 
+SESSION_COOKIE = "cherubyte_session"
+
+
+def _cookie(header: str, name: str) -> str | None:
+    for part in header.split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == name:
+            return v
+    return None
+
+
+def _bearer(header: str) -> str:
+    scheme, _, rest = header.strip().partition(" ")
+    return rest.strip() if scheme.lower() == "bearer" else ""
+
+
 class TenantMiddleware:
-    """Set the current tenant from the edge's header, for the span of one request.
+    """Work out whose request this is, for the span of one request.
+
+    The credential decides, not the header. A session cookie and an agent key
+    both carry the tenant they were minted for, so the answer comes from the
+    thing the caller had to hold — and somebody who sets the header to another
+    tenant is routed to their own database rather than that one. The header is
+    a fallback for internal callers that have no credential yet: the login
+    service asking a specific tenant a question, and provisioning.
+
+    That ordering matters now that the panel answers the internet directly.
+    Trusting the header first would let a valid session for one tenant be
+    pointed at another; it would still fail there, since the token is not in
+    that database, but "fails closed" is a worse property than "cannot be
+    aimed" when the fix costs nothing.
 
     Pure ASGI rather than BaseHTTPMiddleware: that one runs the downstream app
-    in a separate task, where a ContextVar set here is not visible. It is also
-    cheaper, and this runs on every request.
-
-    Installed only in multi-tenant mode. In single-tenant mode the header is
-    never read at all, so a stray one on a self-hosted panel means nothing.
+    in a separate task, where a ContextVar set here is not visible.
     """
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
         self._header = settings.tenant_header.lower().encode("latin-1")
 
+    def _resolve(self, scope: Scope) -> str | None:
+        header_value: str | None = None
+        cookie_header = ""
+        auth_header = ""
+        for name, value in scope.get("headers", ()):
+            if name == self._header:
+                header_value = value.decode("latin-1")
+            elif name == b"cookie":
+                cookie_header = value.decode("latin-1")
+            elif name == b"authorization":
+                auth_header = value.decode("latin-1")
+
+        # 1. the browser's own session
+        session = _cookie(cookie_header, SESSION_COOKIE)
+        if session:
+            found = tenant_from_secret(session)
+            if found:
+                return found
+
+        # 2. an agent's key
+        key = _bearer(auth_header)
+        if key:
+            found = tenant_from_secret(key)
+            if found:
+                return found
+
+        # 3. an internal caller that has no credential yet
+        if header_value is not None:
+            try:
+                return validate_tenant_id(header_value)
+            except ValueError:
+                # Ends in the same 401 as no tenant, but a malformed id is a
+                # different event — something is broken or somebody is poking
+                # at the panel — and should be seen.
+                logger.warning("Refusing malformed tenant header")
+        return None
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
-        tenant: str | None = None
-        for name, value in scope.get("headers", ()):
-            if name == self._header:
-                try:
-                    tenant = validate_tenant_id(value.decode("latin-1"))
-                except ValueError:
-                    # Ends in the same 401 as no header, but a malformed id is
-                    # a different event — either the edge is broken or someone
-                    # is poking at the origin directly — and should be seen.
-                    logger.warning("Refusing malformed tenant header")
-                break
-
-        token = current_tenant.set(tenant)
+        token = current_tenant.set(self._resolve(scope))
         try:
             await self.app(scope, receive, send)
         finally:

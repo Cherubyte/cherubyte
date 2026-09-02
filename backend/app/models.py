@@ -124,7 +124,10 @@ class AuthSession(Base):
 
     __tablename__ = "auth_sessions"
 
-    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    # Wide enough for a tenant-prefixed token, `t.<tenant>.<64 hex>`.
+    # SQLite does not enforce VARCHAR length, so no migration is needed
+    # for databases written before the prefix existed.
+    token: Mapped[str] = mapped_column(String(160), primary_key=True)
     account_id: Mapped[int] = mapped_column(
         ForeignKey("accounts.id", ondelete="CASCADE"), index=True
     )

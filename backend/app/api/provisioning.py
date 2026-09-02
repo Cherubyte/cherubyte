@@ -21,8 +21,16 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from sqlalchemy import select
+
 from ..config import settings
-from ..database import discard_tenant, provision_tenant, session_for, tenant_db_path
+from ..database import (
+    discard_tenant,
+    provision_tenant,
+    scoped_to,
+    session_for,
+    tenant_db_path,
+)
 from ..models import Account, AccountRole
 from ..services import auth
 from ..tenancy import validate_tenant_id
@@ -90,6 +98,53 @@ async def create_tenant(payload: TenantCreateIn, request: Request):
 
     logger.info("Provisioned tenant %s", tenant_id)
     return TenantOut(tenant_id=tenant_id, username=username)
+
+
+class SessionOut(BaseModel):
+    token: str
+    username: str
+    max_age: int
+
+
+@router.post("/{tenant_id}/session", response_model=SessionOut, status_code=201)
+async def mint_session(tenant_id: str, request: Request):
+    """Mint a panel session for a tenant's owner, without a password.
+
+    The login window has already established who this is — by email, against
+    its own registry — and the panel has no way to check an email because its
+    accounts are usernames. Rather than have the login window hold a password
+    to replay, it asks for a session directly.
+
+    This is a skeleton key, so it is guarded exactly like provisioning, and it
+    is reachable only from the box: nothing outside can present the key.
+    """
+    if not settings.multi_tenant:
+        raise HTTPException(404, "Not Found")
+    if not _authorised(request.headers.get(settings.provision_header)):
+        raise HTTPException(403, "Not authorised")
+    try:
+        tenant_id = validate_tenant_id(tenant_id)
+    except ValueError:
+        raise HTTPException(422, "Invalid tenant id") from None
+    if not tenant_db_path(tenant_id).exists():
+        raise HTTPException(404, "Unknown tenant")
+
+    async with scoped_to(tenant_id) as session:
+        account = (
+            await session.execute(select(Account).where(Account.role == AccountRole.admin))
+        ).scalars().first()
+        if account is None:
+            # A tenant with no account is the state provisioning exists to
+            # prevent; if one is ever seen, it is not something to paper over.
+            logger.error("Tenant %s has no admin account", tenant_id)
+            raise HTTPException(409, "Tenant has no account")
+        row = await auth.create_session(session, account, request.headers.get("user-agent"))
+        await session.commit()
+        return SessionOut(
+            token=row.token,
+            username=account.username,
+            max_age=int(auth.SESSION_TTL.total_seconds()),
+        )
 
 
 async def _seed_account(tenant_id: str, username: str, password: str) -> None:
