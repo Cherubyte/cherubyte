@@ -185,3 +185,48 @@ def test_a_self_hosted_session_token_carries_no_prefix():
     token = auth.new_session_token()
     assert "." not in token
     assert len(token) == 64
+
+
+# ── a stranded browser is sent to log in ───────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_browser_with_no_session_is_sent_to_the_login_window(hosted, client):
+    # Without this the SPA is stranded after a sign-out: it holds a screen of
+    # stale data and never navigates, because every call it makes is a 401.
+    r = await client.get("/", headers={"accept": "text/html"})
+    assert r.status_code == 302
+    assert r.headers["location"] == "/login"
+    assert r.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.asyncio
+async def test_an_api_call_with_no_session_still_gets_json(hosted, client):
+    # Only a document navigation moves. The SPA's own calls must keep getting
+    # a status it can act on rather than a redirect it would follow blindly.
+    r = await client.get("/api/auth/status", headers={"accept": "application/json"})
+    assert r.status_code == 401
+    r = await client.get("/api/auth/status", headers={"accept": "text/html"})
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_a_browser_with_a_session_is_not_redirected(hosted, client):
+    await _tenant_with_owner(client, "alpha")
+    token = (
+        await client.post("/api/tenants/alpha/session", headers={settings.provision_header: KEY})
+    ).json()["token"]
+    r = await client.get(
+        "/", headers={"accept": "text/html", "cookie": f"cherubyte_session={token}"}
+    )
+    assert r.status_code != 302
+
+
+@pytest.mark.asyncio
+async def test_static_assets_are_never_redirected(hosted, client):
+    # A redirect served in place of a stylesheet is a broken page rather than
+    # a login prompt.
+    for path in ("/assets/index.css", "/uploads/photo.png"):
+        r = await client.get(path, headers={"accept": "text/html"})
+        assert r.status_code != 302
+

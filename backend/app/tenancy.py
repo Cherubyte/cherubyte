@@ -154,8 +154,49 @@ class TenantMiddleware:
             await self.app(scope, receive, send)
             return
 
-        token = current_tenant.set(self._resolve(scope))
+        tenant = self._resolve(scope)
+        if tenant is None and _is_page_request(scope):
+            # A browser asking for a page, with no session: send it to the
+            # login window rather than answer JSON it cannot do anything with.
+            # Without this the panel's own SPA is stranded after a sign-out or
+            # an expired session — it holds a screen full of stale data and
+            # never navigates, because every call it makes comes back 401.
+            # API calls still get the 401; only a document navigation moves.
+            await _redirect(send, settings.login_path)
+            return
+
+        token = current_tenant.set(tenant)
         try:
             await self.app(scope, receive, send)
         finally:
             current_tenant.reset(token)
+
+
+def _is_page_request(scope: Scope) -> bool:
+    """A browser navigating, rather than the SPA calling its API."""
+    if scope.get("method") not in ("GET", "HEAD"):
+        return False
+    path = scope.get("path", "")
+    if path.startswith("/api/") or path.startswith("/uploads/") or path.startswith("/assets/"):
+        return False
+    for name, value in scope.get("headers", ()):
+        if name == b"accept":
+            return b"text/html" in value
+    return False
+
+
+async def _redirect(send: Send, location: str) -> None:
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 302,
+            "headers": [
+                (b"location", location.encode("latin-1")),
+                (b"content-length", b"0"),
+                # An unauthenticated redirect must never be what a cache
+                # serves to the next person who asks for this page.
+                (b"cache-control", b"no-store"),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": b""})

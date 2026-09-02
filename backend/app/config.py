@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     # it, which is the same rule the edge applies to its own secrets.
     provision_key: str = ""
     provision_header: str = "X-Cherubyte-Provision-Key"
+    # Where a browser with no session is sent. Served by the login window,
+    # which shares this hostname — the tunnel routes this path to it.
+    login_path: str = "/login"
 
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
