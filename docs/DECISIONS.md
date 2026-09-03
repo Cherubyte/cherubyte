@@ -338,3 +338,25 @@ every alert kind by default (like the other two) and it simply no-ops until an
 SMTP server, a From address and at least one recipient are configured. That is
 why `notify.broadcast`'s result dict can now carry `email: False` on a panel
 that never set it up — the same way it already did for an unconfigured ntfy.
+
+## A silent agent is an alert, and the "already told you" bit lives on the row
+
+An agent pushes a report every sweep. If one stops, the panel is blind to that
+whole L2 segment and nothing else says so — `Stats.agents_stale` greys a number
+on the dashboard, but nobody is looking at the dashboard, that being the point
+of push alerts. `services/agent_health.check_agents()` runs on a 120-second
+scheduler job, compares every enabled agent's `last_seen` against
+`agent_offline_after_seconds`, and fires `agent_offline` (urgent, like
+`scan_degraded`) on the way out and `agent_online` on the way back.
+
+The "have we already alerted" flag is a column (`Agent.offline_alerted`), not an
+in-memory set, for the same reason the WAN probe keeps its last state in the
+panel: a panel restart in the middle of an outage must not re-notify. It clears
+when the agent reports within the threshold again — checked by the same job, so
+recovery can lag by up to one interval, which is fine for "it's back".
+
+The threshold has a hard 120-second floor in code regardless of what the
+operator sets: an agent that misses a single sweep (default cadence: 60s) is not
+an outage, and a twitchy alert trains people to ignore it. `0` disables the
+check entirely. An agent that has *never* reported since enrolment is skipped —
+that is the Agents page's job to surface, not an outage notification.

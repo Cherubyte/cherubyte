@@ -50,6 +50,7 @@ _INT_KEYS = (
     "retention_days",
     "ntfy_priority",
     "smtp_port",
+    "agent_offline_after_seconds",
 )
 _BOOL_KEYS = (
     "ntfy_enabled",
@@ -203,6 +204,7 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         alert_policy=alerts.effective_policy(),
         quiet_hours_start=cfg.quiet_hours_start or "",
         quiet_hours_end=cfg.quiet_hours_end or "",
+        agent_offline_after_seconds=cfg.agent_offline_after_seconds,
         dhcp_allowlist=cfg.dhcp_allowlist or "",
         risky_ports_ignore=cfg.risky_ports_ignore or "",
         alert_kinds=[
@@ -302,6 +304,13 @@ async def update_settings(
         prio = min(5, max(1, int(data["ntfy_priority"])))
         cfg.ntfy_priority = prio
         await _set(session, "ntfy_priority", str(prio))
+    if (
+        "agent_offline_after_seconds" in data
+        and data["agent_offline_after_seconds"] is not None
+    ):
+        secs = max(0, int(data["agent_offline_after_seconds"]))
+        cfg.agent_offline_after_seconds = secs
+        await _set(session, "agent_offline_after_seconds", str(secs))
     if "smtp_enabled" in data and data["smtp_enabled"] is not None:
         cfg.smtp_enabled = bool(data["smtp_enabled"])
         await _set(session, "smtp_enabled", "true" if cfg.smtp_enabled else "false")

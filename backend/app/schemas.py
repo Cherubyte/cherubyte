@@ -244,6 +244,7 @@ class SettingsOut(BaseModel):
     alert_policy: dict[str, dict] = {}
     quiet_hours_start: str = ""
     quiet_hours_end: str = ""
+    agent_offline_after_seconds: int = 600
     dhcp_allowlist: str = ""
     risky_ports_ignore: str = ""
     alert_kinds: list[dict] = []
@@ -305,6 +306,7 @@ class SettingsIn(BaseModel):
     alert_policy: dict[str, dict] | None = None
     quiet_hours_start: str | None = None
     quiet_hours_end: str | None = None
+    agent_offline_after_seconds: int | None = None
     public_base_url: str | None = None
     dhcp_allowlist: str | None = None
     risky_ports_ignore: str | None = None

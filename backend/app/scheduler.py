@@ -8,6 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .config import settings
 from .models import utcnow
+from .services.agent_health import check_agents
 from .services.digest import run_weekly
 from .services.hoststat import record_panel_temp
 from .services.retention import run_purge
@@ -20,6 +21,7 @@ _PURGE_JOB_ID = "history-purge"
 _DIGEST_JOB_ID = "weekly-digest"
 _UPDATE_JOB_ID = "update-check"
 _HOST_TEMP_JOB_ID = "host-temp-sample"
+_AGENT_HEALTH_JOB_ID = "agent-health-check"
 
 _state: dict = {"last_scan": None, "running": False}
 
@@ -67,6 +69,18 @@ def start() -> None:
         max_instances=1,
         coalesce=True,
         misfire_grace_time=45,
+    )
+    # Watch for an agent that has stopped reporting. Cheap (one indexed query),
+    # so it can run often; the threshold that actually decides "silent" is
+    # settings.agent_offline_after_seconds.
+    scheduler.add_job(
+        check_agents,
+        "interval",
+        seconds=120,
+        id=_AGENT_HEALTH_JOB_ID,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=60,
     )
     scheduler.start()
     logger.info("Scheduler started (retention=%sd)", settings.retention_days)

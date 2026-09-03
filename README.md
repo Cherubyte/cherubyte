@@ -45,9 +45,9 @@ when each person was on the network. Always-on devices can sit it out.
 
 **It speaks up when it should.** New devices land in a review queue. A rogue DHCP
 server, a gateway MAC that changes, a known device that starts presenting a
-different OS, a sensitive port opening up — each raises an alert, pushed to
-Telegram, [ntfy](https://ntfy.sh/) or email with a quiet-hours window and
-Approve / Ignore buttons right on the notification.
+different OS, a sensitive port opening up, an agent that goes silent — each
+raises an alert, pushed to Telegram, [ntfy](https://ntfy.sh/) or email with a
+quiet-hours window and Approve / Ignore buttons right on the notification.
 
 **Private by design.** It runs on hardware you already own. The inventory lives
 in a SQLite file on your LAN and never leaves it.

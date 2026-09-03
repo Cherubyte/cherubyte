@@ -10,11 +10,21 @@ import sqlite3
 import pytest
 from sqlalchemy import text
 
+from app.config import BASE_DIR
 from app.database import Base, engine, init_db
 
 
 def _db_path() -> str:
     return engine.url.database
+
+
+def _alembic_head() -> str:
+    """The single head revision Alembic upgrades a fresh database to."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    script = ScriptDirectory.from_config(Config(str(BASE_DIR / "alembic.ini")))
+    return script.get_current_head()
 
 
 async def _reset_empty() -> None:
@@ -50,14 +60,14 @@ def _columns(table: str) -> set[str]:
 
 async def test_a_brand_new_database_is_stamped_at_baseline():
     await init_db()
-    assert _alembic_version() == ["baseline"]
+    assert _alembic_version() == [_alembic_head()]
     assert "counts_for_presence" in _columns("devices")
 
 
 async def test_running_init_db_twice_is_a_harmless_no_op():
     await init_db()
     await init_db()
-    assert _alembic_version() == ["baseline"]
+    assert _alembic_version() == [_alembic_head()]
 
 
 async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss():
@@ -86,10 +96,12 @@ async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss(
 
     await init_db()
 
-    assert _alembic_version() == ["baseline"]
+    assert _alembic_version() == [_alembic_head()]
     cols = _columns("devices")
     for missing in ("counts_for_presence", "model", "os_guess", "notify_policy", "tags"):
         assert missing in cols, f"{missing} was not patched in"
+    # a real Alembic migration beyond baseline also applied
+    assert "offline_alerted" in _columns("agents")
 
     con = sqlite3.connect(_db_path())
     try:
