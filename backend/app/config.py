@@ -137,6 +137,10 @@ class Settings(BaseSettings):
     alert_policy: str = ""
     quiet_hours_start: str = ""
     quiet_hours_end: str = ""
+    # An enabled agent that has not reported for this long raises an
+    # `agent_offline` alert (and `agent_online` when it comes back). 0 disables
+    # the check. The floor is 120s so a single missed sweep never trips it.
+    agent_offline_after_seconds: int = 600
 
     # Base URL this service is reachable at from a phone, e.g. http://192.168.1.9:1001.
     # Needed for the action buttons on ntfy notifications; empty disables them.
@@ -166,6 +170,17 @@ class Settings(BaseSettings):
     weekly_summary_enabled: bool = False
     weekly_summary_weekday: int = 0
     weekly_summary_hour: int = 9
+
+    # Email (SMTP) notifications. security: starttls (587) | ssl (465) | none.
+    # `smtp_to` is comma-separated. `smtp_from` defaults to the auth username.
+    smtp_enabled: bool = True
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_security: str = "starttls"
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_to: str = ""
 
     # ntfy notifications
     ntfy_enabled: bool = True

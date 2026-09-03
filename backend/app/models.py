@@ -629,6 +629,10 @@ class Agent(Base):
     last_hosts: Mapped[int] = mapped_column(Integer, default=0)
     last_fingerprints: Mapped[int] = mapped_column(Integer, default=0)
     last_healthy: Mapped[bool] = mapped_column(Boolean, default=True)
+    # True once the panel has alerted that this agent went silent; cleared when
+    # it reports again. Keeps the "agent offline" notice to one per outage even
+    # across a panel restart.
+    offline_alerted: Mapped[bool] = mapped_column(Boolean, default=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

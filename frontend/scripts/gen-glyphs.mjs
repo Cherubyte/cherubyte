@@ -31,6 +31,7 @@ const UI = {
   CornerDown: "arrow-elbow-down-right",
   Bell: "bell",
   Paperclip: "paperclip",
+  Envelope: "envelope-simple",
   // log categories
   Radar: "broadcast",
   Plug: "plug",
