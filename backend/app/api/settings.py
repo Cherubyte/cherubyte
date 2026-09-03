@@ -31,6 +31,7 @@ from ..services import (
     ntfy,
     retention,
     telegram,
+    webpush,
 )
 from ..services import update as update_service
 from .deps import require_admin
@@ -63,6 +64,7 @@ _BOOL_KEYS = (
     "enable_snmp",
     "topology_enabled",
     "onboarding_dismissed",
+    "webpush_enabled",
 )
 
 _PERSISTED = (
@@ -98,6 +100,7 @@ _PERSISTED = (
     "wan_target",
     "metrics_token",
     "snmp_community",
+    "vapid_subject",
 )
 
 
@@ -125,11 +128,14 @@ def _push_runtime() -> None:
         to_addrs=cfg.smtp_to,
         enabled=cfg.smtp_enabled,
     )
+    webpush.configure(subject=cfg.vapid_subject, enabled=cfg.webpush_enabled)
 
 
 async def _load_from_db(session: AsyncSession) -> None:
     res = await session.execute(select(Setting))
     for row in res.scalars():
+        if row.key in ("vapid_private_pem", "vapid_public_key"):
+            continue  # managed by services/webpush.py, not a user setting
         if row.key in _INT_KEYS:
             setattr(cfg, row.key, int(row.value))
         elif row.key == "subnets":
@@ -144,6 +150,7 @@ async def _load_from_db(session: AsyncSession) -> None:
         elif row.key in _PERSISTED:
             setattr(cfg, row.key, row.value)
     _push_runtime()
+    await webpush.ensure_keys(session)
 
 
 def _clean_subnets(raw: list[SubnetCfg]) -> list[dict]:
@@ -232,6 +239,10 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         weekly_summary_weekday=cfg.weekly_summary_weekday,
         weekly_summary_hour=cfg.weekly_summary_hour,
         onboarding_dismissed=cfg.onboarding_dismissed,
+        webpush_enabled=cfg.webpush_enabled,
+        webpush_ready=webpush.has_keys(),
+        vapid_subject=cfg.vapid_subject or "",
+        webpush_subscriptions=history.get("push_subscriptions", 0),
     )
 
 
@@ -410,6 +421,13 @@ async def update_settings(
         await _set(
             session, "onboarding_dismissed", "true" if cfg.onboarding_dismissed else "false"
         )
+
+    if "webpush_enabled" in data and data["webpush_enabled"] is not None:
+        cfg.webpush_enabled = bool(data["webpush_enabled"])
+        await _set(session, "webpush_enabled", "true" if cfg.webpush_enabled else "false")
+    if "vapid_subject" in data:
+        cfg.vapid_subject = (data["vapid_subject"] or "").strip()
+        await _set(session, "vapid_subject", cfg.vapid_subject)
 
     digest_touched = False
     if "weekly_summary_enabled" in data and data["weekly_summary_enabled"] is not None:

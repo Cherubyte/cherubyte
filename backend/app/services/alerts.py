@@ -17,7 +17,7 @@ from ..config import settings
 
 logger = logging.getLogger("cherubyte.alerts")
 
-CHANNELS = ("telegram", "ntfy", "email")
+CHANNELS = ("telegram", "ntfy", "email", "webpush")
 
 
 @dataclass(frozen=True)

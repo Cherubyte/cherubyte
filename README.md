@@ -46,8 +46,9 @@ when each person was on the network. Always-on devices can sit it out.
 **It speaks up when it should.** New devices land in a review queue. A rogue DHCP
 server, a gateway MAC that changes, a known device that starts presenting a
 different OS, a sensitive port opening up, an agent that goes silent — each
-raises an alert, pushed to Telegram, [ntfy](https://ntfy.sh/) or email with a
-quiet-hours window and Approve / Ignore buttons right on the notification.
+raises an alert, pushed to your phone by web push (no third party), Telegram,
+[ntfy](https://ntfy.sh/) or email, with a quiet-hours window and Approve /
+Ignore buttons right on the notification.
 
 **Private by design.** It runs on hardware you already own. The inventory lives
 in a SQLite file on your LAN and never leaves it.
@@ -78,6 +79,9 @@ in a SQLite file on your LAN and never leaves it.
   someone else's "who has" rather than the agent's own probe still gets caught.
 - **Risky-port watchlist** — a database, a remote shell or an unauthenticated
   admin API answering on the LAN gets a louder alert and a mark on the device.
+- **Install it like an app** — the panel is a PWA, and it can send **web push**
+  notifications straight to your phone or desktop with no Telegram, ntfy or
+  other third party in the path (the VAPID key is generated on your box).
 - **Merge suggestions** for phones that rotate their MAC, and a weekly digest.
 - **Update check** — **Settings ▸ Update** compares the running version against
   `main` and, for a git install, updates in place with one click; a container
@@ -117,7 +121,7 @@ Cherubyte does the same job on your own hardware.
 | Where your data lives | Your LAN, in SQLite | Fing's cloud | Fing's cloud |
 | Device limit | None | Limited | Higher |
 | Presence history per person | Yes | — | Limited |
-| New-device alerts | Telegram / ntfy / email | — | Yes (Fing's channels) |
+| New-device alerts | Web push / Telegram / ntfy / email | — | Yes (Fing's channels) |
 | Open source | Yes | No | No |
 | Always-on | Yes, it's a service | Only while the app scans | Fingbox hardware |
 
@@ -349,11 +353,12 @@ are pushed to every agent with each report.
   scan; the heavier identification is spaced out, immediate for new devices.
 - **History retention** — event and connection tables are purged daily; default
   90 days, `0` keeps everything.
-- **Notifications** — Telegram, ntfy and/or email (SMTP). On a public ntfy
-  server anyone who knows the topic can read your alerts, so pick something
-  unguessable. Email goes out through your own SMTP server (STARTTLS, SSL or
-  plain) to one or more addresses, with the alert body laid out in the panel's
-  own style.
+- **Notifications** — web push, Telegram, ntfy and/or email (SMTP). Web push
+  goes browser to browser with no third party; turn it on per device from
+  **Settings ▸ Notifications**. On a public ntfy server anyone who knows the
+  topic can read your alerts, so pick something unguessable. Email goes out
+  through your own SMTP server (STARTTLS, SSL or plain) to one or more
+  addresses, with the alert body laid out in the panel's own style.
 - **Fingerbank API key** — free from fingerbank.org; turns DHCP fingerprints
   into a device name and OS.
 

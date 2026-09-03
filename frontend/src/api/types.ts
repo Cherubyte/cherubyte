@@ -363,6 +363,10 @@ export interface AppSettings {
   weekly_summary_weekday: number;
   weekly_summary_hour: number;
   onboarding_dismissed: boolean;
+  webpush_enabled: boolean;
+  webpush_ready: boolean;
+  vapid_subject: string;
+  webpush_subscriptions: number;
 }
 
 export interface AlertRule {

@@ -10,6 +10,7 @@ from . import (
     hoststats,
     metrics,
     os_logos,
+    push,
     scan,
     settings,
     stats,
@@ -33,6 +34,6 @@ api_router.include_router(metrics.router)
 
 # Everything else requires a login; writes require at least an `editor`.
 _protected = APIRouter(dependencies=[Depends(enforce_access)])
-for _module in (devices, events, users, brands, os_logos, stats, settings, scan, stream, topology, wan, hoststats):
+for _module in (devices, events, users, brands, os_logos, stats, settings, scan, stream, topology, wan, hoststats, push):
     _protected.include_router(_module.router)
 api_router.include_router(_protected)

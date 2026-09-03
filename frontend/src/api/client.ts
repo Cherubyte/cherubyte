@@ -207,6 +207,12 @@ export const api = {
   testTelegram: () => req<{ ok: boolean }>("/settings/telegram/test", { method: "POST" }),
   testNtfy: () => req<{ ok: boolean }>("/settings/ntfy/test", { method: "POST" }),
   testEmail: () => req<{ ok: boolean }>("/settings/email/test", { method: "POST" }),
+  pushKey: () => req<{ key: string; enabled: boolean }>("/push/key"),
+  pushSubscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    req<{ ok: boolean }>("/push/subscribe", { method: "POST", body: JSON.stringify(sub) }),
+  pushUnsubscribe: (body: { endpoint: string }) =>
+    req<{ ok: boolean }>("/push/unsubscribe", { method: "POST", body: JSON.stringify(body) }),
+  testPush: () => req<{ ok: boolean; sent: number; removed: number }>("/push/test", { method: "POST" }),
   purgeHistory: () =>
     req<AppSettings>("/settings/purge-history", { method: "POST" }),
   testDigest: () =>
