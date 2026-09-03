@@ -7,6 +7,7 @@ import { AUTH_KEY, useAuth, useCanWrite, useIsAdmin } from "../auth/AuthProvider
 import { Badge, Button, Field, Redacted, SectionHeader, Toggle } from "../components/ui";
 import {
   Bell,
+  Envelope,
   Close,
   Globe,
   Image,
@@ -414,6 +415,14 @@ export function Settings() {
     ntfy_username: "",
     ntfy_password: "",
     ntfy_priority: 3,
+    smtp_enabled: false,
+    smtp_host: "",
+    smtp_port: 587,
+    smtp_security: "starttls",
+    smtp_username: "",
+    smtp_password: "",
+    smtp_from: "",
+    smtp_to: "",
     fingerbank_api_key: "",
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
@@ -466,6 +475,13 @@ export function Settings() {
         ntfy_topic: settings.data.ntfy_topic,
         ntfy_username: settings.data.ntfy_username,
         ntfy_priority: settings.data.ntfy_priority,
+        smtp_enabled: settings.data.smtp_enabled,
+        smtp_host: settings.data.smtp_host,
+        smtp_port: settings.data.smtp_port,
+        smtp_security: settings.data.smtp_security,
+        smtp_username: settings.data.smtp_username,
+        smtp_from: settings.data.smtp_from,
+        smtp_to: settings.data.smtp_to,
       }));
   }, [settings.data]);
 
@@ -515,6 +531,14 @@ export function Settings() {
         ntfy_priority: form.ntfy_priority,
         ...(form.ntfy_token ? { ntfy_token: form.ntfy_token } : {}),
         ...(form.ntfy_password ? { ntfy_password: form.ntfy_password } : {}),
+        smtp_enabled: form.smtp_enabled,
+        smtp_host: form.smtp_host,
+        smtp_port: form.smtp_port,
+        smtp_security: form.smtp_security,
+        smtp_username: form.smtp_username,
+        smtp_from: form.smtp_from,
+        smtp_to: form.smtp_to,
+        ...(form.smtp_password ? { smtp_password: form.smtp_password } : {}),
         ...(form.fingerbank_api_key ? { fingerbank_api_key: form.fingerbank_api_key } : {}),
       }),
     onSuccess: () => {
@@ -554,6 +578,15 @@ export function Settings() {
         r.ok
           ? { tone: "success", title: "ntfy.sent" }
           : { tone: "error", title: "ntfy.failed", desc: "toast.ntfyFailedDesc" },
+      ),
+  });
+  const testEmail = useMutation({
+    mutationFn: api.testEmail,
+    onSuccess: (r) =>
+      toast(
+        r.ok
+          ? { tone: "success", title: "email.sent" }
+          : { tone: "error", title: "email.failed", desc: "toast.emailFailedDesc" },
       ),
   });
   const testFb = useMutation({
@@ -860,6 +893,92 @@ export function Settings() {
               {t("settings.testMessage")}
             </Button>
           </Channel>
+
+          <Channel
+            icon={<Envelope size={14} />}
+            name={t("settings.email.name")}
+            enabled={form.smtp_enabled}
+            configured={!!d?.smtp_configured}
+            onToggle={(v) => set("smtp_enabled", v)}
+          >
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+              <Field label={t("settings.email.host")} hint={t("settings.email.hostHint")}>
+                <input
+                  className="input mono"
+                  placeholder="smtp.gmail.com"
+                  value={form.smtp_host}
+                  onChange={(e) => set("smtp_host", e.target.value)}
+                />
+              </Field>
+              <Field label={t("settings.email.port")}>
+                <input
+                  type="number"
+                  min={1}
+                  max={65535}
+                  className="input mono"
+                  value={form.smtp_port}
+                  onChange={(e) => set("smtp_port", +e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label={t("settings.email.security")}>
+              <select
+                className="input mono"
+                value={form.smtp_security}
+                onChange={(e) => set("smtp_security", e.target.value)}
+              >
+                <option value="starttls">STARTTLS (587)</option>
+                <option value="ssl">SSL/TLS (465)</option>
+                <option value="none">{t("settings.email.securityNone")}</option>
+              </select>
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("settings.email.username")} hint={t("settings.email.usernameHint")}>
+                <input
+                  className="input mono"
+                  autoComplete="off"
+                  value={form.smtp_username}
+                  onChange={(e) => set("smtp_username", e.target.value)}
+                />
+              </Field>
+              <Field label={t("settings.email.password")}>
+                <input
+                  className="input mono"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={d?.smtp_auth_configured ? t("settings.telegram.saved") : ""}
+                  value={form.smtp_password}
+                  onChange={(e) => set("smtp_password", e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label={t("settings.email.from")} hint={t("settings.email.fromHint")}>
+              <input
+                className="input mono"
+                placeholder="cherubyte@example.com"
+                value={form.smtp_from}
+                onChange={(e) => set("smtp_from", e.target.value)}
+              />
+            </Field>
+            <Field label={t("settings.email.to")} hint={t("settings.email.toHint")}>
+              <input
+                className="input mono"
+                placeholder="me@example.com, you@example.com"
+                value={form.smtp_to}
+                onChange={(e) => set("smtp_to", e.target.value)}
+              />
+            </Field>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Send size={12} />}
+              disabled={!d?.smtp_configured}
+              loading={testEmail.isPending}
+              onClick={() => testEmail.mutate()}
+            >
+              {t("settings.testMessage")}
+            </Button>
+          </Channel>
         </div>
       </section>
 
@@ -875,6 +994,7 @@ export function Settings() {
                   <th className="pb-2 font-normal">{t("settings.alerts.col.on")}</th>
                   <th className="pb-2 font-normal">Telegram</th>
                   <th className="pb-2 font-normal">ntfy</th>
+                  <th className="pb-2 font-normal">{t("settings.email.name")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -906,7 +1026,7 @@ export function Settings() {
                           onChange={(v) => setRule({ enabled: v })}
                         />
                       </td>
-                      {["telegram", "ntfy"].map((name) => (
+                      {["telegram", "ntfy", "email"].map((name) => (
                         <td key={name} className="py-2 pr-3">
                           <input
                             type="checkbox"

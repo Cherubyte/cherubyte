@@ -228,6 +228,16 @@ class SettingsOut(BaseModel):
     ntfy_priority: int = 3
     # True when a token or password is stored; the secret itself is never returned.
     ntfy_auth_configured: bool = False
+    # email (SMTP)
+    smtp_enabled: bool = True
+    smtp_configured: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_security: str = "starttls"
+    smtp_username: str = ""
+    smtp_from: str = ""
+    smtp_to: str = ""
+    smtp_auth_configured: bool = False
     fingerbank_configured: bool = False
     dhcp_fingerprints: int = 0
     # alerts
@@ -283,6 +293,14 @@ class SettingsIn(BaseModel):
     ntfy_username: str | None = None
     ntfy_password: str | None = None
     ntfy_priority: int | None = None
+    smtp_enabled: bool | None = None
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    smtp_security: str | None = None
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_to: str | None = None
     fingerbank_api_key: str | None = None
     alert_policy: dict[str, dict] | None = None
     quiet_hours_start: str | None = None
