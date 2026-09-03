@@ -705,3 +705,23 @@ class Setting(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
+
+
+class PushSubscription(Base):
+    """A browser that has opted in to Web Push notifications.
+
+    One row per browser per device — the `endpoint` is the push service's
+    per-subscription URL and is unique. `p256dh` and `auth` are the keys the
+    payload is encrypted to. A row is deleted when the push service reports the
+    subscription gone (404/410) or the user turns notifications off.
+    """
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(255))
+    auth: Mapped[str] = mapped_column(String(255))
+    user_agent: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

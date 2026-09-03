@@ -172,6 +172,13 @@ class Settings(BaseSettings):
     ntfy_password: str = ""
     ntfy_priority: int = 3
 
+    # Web Push (browser notifications, no third party). The VAPID keypair is
+    # generated on first use and stored in the database, not here. `vapid_subject`
+    # is the contact the push service sees — a mailto: or an https: URL; empty
+    # falls back to public_base_url.
+    webpush_enabled: bool = True
+    vapid_subject: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

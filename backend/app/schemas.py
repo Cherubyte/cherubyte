@@ -264,6 +264,11 @@ class SettingsOut(BaseModel):
     weekly_summary_weekday: int = 0
     weekly_summary_hour: int = 9
     onboarding_dismissed: bool = False
+    # web push
+    webpush_enabled: bool = True
+    webpush_ready: bool = False
+    vapid_subject: str = ""
+    webpush_subscriptions: int = 0
 
 
 class SettingsIn(BaseModel):
@@ -309,6 +314,8 @@ class SettingsIn(BaseModel):
     weekly_summary_weekday: int | None = None
     weekly_summary_hour: int | None = None
     onboarding_dismissed: bool | None = None
+    webpush_enabled: bool | None = None
+    vapid_subject: str | None = None
 
 
 class AccountOut(ORMModel):

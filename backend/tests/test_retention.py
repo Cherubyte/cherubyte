@@ -55,6 +55,7 @@ async def test_counts_reports_what_is_stored(session):
         "events": 3,
         "connections": 3,
         "fingerprints": 0,
+        "push_subscriptions": 0,
     }
 
 

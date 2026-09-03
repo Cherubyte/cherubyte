@@ -28,6 +28,7 @@ import { useToast } from "../components/Toaster";
 import { useTheme, type ThemePref } from "../hooks/useTheme";
 import { copyText } from "../lib/ports";
 import { timeAgo } from "../lib/format";
+import { currentPushState, disablePush, enablePush, type PushState } from "../lib/push";
 import { useT, useLocale, type MessageKey } from "../i18n";
 import { intlLocale, LOCALES, type Locale } from "../i18n/locale";
 
@@ -414,6 +415,8 @@ export function Settings() {
     ntfy_username: "",
     ntfy_password: "",
     ntfy_priority: 3,
+    webpush_enabled: false,
+    vapid_subject: "",
     fingerbank_api_key: "",
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
@@ -466,6 +469,8 @@ export function Settings() {
         ntfy_topic: settings.data.ntfy_topic,
         ntfy_username: settings.data.ntfy_username,
         ntfy_priority: settings.data.ntfy_priority,
+        webpush_enabled: settings.data.webpush_enabled,
+        vapid_subject: settings.data.vapid_subject,
       }));
   }, [settings.data]);
 
@@ -515,6 +520,8 @@ export function Settings() {
         ntfy_priority: form.ntfy_priority,
         ...(form.ntfy_token ? { ntfy_token: form.ntfy_token } : {}),
         ...(form.ntfy_password ? { ntfy_password: form.ntfy_password } : {}),
+        webpush_enabled: form.webpush_enabled,
+        vapid_subject: form.vapid_subject,
         ...(form.fingerbank_api_key ? { fingerbank_api_key: form.fingerbank_api_key } : {}),
       }),
     onSuccess: () => {
@@ -860,6 +867,14 @@ export function Settings() {
               {t("settings.testMessage")}
             </Button>
           </Channel>
+
+          <PushCard
+            enabled={form.webpush_enabled}
+            subscriptions={d?.webpush_subscriptions ?? 0}
+            subject={form.vapid_subject}
+            onToggleEnabled={(v) => set("webpush_enabled", v)}
+            onSubject={(v) => set("vapid_subject", v)}
+          />
         </div>
       </section>
 
@@ -875,6 +890,7 @@ export function Settings() {
                   <th className="pb-2 font-normal">{t("settings.alerts.col.on")}</th>
                   <th className="pb-2 font-normal">Telegram</th>
                   <th className="pb-2 font-normal">ntfy</th>
+                  <th className="pb-2 font-normal">{t("settings.push.short")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -906,7 +922,7 @@ export function Settings() {
                           onChange={(v) => setRule({ enabled: v })}
                         />
                       </td>
-                      {["telegram", "ntfy"].map((name) => (
+                      {["telegram", "ntfy", "webpush"].map((name) => (
                         <td key={name} className="py-2 pr-3">
                           <input
                             type="checkbox"
@@ -1499,6 +1515,126 @@ function Channel({
       </div>
       {enabled && (
         <div className="space-y-4 bg-surface px-4 py-4 shadow-[inset_0_1px_0_rgba(0,0,0,0.04)]">{children}</div>
+      )}
+    </div>
+  );
+}
+
+/** Web Push. Two switches: `webpush_enabled` is a panel setting (does this
+ *  install use push at all), and the per-browser subscription is local to
+ *  whatever device is looking at the page right now. */
+function PushCard({
+  enabled,
+  subscriptions,
+  subject,
+  onToggleEnabled,
+  onSubject,
+}: {
+  enabled: boolean;
+  subscriptions: number;
+  subject: string;
+  onToggleEnabled: (v: boolean) => void;
+  onSubject: (v: string) => void;
+}) {
+  const t = useT();
+  const toast = useToast();
+  const [state, setState] = useState<PushState>("off");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    currentPushState().then(setState);
+  }, []);
+
+  const run = async (fn: () => Promise<PushState>, okKey: MessageKey) => {
+    setBusy(true);
+    try {
+      setState(await fn());
+      toast({ tone: "success", title: okKey });
+    } catch (e) {
+      toast({ tone: "error", title: "settings.push.failed", desc: String(e).slice(0, 120) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const status = !enabled
+    ? { tone: "neutral" as const, label: t("settings.channel.off") }
+    : state === "on"
+      ? { tone: "signal" as const, label: t("settings.push.state.on") }
+      : { tone: "neutral" as const, label: t("settings.push.state.off") };
+
+  return (
+    <div className="overflow-hidden rounded-xl bg-surface-2">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <span className="text-fg-2"><Bell size={14} /></span>
+        <span className="font-display text-[14px] text-fg">{t("settings.push.name")}</span>
+        <Badge tone={status.tone}>{status.label}</Badge>
+        <span className="ml-auto">
+          <Toggle checked={enabled} onChange={onToggleEnabled} label={t("settings.push.name")} />
+        </span>
+      </div>
+      {enabled && (
+        <div className="space-y-4 bg-surface px-4 py-4 shadow-[inset_0_1px_0_rgba(0,0,0,0.04)]">
+          <p className="text-[12.5px] leading-relaxed text-fg-2">{t("settings.push.blurb")}</p>
+
+          {state === "unsupported" ? (
+            <p className="mono text-[11px] text-fg-3">{t("settings.push.unsupported")}</p>
+          ) : state === "denied" ? (
+            <p className="mono text-[11px] text-alert">{t("settings.push.denied")}</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {state === "on" ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={busy}
+                    onClick={() => run(disablePush, "settings.push.turnedOff")}
+                  >
+                    {t("settings.push.turnOff")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Send size={12} />}
+                    onClick={async () => {
+                      const r = await api.testPush();
+                      toast(
+                        r.ok
+                          ? { tone: "success", title: "settings.push.testSent" }
+                          : { tone: "error", title: "settings.push.testFailed" },
+                      );
+                    }}
+                  >
+                    {t("settings.testMessage")}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Bell size={12} />}
+                  loading={busy}
+                  onClick={() => run(enablePush, "settings.push.turnedOn")}
+                >
+                  {t("settings.push.turnOn")}
+                </Button>
+              )}
+              <span className="mono text-[11px] text-fg-3">
+                {t("settings.push.count", { n: subscriptions })}
+              </span>
+            </div>
+          )}
+
+          <Field label={t("settings.push.subject")} hint={t("settings.push.subjectHint")}>
+            <input
+              className="input mono"
+              placeholder="mailto:you@example.com"
+              value={subject}
+              onChange={(e) => onSubject(e.target.value)}
+            />
+          </Field>
+        </div>
       )}
     </div>
   );

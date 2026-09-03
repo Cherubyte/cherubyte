@@ -317,3 +317,39 @@ curl -fsSL PANEL/api/agents/installer/linux | sudo bash -s -- --panel PANEL --to
 
 A GitHub outage degrades Settings ▸ Agents to the Docker and `git clone` paths;
 it does not break the page.
+
+## Web push: the panel is the application server, and it keeps the key
+
+The alert channels so far all lean on someone else's infrastructure — Telegram's
+bots, an ntfy server, an SMTP relay. Web Push does not: the browser's own push
+service is the only hop, and the panel talks to it directly as the VAPID
+"application server". So the panel generates the VAPID keypair itself, on first
+use, and stores it in the `settings` table (`vapid_private_pem`,
+`vapid_public_key`) — not in `.env`, because it must survive a restart and a
+fresh clone should just work. Those two keys are skipped by the settings loader's
+normal pass and never appear in the settings API.
+
+`pywebpush` does the RFC 8291 payload encryption and the VAPID JWT. It is
+synchronous (built on `requests`), so `services/webpush.py` sends every push
+through `run_in_executor`, the same treatment `smtplib` gets. This is the one
+place a heavier dependency (`cryptography`) was worth taking — hand-rolling
+ECDH + HKDF + AES-GCM for a notification is how you ship a silent 401.
+
+A subscription is per browser per device — its `endpoint` is unique — and it is
+**deleted** the moment the push service answers a send with 404 or 410. Dead
+subscriptions otherwise accumulate forever, one per phone that was ever set up
+and then wiped.
+
+`"webpush"` joins `alerts.CHANNELS` so it is on by default for every alert kind,
+and `notify.broadcast` no-ops it until at least one browser has subscribed and
+`webpush_enabled` is set — so the result dict can carry `webpush: False` on a
+panel nobody has enabled it for, exactly like the other unconfigured channels.
+
+## The service worker caches nothing
+
+`frontend/public/sw.js` exists only for `push` and `notificationclick`. It does
+not pre-cache the shell or intercept `fetch`. The panel is a live view of a LAN
+you are on; an offline copy served from a stale cache would show devices as
+online that left hours ago — worse than a page that simply fails to load when
+you are away from the network. The PWA install and the app icon are worth
+having; the offline story is not.
