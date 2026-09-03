@@ -8,6 +8,11 @@ DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+# Device file attachments (manuals, invoices, warranties). Deliberately *not*
+# under UPLOAD_DIR: those are served by a public static mount, these only by an
+# authenticated download route.
+ATTACHMENT_DIR = DATA_DIR / "attachments"
+ATTACHMENT_DIR.mkdir(exist_ok=True)
 
 
 def _read_app_version() -> str:

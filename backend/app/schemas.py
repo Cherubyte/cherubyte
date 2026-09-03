@@ -64,6 +64,20 @@ class ImageOut(ORMModel):
         return f"/uploads/{self.filename}"
 
 
+class AttachmentOut(ORMModel):
+    id: int
+    device_id: int
+    original_name: str
+    content_type: str
+    size: int
+    created_at: AwareUtc
+
+    @computed_field
+    @property
+    def url(self) -> str:
+        return f"/api/devices/{self.device_id}/attachments/{self.id}"
+
+
 class UserRef(ORMModel):
     id: int
     name: str
@@ -97,6 +111,7 @@ class DeviceOut(ORMModel):
     ips: list[IpOut] = []
     open_ports: list[PortOut] = []
     images: list[ImageOut] = []
+    attachments: list[AttachmentOut] = []
     tags: TagList = []
 
 

@@ -30,6 +30,7 @@ const UI = {
   CaretDown: "caret-down",
   CornerDown: "arrow-elbow-down-right",
   Bell: "bell",
+  Paperclip: "paperclip",
   // log categories
   Radar: "broadcast",
   Plug: "plug",

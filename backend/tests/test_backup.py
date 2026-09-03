@@ -14,10 +14,13 @@ from app.services import backup
 
 @pytest.fixture
 def uploads(tmp_path, monkeypatch):
-    """Point the backup service at a throwaway uploads dir, not the dev one."""
+    """Point the backup service at throwaway file trees, not the dev ones."""
     up = tmp_path / "uploads"
     up.mkdir()
+    att = tmp_path / "attachments"
+    att.mkdir()
     monkeypatch.setattr(backup, "UPLOAD_DIR", up)
+    monkeypatch.setattr(backup, "ATTACHMENT_DIR", att)
     return up
 
 
@@ -59,6 +62,22 @@ async def test_round_trip_restores_rows_and_files(session, uploads, tmp_path):
     assert backup.db_path().with_name(backup.db_path().name + ".pre-restore").exists()
 
 
+@pytest.mark.asyncio
+async def test_round_trip_carries_device_attachments(session, uploads, tmp_path):
+    att_dir = backup.ATTACHMENT_DIR
+    (att_dir / "dev1-abc.pdf").write_bytes(b"%PDF-1.4 fake")
+
+    archive = tmp_path / "b.tar.gz"
+    backup.create(archive)
+    assert backup.inspect(archive)["attachments"] == 1
+
+    (att_dir / "dev1-abc.pdf").unlink()
+    backup.restore(archive)
+    await engine.dispose()
+
+    assert (att_dir / "dev1-abc.pdf").read_bytes() == b"%PDF-1.4 fake"
+
+
 def test_inspect_accepts_a_legacy_netscan_db_member(tmp_path):
     """Backups written before the NetScan → Cherubyte rename carry the database
     as `netscan.db`. `inspect` (and, through it, `restore`) still accept them."""
@@ -74,7 +93,7 @@ def test_inspect_accepts_a_legacy_netscan_db_member(tmp_path):
     with tarfile.open(legacy, "w:gz") as tar:
         tar.add(db_file, arcname="netscan.db")
 
-    assert backup.inspect(legacy) == {"meta": {}, "uploads": 0}
+    assert backup.inspect(legacy) == {"meta": {}, "uploads": 0, "attachments": 0}
 
 
 @pytest.mark.asyncio
