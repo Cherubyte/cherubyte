@@ -129,6 +129,15 @@ export const api = {
   },
   deleteImage: (id: number, imageId: number) =>
     req<Device>(`/devices/${id}/images/${imageId}`, { method: "DELETE" }),
+  uploadAttachment: async (id: number, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${BASE}/devices/${id}/attachments`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<Device>;
+  },
+  deleteAttachment: (id: number, attachmentId: number) =>
+    req<Device>(`/devices/${id}/attachments/${attachmentId}`, { method: "DELETE" }),
 
   scan: () =>
     req<{

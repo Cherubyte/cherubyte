@@ -66,7 +66,8 @@ in a SQLite file on your LAN and never leaves it.
 - **Prometheus** — a `/api/metrics` scrape endpoint (device counts, per-person
   presence, agent freshness, WAN state), optionally behind a token.
 - **Multiple subnets** — scan several CIDRs; each gets its own tab.
-- **Per-device photos** — snap a picture so you recognise the thing later.
+- **Per-device photos & files** — snap a picture so you recognise the thing
+  later; attach the manual, the invoice or the warranty PDF alongside it.
 - **Wake-on-LAN** — a Wake button on an offline device; the agent on that
   segment sends the magic packet.
 - **CSV export** — the whole device inventory from **Settings ▸ History**.

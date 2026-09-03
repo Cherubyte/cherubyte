@@ -360,3 +360,31 @@ operator sets: an agent that misses a single sweep (default cadence: 60s) is not
 an outage, and a twitchy alert trains people to ignore it. `0` disables the
 check entirely. An agent that has *never* reported since enrolment is skipped —
 that is the Agents page's job to surface, not an outage notification.
+
+## Device attachments live outside the public uploads mount
+
+Device photos (`DeviceImage`) are served by the `/uploads` static mount, which
+sits *outside* the login wall — a picture of a router is not a secret, and it
+keeps the `<img>` tags simple. Device *attachments* (`DeviceAttachment`: a
+manual, an invoice, a warranty PDF) can carry a home address or a serial number,
+so they get the opposite treatment:
+
+- The bytes are stored under `data/attachments/`, **not** `data/uploads/`, so
+  the static mount cannot reach them at all.
+- The only way to read one is `GET /api/devices/{id}/attachments/{aid}`, which
+  is behind the session cookie like every other `/api` route. It returns the
+  file with `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`
+  and a `default-src 'none'; sandbox` CSP — downloaded, never rendered in place.
+- The type is sniffed from the leading bytes, never the filename: PDF (`%PDF-`),
+  the raster image formats `DeviceImage` already sniffs (SVG excluded — it is a
+  script vehicle with no business being a download), or UTF-8 text with no NUL
+  byte. Anything else is a 400.
+- The upload filename is passed through `Path(name).name` with quotes and
+  backslashes stripped before it goes near a `Content-Disposition` header or the
+  response `filename=`.
+
+`backup.py` grew a second file tree: `_trees()` returns `(uploads/, UPLOAD_DIR)`
+and `(attachments/, ATTACHMENT_DIR)`, and `create` / `inspect` / `restore` all
+loop over it, so a backup carries attachments and a restore puts them back. It
+is a function, not a module constant, so a test can still redirect either
+directory with `monkeypatch`.

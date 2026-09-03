@@ -124,6 +124,16 @@ export interface DeviceImage {
   url: string;
 }
 
+export interface DeviceAttachment {
+  id: number;
+  device_id: number;
+  original_name: string;
+  content_type: string;
+  size: number;
+  created_at: string;
+  url: string;
+}
+
 export interface UserRef {
   id: number;
   name: string;
@@ -157,6 +167,7 @@ export interface Device {
   ips: Ip[];
   open_ports: Port[];
   images: DeviceImage[];
+  attachments: DeviceAttachment[];
   tags: string[];
 }
 
