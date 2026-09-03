@@ -311,6 +311,15 @@ export interface AppSettings {
   ntfy_priority: number;
   /** True when a token or password is stored; the secret itself is never returned. */
   ntfy_auth_configured: boolean;
+  smtp_enabled: boolean;
+  smtp_configured: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_security: string;
+  smtp_username: string;
+  smtp_from: string;
+  smtp_to: string;
+  smtp_auth_configured: boolean;
   fingerbank_configured: boolean;
   dhcp_fingerprints: number;
   alert_policy: Record<string, AlertRule>;

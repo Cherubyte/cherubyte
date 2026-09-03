@@ -318,6 +318,27 @@ curl -fsSL PANEL/api/agents/installer/linux | sudo bash -s -- --panel PANEL --to
 A GitHub outage degrades Settings ▸ Agents to the Docker and `git clone` paths;
 it does not break the page.
 
+## Email is a third alert channel, sent with the standard library
+
+`services/email.py` joins Telegram and ntfy as an alert channel. It sends
+through the standard-library `smtplib` on a worker thread
+(`run_in_executor`) — the same "shell out / use what ships with Python rather
+than add a dependency" choice already made for `ping`, `ip neigh` and
+`snmpget`. `aiosmtplib` would be one more thing to pin and audit for a job the
+stdlib does.
+
+The message is `multipart/alternative`: the plain-text part is the exact same
+lines every other channel receives, and the HTML part (`email.render`) lays
+them out in the panel's STUDIO style. All of its CSS is inline and the wordmark
+is text, not an image — mail clients strip `<style>` blocks and will not fetch
+a remote asset, so anything else is invisible in half the inboxes it lands in.
+
+`"email"` is added to `alerts.CHANNELS`, so a fresh deployment offers it on
+every alert kind by default (like the other two) and it simply no-ops until an
+SMTP server, a From address and at least one recipient are configured. That is
+why `notify.broadcast`'s result dict can now carry `email: False` on a panel
+that never set it up — the same way it already did for an unconfigured ntfy.
+
 ## A silent agent is an alert, and the "already told you" bit lives on the row
 
 An agent pushes a report every sweep. If one stops, the panel is blind to that

@@ -189,6 +189,7 @@ export const api = {
     telegram_chat_id?: string;
     ntfy_token?: string;
     ntfy_password?: string;
+    smtp_password?: string;
     mqtt_password?: string;
     fingerbank_api_key?: string;
     metrics_token?: string;
@@ -196,6 +197,7 @@ export const api = {
   }) => req<AppSettings>("/settings", { method: "PATCH", body: JSON.stringify(data) }),
   testTelegram: () => req<{ ok: boolean }>("/settings/telegram/test", { method: "POST" }),
   testNtfy: () => req<{ ok: boolean }>("/settings/ntfy/test", { method: "POST" }),
+  testEmail: () => req<{ ok: boolean }>("/settings/email/test", { method: "POST" }),
   purgeHistory: () =>
     req<AppSettings>("/settings/purge-history", { method: "POST" }),
   testDigest: () =>
