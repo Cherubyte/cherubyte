@@ -387,6 +387,7 @@ export function Settings() {
     risky_ports_ignore: "",
     quiet_hours_start: "",
     quiet_hours_end: "",
+    agent_offline_after_seconds: 600,
     mqtt_enabled: false,
     mqtt_host: "",
     mqtt_port: 1883,
@@ -444,6 +445,7 @@ export function Settings() {
         risky_ports_ignore: settings.data.risky_ports_ignore,
         quiet_hours_start: settings.data.quiet_hours_start,
         quiet_hours_end: settings.data.quiet_hours_end,
+        agent_offline_after_seconds: settings.data.agent_offline_after_seconds,
         mqtt_enabled: settings.data.mqtt_enabled,
         mqtt_host: settings.data.mqtt_host,
         mqtt_port: settings.data.mqtt_port,
@@ -485,6 +487,7 @@ export function Settings() {
         alert_policy: policy,
         quiet_hours_start: form.quiet_hours_start,
         quiet_hours_end: form.quiet_hours_end,
+        agent_offline_after_seconds: form.agent_offline_after_seconds,
         public_base_url: form.public_base_url,
         dhcp_allowlist: form.dhcp_allowlist,
         risky_ports_ignore: form.risky_ports_ignore,
@@ -946,6 +949,20 @@ export function Settings() {
                 placeholder="http://192.168.1.9:1001"
                 value={form.public_base_url}
                 onChange={(e) => set("public_base_url", e.target.value)}
+              />
+            </Field>
+            <Field
+              label={t("settings.alerts.agentSilent")}
+              hint={t("settings.alerts.agentSilentHint")}
+              className="sm:col-span-3"
+            >
+              <input
+                type="number"
+                min={0}
+                step={60}
+                className="input mono w-40"
+                value={form.agent_offline_after_seconds}
+                onChange={(e) => set("agent_offline_after_seconds", +e.target.value)}
               />
             </Field>
             <Field

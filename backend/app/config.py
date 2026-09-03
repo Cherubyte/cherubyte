@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     alert_policy: str = ""
     quiet_hours_start: str = ""
     quiet_hours_end: str = ""
+    # An enabled agent that has not reported for this long raises an
+    # `agent_offline` alert (and `agent_online` when it comes back). 0 disables
+    # the check. The floor is 120s so a single missed sweep never trips it.
+    agent_offline_after_seconds: int = 600
 
     # Base URL this service is reachable at from a phone, e.g. http://192.168.1.9:1001.
     # Needed for the action buttons on ntfy notifications; empty disables them.

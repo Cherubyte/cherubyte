@@ -317,6 +317,7 @@ export interface AppSettings {
   alert_kinds: AlertKind[];
   quiet_hours_start: string;
   quiet_hours_end: string;
+  agent_offline_after_seconds: number;
   public_base_url: string;
   dhcp_allowlist: string;
   risky_ports_ignore: string;
