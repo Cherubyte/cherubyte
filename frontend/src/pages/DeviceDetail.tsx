@@ -21,7 +21,7 @@ import {
   StatusPill,
   Toggle,
 } from "../components/ui";
-import { ArrowLeft, ArrowUpRight, Check, Close, Globe, Image, Merge, Plus, Power, Radar, Trash, Wave } from "../components/Glyph";
+import { ArrowLeft, ArrowUpRight, Check, Close, DownloadIcon, Globe, Image, Merge, Paperclip, Plus, Power, Radar, Trash, Wave } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
 import { deviceTypeLabel, dateTime, timeAgo } from "../lib/format";
 import { useT } from "../i18n";
@@ -30,6 +30,12 @@ const OS_OPTIONS = [
   "Windows", "macOS", "iOS", "iPadOS", "Android", "Linux", "ChromeOS",
   "tvOS", "watchOS", "Tizen", "webOS", "Roku OS", "PlayStation OS",
 ];
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function DeviceDetail() {
   const { id } = useParams();
@@ -42,6 +48,7 @@ export function DeviceDetail() {
   const logos = useBrandLogos();
   const osLogos = useOsLogos();
   const fileRef = useRef<HTMLInputElement>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
   useNow();
 
   const device = useQuery({
@@ -99,6 +106,12 @@ export function DeviceDetail() {
   });
   const upload = useMutation({ mutationFn: (f: File) => api.uploadImage(deviceId, f), onSuccess: invalidate });
   const delImage = useMutation({ mutationFn: (i: number) => api.deleteImage(deviceId, i), onSuccess: invalidate });
+  const uploadFile = useMutation({
+    mutationFn: (f: File) => api.uploadAttachment(deviceId, f),
+    onSuccess: invalidate,
+    onError: (e) => toast({ tone: "error", title: "attachment.failed", desc: String(e).slice(0, 120) }),
+  });
+  const delFile = useMutation({ mutationFn: (i: number) => api.deleteAttachment(deviceId, i), onSuccess: invalidate });
   const absorbMac = useMutation({
     mutationFn: (a: string) => api.absorbMac(deviceId, a),
     onSuccess: () => { setNewMac(""); invalidate(); toast({ tone: "success", title: "mac.attached" }); },
@@ -457,6 +470,66 @@ export function DeviceDetail() {
     </section>
   );
 
+  const attachments = (
+    <section className="panel p-5">
+      <SectionHeader
+        title={t("device.section.files")}
+        sub={String(d.attachments.length)}
+        actions={
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Paperclip size={12} />}
+            loading={uploadFile.isPending}
+            onClick={() => attachRef.current?.click()}
+          >
+            {t("common.add")}
+          </Button>
+        }
+      />
+      <input
+        ref={attachRef}
+        type="file"
+        accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,.log,application/pdf,image/*,text/plain"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) uploadFile.mutate(f);
+          e.target.value = "";
+        }}
+      />
+      {d.attachments.length === 0 ? (
+        <EmptyState title={t("device.files.empty.title")} description={t("device.files.empty.desc")} />
+      ) : (
+        <ul className="divide-y divide-edge">
+          {d.attachments.map((a) => (
+            <li key={a.id} className="flex items-center gap-3 py-2">
+              <Paperclip size={14} className="shrink-0 text-fg-3" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] text-fg">{a.original_name}</div>
+                <div className="mono text-[11px] text-fg-3">{fmtBytes(a.size)}</div>
+              </div>
+              <a
+                href={a.url}
+                className="grid h-7 w-7 place-items-center rounded-md text-fg-3 hover:bg-surface-2 hover:text-fg"
+                title={t("common.open")}
+              >
+                <DownloadIcon size={13} />
+              </a>
+              <button
+                onClick={() => delFile.mutate(a.id)}
+                className="grid h-7 w-7 place-items-center rounded-md text-fg-3 hover:bg-surface-2 hover:text-alert"
+                title={t("common.delete")}
+              >
+                <Trash size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
   const historyCard = (
     <section className="panel p-5">
       <SectionHeader title={t("device.section.history")} />
@@ -548,6 +621,7 @@ export function DeviceDetail() {
           {network}
           {actionsCard}
           {photos}
+          {attachments}
           {historyCard}
         </>
       ) : (
@@ -555,6 +629,7 @@ export function DeviceDetail() {
           <div className="space-y-3">
             {identity}
             {photos}
+            {attachments}
           </div>
           <div className="space-y-3">
             {network}

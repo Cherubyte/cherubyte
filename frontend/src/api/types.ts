@@ -124,6 +124,16 @@ export interface DeviceImage {
   url: string;
 }
 
+export interface DeviceAttachment {
+  id: number;
+  device_id: number;
+  original_name: string;
+  content_type: string;
+  size: number;
+  created_at: string;
+  url: string;
+}
+
 export interface UserRef {
   id: number;
   name: string;
@@ -157,6 +167,7 @@ export interface Device {
   ips: Ip[];
   open_ports: Port[];
   images: DeviceImage[];
+  attachments: DeviceAttachment[];
   tags: string[];
 }
 
@@ -311,12 +322,22 @@ export interface AppSettings {
   ntfy_priority: number;
   /** True when a token or password is stored; the secret itself is never returned. */
   ntfy_auth_configured: boolean;
+  smtp_enabled: boolean;
+  smtp_configured: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_security: string;
+  smtp_username: string;
+  smtp_from: string;
+  smtp_to: string;
+  smtp_auth_configured: boolean;
   fingerbank_configured: boolean;
   dhcp_fingerprints: number;
   alert_policy: Record<string, AlertRule>;
   alert_kinds: AlertKind[];
   quiet_hours_start: string;
   quiet_hours_end: string;
+  agent_offline_after_seconds: number;
   public_base_url: string;
   dhcp_allowlist: string;
   risky_ports_ignore: string;

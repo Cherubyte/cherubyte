@@ -129,6 +129,15 @@ export const api = {
   },
   deleteImage: (id: number, imageId: number) =>
     req<Device>(`/devices/${id}/images/${imageId}`, { method: "DELETE" }),
+  uploadAttachment: async (id: number, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${BASE}/devices/${id}/attachments`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<Device>;
+  },
+  deleteAttachment: (id: number, attachmentId: number) =>
+    req<Device>(`/devices/${id}/attachments/${attachmentId}`, { method: "DELETE" }),
 
   scan: () =>
     req<{
@@ -189,6 +198,7 @@ export const api = {
     telegram_chat_id?: string;
     ntfy_token?: string;
     ntfy_password?: string;
+    smtp_password?: string;
     mqtt_password?: string;
     fingerbank_api_key?: string;
     metrics_token?: string;
@@ -196,6 +206,7 @@ export const api = {
   }) => req<AppSettings>("/settings", { method: "PATCH", body: JSON.stringify(data) }),
   testTelegram: () => req<{ ok: boolean }>("/settings/telegram/test", { method: "POST" }),
   testNtfy: () => req<{ ok: boolean }>("/settings/ntfy/test", { method: "POST" }),
+  testEmail: () => req<{ ok: boolean }>("/settings/email/test", { method: "POST" }),
   pushKey: () => req<{ key: string; enabled: boolean }>("/push/key"),
   pushSubscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
     req<{ ok: boolean }>("/push/subscribe", { method: "POST", body: JSON.stringify(sub) }),

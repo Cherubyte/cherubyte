@@ -252,6 +252,9 @@ class Device(Base):
     images: Mapped[list[DeviceImage]] = relationship(
         back_populates="device", cascade="all, delete-orphan"
     )
+    attachments: Mapped[list[DeviceAttachment]] = relationship(
+        back_populates="device", cascade="all, delete-orphan"
+    )
     open_ports: Mapped[list[OpenPort]] = relationship(
         back_populates="device", cascade="all, delete-orphan"
     )
@@ -491,6 +494,32 @@ class DeviceImage(Base):
     device: Mapped[Device] = relationship(back_populates="images")
 
 
+class DeviceAttachment(Base):
+    """A file a user attached to a device — a manual, an invoice, a warranty PDF.
+
+    Distinct from ``DeviceImage`` (a photo shown inline): an attachment keeps its
+    original filename, is any of a small allow-list of types, and is downloaded
+    rather than rendered. The bytes live under ``uploads/attachments/`` so a
+    backup picks them up with everything else.
+    """
+
+    __tablename__ = "device_attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(
+        ForeignKey("devices.id", ondelete="CASCADE"), index=True
+    )
+    # The name on disk (uuid-based); never what the user typed.
+    filename: Mapped[str] = mapped_column(String(255))
+    # The name the user uploaded, shown in the UI and sent on download.
+    original_name: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(120), default="application/octet-stream")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    device: Mapped[Device] = relationship(back_populates="attachments")
+
+
 class ConnectionHistory(Base):
     """Append-only log of join/leave transitions per device."""
 
@@ -600,6 +629,10 @@ class Agent(Base):
     last_hosts: Mapped[int] = mapped_column(Integer, default=0)
     last_fingerprints: Mapped[int] = mapped_column(Integer, default=0)
     last_healthy: Mapped[bool] = mapped_column(Boolean, default=True)
+    # True once the panel has alerted that this agent went silent; cleared when
+    # it reports again. Keeps the "agent offline" notice to one per outage even
+    # across a panel restart.
+    offline_alerted: Mapped[bool] = mapped_column(Boolean, default=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

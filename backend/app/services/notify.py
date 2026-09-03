@@ -12,7 +12,7 @@ import logging
 from html import escape
 
 from ..config import settings
-from . import alerts, ntfy, telegram, webpush
+from . import alerts, email, ntfy, telegram, webpush
 
 logger = logging.getLogger("cherubyte.notify")
 
@@ -52,6 +52,11 @@ async def broadcast(
         result["ntfy"] = await ntfy.send(
             body or title, title=heading, tags=tags, prio=prio, actions=actions
         )
+
+    if "email" in channels:
+        subject = f"{emoji} {title}".strip() if emoji else title
+        html = email.render(title, lines, urgent=alerts.kind(kind).urgent)
+        result["email"] = await email.send(subject, body or title, html)
 
     if "webpush" in channels:
         pushed = await webpush.broadcast(

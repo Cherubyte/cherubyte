@@ -17,7 +17,7 @@ from ..config import settings
 
 logger = logging.getLogger("cherubyte.alerts")
 
-CHANNELS = ("telegram", "ntfy", "webpush")
+CHANNELS = ("telegram", "ntfy", "email", "webpush")
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,8 @@ KINDS: tuple[AlertKind, ...] = (
     AlertKind("wan_down", "Internet down", urgent=True),
     AlertKind("wan_up", "Internet recovered"),
     AlertKind("scan_degraded", "Scan found nothing", urgent=True),
+    AlertKind("agent_offline", "A scanning agent went silent", urgent=True),
+    AlertKind("agent_online", "A scanning agent came back", default_on=False),
     AlertKind("weekly_summary", "Weekly digest", default_on=False),
 )
 

@@ -24,6 +24,7 @@ from ..services import (
     agents as agent_service,
     alerts,
     backup as backup_service,
+    email as email_service,
     fingerbank,
     mqtt,
     notify,
@@ -49,9 +50,12 @@ _INT_KEYS = (
     "identify_interval_seconds",
     "retention_days",
     "ntfy_priority",
+    "smtp_port",
+    "agent_offline_after_seconds",
 )
 _BOOL_KEYS = (
     "ntfy_enabled",
+    "smtp_enabled",
     "telegram_enabled",
     "mqtt_enabled",
     "wan_enabled",
@@ -74,6 +78,12 @@ _PERSISTED = (
     "ntfy_token",
     "ntfy_username",
     "ntfy_password",
+    "smtp_host",
+    "smtp_security",
+    "smtp_username",
+    "smtp_password",
+    "smtp_from",
+    "smtp_to",
     "fingerbank_api_key",
     "alert_policy",
     "quiet_hours_start",
@@ -107,6 +117,16 @@ def _push_runtime() -> None:
         password=cfg.ntfy_password,
         priority=cfg.ntfy_priority,
         enabled=cfg.ntfy_enabled,
+    )
+    email_service.configure(
+        host=cfg.smtp_host,
+        port=cfg.smtp_port,
+        security=cfg.smtp_security,
+        username=cfg.smtp_username,
+        password=cfg.smtp_password,
+        from_addr=cfg.smtp_from,
+        to_addrs=cfg.smtp_to,
+        enabled=cfg.smtp_enabled,
     )
     webpush.configure(subject=cfg.vapid_subject, enabled=cfg.webpush_enabled)
 
@@ -177,11 +197,21 @@ def _current(history: dict[str, int] | None = None) -> SettingsOut:
         ntfy_username=cfg.ntfy_username or "",
         ntfy_priority=ntfy.priority(),
         ntfy_auth_configured=ntfy.has_auth(),
+        smtp_enabled=email_service.is_enabled(),
+        smtp_configured=email_service.is_configured(),
+        smtp_host=email_service.host(),
+        smtp_port=email_service.port(),
+        smtp_security=email_service.security(),
+        smtp_username=cfg.smtp_username or "",
+        smtp_from=cfg.smtp_from or "",
+        smtp_to=cfg.smtp_to or "",
+        smtp_auth_configured=email_service.has_auth(),
         fingerbank_configured=bool(cfg.fingerbank_api_key),
         dhcp_fingerprints=history.get("fingerprints", 0),
         alert_policy=alerts.effective_policy(),
         quiet_hours_start=cfg.quiet_hours_start or "",
         quiet_hours_end=cfg.quiet_hours_end or "",
+        agent_offline_after_seconds=cfg.agent_offline_after_seconds,
         dhcp_allowlist=cfg.dhcp_allowlist or "",
         risky_ports_ignore=cfg.risky_ports_ignore or "",
         alert_kinds=[
@@ -285,6 +315,38 @@ async def update_settings(
         prio = min(5, max(1, int(data["ntfy_priority"])))
         cfg.ntfy_priority = prio
         await _set(session, "ntfy_priority", str(prio))
+    if (
+        "agent_offline_after_seconds" in data
+        and data["agent_offline_after_seconds"] is not None
+    ):
+        secs = max(0, int(data["agent_offline_after_seconds"]))
+        cfg.agent_offline_after_seconds = secs
+        await _set(session, "agent_offline_after_seconds", str(secs))
+    if "smtp_enabled" in data and data["smtp_enabled"] is not None:
+        cfg.smtp_enabled = bool(data["smtp_enabled"])
+        await _set(session, "smtp_enabled", "true" if cfg.smtp_enabled else "false")
+    if "smtp_host" in data:
+        cfg.smtp_host = (data["smtp_host"] or "").strip()
+        await _set(session, "smtp_host", cfg.smtp_host)
+    if "smtp_port" in data and data["smtp_port"]:
+        cfg.smtp_port = min(65535, max(1, int(data["smtp_port"])))
+        await _set(session, "smtp_port", str(cfg.smtp_port))
+    if "smtp_security" in data:
+        mode = (data["smtp_security"] or "").strip().lower()
+        cfg.smtp_security = mode if mode in email_service.SECURITY_MODES else "starttls"
+        await _set(session, "smtp_security", cfg.smtp_security)
+    if "smtp_username" in data:
+        cfg.smtp_username = (data["smtp_username"] or "").strip()
+        await _set(session, "smtp_username", cfg.smtp_username)
+    if "smtp_password" in data:
+        cfg.smtp_password = data["smtp_password"] or ""
+        await _set(session, "smtp_password", cfg.smtp_password)
+    if "smtp_from" in data:
+        cfg.smtp_from = (data["smtp_from"] or "").strip()
+        await _set(session, "smtp_from", cfg.smtp_from)
+    if "smtp_to" in data:
+        cfg.smtp_to = (data["smtp_to"] or "").strip()
+        await _set(session, "smtp_to", cfg.smtp_to)
     if "alert_policy" in data and data["alert_policy"] is not None:
         import json as _json
 
@@ -433,6 +495,23 @@ async def test_digest(session: AsyncSession = Depends(get_session)):
 async def test_fingerbank():
     """Check that the configured Fingerbank key is accepted and reachable."""
     return await fingerbank.check()
+
+
+@router.post("/email/test")
+async def test_email():
+    html = email_service.render(
+        "Email test",
+        [
+            "If you got this, your Cherubyte panel can send mail.",
+            "Alerts will arrive here from now on.",
+        ],
+    )
+    ok = await email_service.send(
+        "✅ Cherubyte email test",
+        "If you got this, your Cherubyte panel can send mail.",
+        html,
+    )
+    return {"ok": ok}
 
 
 @router.post("/ntfy/test")

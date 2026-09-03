@@ -8,12 +8,12 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..config import UPLOAD_DIR, settings
+from ..config import ATTACHMENT_DIR, UPLOAD_DIR, settings
 from ..database import get_session
 from ..models import (
     ActionKind,
@@ -22,6 +22,7 @@ from ..models import (
     ConnectionHistory,
     Device,
     DeviceAction,
+    DeviceAttachment,
     DeviceImage,
     Event,
     EventLevel,
@@ -32,7 +33,7 @@ from ..models import (
 )
 from ..services import device_actions, duplicates, uptime, wol
 from ..services.agent_nudge import poke_all
-from ._uploads import save_image_upload
+from ._uploads import save_attachment_upload, save_image_upload
 from ..schemas import (
     AbsorbMacRequest,
     ConnectionOut,
@@ -41,6 +42,10 @@ from ..schemas import (
     MergeRequest,
 )
 
+# Attachments (invoices, warranties) are downloaded through an authenticated
+# route, never the public /uploads mount — so they live outside UPLOAD_DIR.
+_ATTACHMENT_DIR = ATTACHMENT_DIR
+
 router = APIRouter(prefix="/devices", tags=["devices"])
 
 _LOADED = (
@@ -48,6 +53,7 @@ _LOADED = (
     selectinload(Device.ips),
     selectinload(Device.open_ports),
     selectinload(Device.images),
+    selectinload(Device.attachments),
     selectinload(Device.user),
 )
 
@@ -283,8 +289,11 @@ async def ignore_device(device_id: int, session: AsyncSession = Depends(get_sess
 @router.delete("/{device_id}", status_code=204)
 async def delete_device(device_id: int, session: AsyncSession = Depends(get_session)):
     device = await _get(session, device_id)
+    stored_files = [_ATTACHMENT_DIR / a.filename for a in device.attachments]
     await session.delete(device)
     await session.commit()
+    for path in stored_files:
+        path.unlink(missing_ok=True)
 
 
 @router.get("/{device_id}/history", response_model=list[ConnectionOut])
@@ -340,7 +349,15 @@ async def _fold_into(session: AsyncSession, target_id: int, src_id: int) -> None
             )
         )
 
-    for table in (MacAddress, IpAddress, OpenPort, ConnectionHistory, DeviceImage, Event):
+    for table in (
+        MacAddress,
+        IpAddress,
+        OpenPort,
+        ConnectionHistory,
+        DeviceImage,
+        DeviceAttachment,
+        Event,
+    ):
         await session.execute(
             table.__table__.update()
             .where(table.device_id == src_id)
@@ -550,5 +567,83 @@ async def delete_image(
         raise HTTPException(404, "Image not found")
     (UPLOAD_DIR / img.filename).unlink(missing_ok=True)
     await session.delete(img)
+    await session.commit()
+    return await _get(session, device_id)
+
+
+# --- attachments (files: manuals, invoices, warranties) -------------------
+
+_ATTACH_HEADERS = {
+    "Content-Security-Policy": "default-src 'none'; sandbox",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
+def _sanitise_download_name(name: str) -> str:
+    """A filename safe to put in a Content-Disposition header."""
+    cleaned = Path(name).name.replace('"', "").replace("\\", "").strip()
+    return cleaned or "attachment"
+
+
+@router.post("/{device_id}/attachments", response_model=DeviceOut)
+async def upload_attachment(
+    device_id: int,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+):
+    device = await _get(session, device_id)
+    if len(device.attachments) >= 25:
+        raise HTTPException(400, "This device already has the maximum of 25 attachments")
+
+    _ATTACHMENT_DIR.mkdir(parents=True, exist_ok=True)
+    original = _sanitise_download_name(file.filename or "attachment")
+    ext = Path(original).suffix.lower()
+    fname = f"dev{device_id}-{uuid.uuid4().hex[:16]}{ext}"
+    dest = _ATTACHMENT_DIR / fname
+
+    media_type, size = await save_attachment_upload(
+        file, dest, max_bytes=settings.max_upload_bytes
+    )
+    device.attachments.append(
+        DeviceAttachment(
+            filename=fname,
+            original_name=original,
+            content_type=media_type,
+            size=size,
+        )
+    )
+    await session.commit()
+    return await _get(session, device_id)
+
+
+@router.get("/{device_id}/attachments/{attachment_id}")
+async def download_attachment(
+    device_id: int, attachment_id: int, session: AsyncSession = Depends(get_session)
+):
+    device = await _get(session, device_id)
+    att = next((a for a in device.attachments if a.id == attachment_id), None)
+    if att is None:
+        raise HTTPException(404, "Attachment not found")
+    path = _ATTACHMENT_DIR / att.filename
+    if not path.is_file():
+        raise HTTPException(410, "The stored file is missing")
+    return FileResponse(
+        path,
+        media_type=att.content_type or "application/octet-stream",
+        filename=_sanitise_download_name(att.original_name),
+        headers=_ATTACH_HEADERS,
+    )
+
+
+@router.delete("/{device_id}/attachments/{attachment_id}", response_model=DeviceOut)
+async def delete_attachment(
+    device_id: int, attachment_id: int, session: AsyncSession = Depends(get_session)
+):
+    device = await _get(session, device_id)
+    att = next((a for a in device.attachments if a.id == attachment_id), None)
+    if att is None:
+        raise HTTPException(404, "Attachment not found")
+    (_ATTACHMENT_DIR / att.filename).unlink(missing_ok=True)
+    await session.delete(att)
     await session.commit()
     return await _get(session, device_id)
