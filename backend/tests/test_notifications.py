@@ -105,7 +105,7 @@ async def test_broadcast_escapes_html_for_telegram_but_not_for_ntfy(
         "device_new", "Novo & <teste>", ["Nome: a<b>", "MAC: aa"], emoji="🆕", prio=4
     )
 
-    assert result == {"telegram": True, "ntfy": True}
+    assert result == {"telegram": True, "ntfy": True, "email": False}
     assert sent["text"] == "🆕 <b>Novo &amp; &lt;teste&gt;</b>\nNome: a&lt;b&gt;\nMAC: aa"
     assert captured["json"]["title"] == "🆕 Novo & <teste>"
     assert captured["json"]["message"] == "Nome: a<b>\nMAC: aa"

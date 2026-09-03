@@ -162,6 +162,17 @@ class Settings(BaseSettings):
     weekly_summary_weekday: int = 0
     weekly_summary_hour: int = 9
 
+    # Email (SMTP) notifications. security: starttls (587) | ssl (465) | none.
+    # `smtp_to` is comma-separated. `smtp_from` defaults to the auth username.
+    smtp_enabled: bool = True
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_security: str = "starttls"
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_to: str = ""
+
     # ntfy notifications
     ntfy_enabled: bool = True
     ntfy_server: str = "https://ntfy.sh"
