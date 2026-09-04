@@ -108,3 +108,11 @@ def test_video_doorbell_is_its_own_type_not_camera():
     assert classify(None, "nest-hello-abc", {}) == DeviceType.doorbell
     # a plain camera is unaffected
     assert classify(None, "garden-cam", {}) == DeviceType.camera
+
+
+def test_virtual_machine_by_hypervisor_vendor():
+    assert classify("VMware, Inc.", None, {}) == DeviceType.vm
+    assert classify("innotek GmbH", None, {}) == DeviceType.vm
+    assert classify("QEMU", None, {}) == DeviceType.vm
+    assert classify("Xensource, Inc.", None, {}) == DeviceType.vm
+    assert classify("Parallels, Inc.", None, {}) == DeviceType.vm

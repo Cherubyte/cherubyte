@@ -1,9 +1,10 @@
-"""Back up and restore the panel's state — the SQLite database and the uploads.
+"""Back up and restore the panel's state — the SQLite database and the files.
 
-Everything the panel holds lives in `backend/data/`: `cherubyte.db` and the
-`uploads/` tree. A backup is a gzipped tar of exactly those two, plus a small
-`meta.json`. Losing the database loses your whole history, and on a Raspberry Pi
-the thing it lives on is an SD card — so this wants to be one button.
+Everything the panel holds lives in `backend/data/`: `cherubyte.db`, the
+`uploads/` tree (photos, logos) and the `attachments/` tree (device files). A
+backup is a gzipped tar of those, plus a small `meta.json`. Losing the database
+loses your whole history, and on a Raspberry Pi the thing it lives on is an SD
+card — so this wants to be one button.
 
 The database is copied with SQLite's own backup API, not a file copy, so the
 snapshot is consistent even while the service is writing to it. A restore swaps
@@ -24,7 +25,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..config import DATA_DIR, settings, upload_dir
+from ..config import DATA_DIR, attachment_dir, settings, upload_dir
 
 logger = logging.getLogger("cherubyte.backup")
 
@@ -34,6 +35,22 @@ _DB_MEMBER = "cherubyte.db"
 _LEGACY_DB_MEMBER = "netscan.db"
 _META_MEMBER = "meta.json"
 _UPLOADS_PREFIX = "uploads/"
+_ATTACHMENTS_PREFIX = "attachments/"
+
+
+def _trees() -> tuple[tuple[str, Path], ...]:
+    """(archive prefix, on-disk directory) for each file tree a backup carries.
+
+    Read at call time, not import time, so a test can redirect UPLOAD_DIR /
+    ATTACHMENT_DIR with monkeypatch — and so both resolve against the tenant
+    in scope. Holding the global constants here instead would put every
+    tenant's files in whichever tenant asked for a backup, and let one
+    tenant's restore rotate away another's.
+    """
+    return (
+        (_UPLOADS_PREFIX, upload_dir()),
+        (_ATTACHMENTS_PREFIX, attachment_dir()),
+    )
 
 
 def _archived_db_member(members: set[str]) -> str:
@@ -100,14 +117,12 @@ def create(out_path: Path) -> Path:
             info = tarfile.TarInfo(_META_MEMBER)
             info.size = len(meta_bytes)
             tar.addfile(info, io.BytesIO(meta_bytes))
-            uploads = upload_dir()
-            if uploads.is_dir():
-                for path in sorted(uploads.rglob("*")):
+            for prefix, tree in _trees():
+                if not tree.is_dir():
+                    continue
+                for path in sorted(tree.rglob("*")):
                     if path.is_file():
-                        tar.add(
-                            path,
-                            arcname=f"{_UPLOADS_PREFIX}{path.relative_to(uploads)}",
-                        )
+                        tar.add(path, arcname=f"{prefix}{path.relative_to(tree)}")
     return out_path
 
 
@@ -166,7 +181,10 @@ def inspect(archive: Path) -> dict:
                 except (ValueError, UnicodeDecodeError):
                     meta = {}
         upload_files = sum(1 for m in members if m.startswith(_UPLOADS_PREFIX))
-    return {"meta": meta, "uploads": upload_files}
+        attachment_files = sum(
+            1 for m in members if m.startswith(_ATTACHMENTS_PREFIX)
+        )
+    return {"meta": meta, "uploads": upload_files, "attachments": attachment_files}
 
 
 def restore(archive: Path) -> dict:
@@ -198,18 +216,18 @@ def restore(archive: Path) -> dict:
             stale = target_db.with_name(target_db.name + sidecar)
             stale.unlink(missing_ok=True)
 
-        # uploads
-        staged_uploads = tmp_path / "uploads"
-        uploads = upload_dir()
-        if uploads.exists():
-            _rotate(uploads)
-        uploads.mkdir(parents=True, exist_ok=True)
-        if staged_uploads.is_dir():
-            for item in staged_uploads.rglob("*"):
-                if item.is_file():
-                    dest = uploads / item.relative_to(staged_uploads)
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(item, dest)
+        # file trees (uploads, attachments)
+        for prefix, tree in _trees():
+            staged = tmp_path / prefix.rstrip("/")
+            if tree.exists():
+                _rotate(tree)
+            tree.mkdir(parents=True, exist_ok=True)
+            if staged.is_dir():
+                for item in staged.rglob("*"):
+                    if item.is_file():
+                        dest = tree / item.relative_to(staged)
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(item, dest)
 
     logger.warning("Restore applied from %s — the process will now exit to reload it", archive.name)
     return summary

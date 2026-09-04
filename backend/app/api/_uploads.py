@@ -40,6 +40,80 @@ def sniff_image(head: bytes) -> str | None:
     return None
 
 
+# A device attachment is a manual, an invoice, a warranty — downloaded, never
+# rendered inline. Keep the set small and sniff every one: the extension proves
+# nothing. `kind -> (extensions, media type)`.
+ATTACHMENT_TYPES: dict[str, tuple[set[str], str]] = {
+    "pdf": ({".pdf"}, "application/pdf"),
+    "png": ({".png"}, "image/png"),
+    "jpeg": ({".jpg", ".jpeg"}, "image/jpeg"),
+    "gif": ({".gif"}, "image/gif"),
+    "webp": ({".webp"}, "image/webp"),
+    "text": ({".txt", ".md", ".csv", ".log"}, "text/plain; charset=utf-8"),
+}
+
+
+def sniff_attachment(head: bytes) -> str | None:
+    """The attachment kind the leading bytes describe, or None if unrecognised.
+
+    Images reuse ``sniff_image`` (minus SVG — an SVG is a script vehicle and has
+    no place as a download). A PDF starts ``%PDF-``. Anything else is only
+    accepted as text, and only if it has no NUL byte and decodes as UTF-8.
+    """
+    if head.startswith(b"%PDF-"):
+        return "pdf"
+    img = sniff_image(head)
+    if img in {"png", "jpeg", "gif", "webp"}:
+        return img
+    if b"\x00" in head:
+        return None
+    try:
+        head.decode("utf-8")
+    except UnicodeDecodeError:
+        # A multi-byte character may be sliced by the chunk boundary; tolerate
+        # a short tail but reject anything that is clearly not text.
+        try:
+            head[:-4].decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    return "text"
+
+
+async def save_attachment_upload(
+    file: UploadFile, dest: Path, *, max_bytes: int
+) -> tuple[str, int]:
+    """Stream `file` to `dest`, refusing anything oversized or not an allowed
+    type. Returns ``(media_type, bytes_written)``. Same guarantees as
+    ``save_image_upload``: size enforced mid-write, no partial file left behind.
+    """
+    kind: str | None = None
+    written = 0
+    try:
+        with dest.open("wb") as out:
+            while True:
+                chunk = await file.read(_CHUNK)
+                if not chunk:
+                    break
+                if kind is None:
+                    kind = sniff_attachment(chunk)
+                    if kind is None:
+                        raise HTTPException(
+                            400, "Unsupported file type (PDF, image or text only)"
+                        )
+                written += len(chunk)
+                if written > max_bytes:
+                    raise HTTPException(
+                        413, f"File too large (max {max_bytes // 1024} KiB)"
+                    )
+                out.write(chunk)
+        if not written:
+            raise HTTPException(400, "Empty file")
+    except Exception:
+        dest.unlink(missing_ok=True)
+        raise
+    return ATTACHMENT_TYPES[kind][1], written
+
+
 async def save_image_upload(file: UploadFile, dest: Path, *, max_bytes: int) -> str:
     """Read `file` into `dest`, refusing anything oversized or not an image.
 

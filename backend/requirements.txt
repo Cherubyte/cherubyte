@@ -8,5 +8,6 @@ httpx==0.28.1
 mac-vendor-lookup==0.1.15
 pydantic-settings==2.15.0
 python-multipart==0.0.32
+pywebpush==2.5.0
 SQLAlchemy==2.0.52
 uvicorn==0.52.4

@@ -34,6 +34,8 @@ from ..database import (
 )
 from ..models import Account, AccountRole, Agent, AuthSession, Device
 from ..scheduler import forget_tenant_state
+from ..services.email import forget_tenant_config
+from ..services.webpush import forget_tenant_keys
 from ..services import auth
 from ..tenancy import validate_tenant_id
 from .auth import _check_password, _clean_username
@@ -241,6 +243,8 @@ async def delete_tenant(tenant_id: str, request: Request):
 
     await discard_tenant(tenant_id)
     forget_tenant_state(tenant_id)
+    forget_tenant_keys(tenant_id)
+    forget_tenant_config(tenant_id)
     logger.warning("Deleted tenant %s and its database", tenant_id)
     return {"deleted": tenant_id}
 

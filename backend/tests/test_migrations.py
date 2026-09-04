@@ -10,6 +10,7 @@ import sqlite3
 import pytest
 from sqlalchemy import text
 
+from app.config import BASE_DIR
 from app.database import Base, engine, init_db
 
 
@@ -22,12 +23,13 @@ def _head() -> list[str]:
 
     These tests are about *stamping and upgrading*, not about which migration
     happens to be last, so naming one here would break them every time a
-    migration is added — which is exactly what happened.
+    migration is added — which is exactly what happened. `get_heads()` is
+    plural on purpose: two migrations that both descend from the same parent
+    leave Alembic with two heads and no error until runtime, so a merge that
+    forgets to re-chain one fails here instead.
     """
     from alembic.config import Config
     from alembic.script import ScriptDirectory
-
-    from app.config import BASE_DIR
 
     return list(ScriptDirectory.from_config(Config(str(BASE_DIR / "alembic.ini"))).get_heads())
 
@@ -74,7 +76,6 @@ async def test_running_init_db_twice_is_a_harmless_no_op():
     await init_db()
     assert _alembic_version() == _head()
 
-
 async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss():
     """A database create_all built (or an old release built by hand) with no
     alembic_version table at all — the exact shape every real install that
@@ -105,6 +106,8 @@ async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss(
     cols = _columns("devices")
     for missing in ("counts_for_presence", "model", "os_guess", "notify_policy", "tags"):
         assert missing in cols, f"{missing} was not patched in"
+    # a real Alembic migration beyond baseline also applied
+    assert "offline_alerted" in _columns("agents")
 
     con = sqlite3.connect(_db_path())
     try:

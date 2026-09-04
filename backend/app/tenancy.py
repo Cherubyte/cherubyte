@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from contextvars import ContextVar
+from typing import Generic, TypeVar
 
 from fastapi import HTTPException
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -23,12 +25,49 @@ from .config import settings
 
 logger = logging.getLogger("cherubyte.tenancy")
 
+V = TypeVar("V")
+
 # A tenant id becomes a file name under tenants_dir, so this is a path-safety
 # rule before it is a naming rule: lower-case, no dots, no separators, nothing
 # that a filesystem could read as anything but a single segment.
 TENANT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{2,63}$")
 
 current_tenant: ContextVar[str | None] = ContextVar("current_tenant", default=None)
+
+
+class PerTenant(Generic[V]):
+    """One value per tenant, for state a module would otherwise hold once.
+
+    A plain module-level cache is not safe here. Two requests share one event
+    loop, so whichever entered last has already overwritten the dict by the
+    time the first resumes — and the panel rewrites exactly this kind of cache
+    on entering a tenant's scope, so the overwrite is not hypothetical.
+    `settings` sidesteps it with a ContextVar overlay; everything else that
+    caches per-tenant state needs the same guarantee, which is what this is.
+
+    Keyed by `None` for the single-tenant panel, where there is exactly one
+    value and `current_tenant` is never set.
+    """
+
+    __slots__ = ("_factory", "_values")
+
+    def __init__(self, factory: Callable[[], V]) -> None:
+        self._factory = factory
+        self._values: dict[str | None, V] = {}
+
+    def get(self) -> V:
+        key = current_tenant.get() if settings.multi_tenant else None
+        if key not in self._values:
+            self._values[key] = self._factory()
+        return self._values[key]
+
+    def forget(self, tenant_id: str) -> None:
+        """Drop one tenant's value — offboarding, and tests."""
+        self._values.pop(tenant_id, None)
+
+    def clear(self) -> None:
+        """Drop every tenant's value — tests."""
+        self._values.clear()
 
 # Agent keys and enrolment tokens minted for a tenant carry the tenant in
 # front: `t.<tenant>.<random>`. The edge routes an agent's request on that

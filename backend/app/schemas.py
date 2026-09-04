@@ -64,6 +64,20 @@ class ImageOut(ORMModel):
         return f"/uploads/{self.filename}"
 
 
+class AttachmentOut(ORMModel):
+    id: int
+    device_id: int
+    original_name: str
+    content_type: str
+    size: int
+    created_at: AwareUtc
+
+    @computed_field
+    @property
+    def url(self) -> str:
+        return f"/api/devices/{self.device_id}/attachments/{self.id}"
+
+
 class UserRef(ORMModel):
     id: int
     name: str
@@ -97,6 +111,7 @@ class DeviceOut(ORMModel):
     ips: list[IpOut] = []
     open_ports: list[PortOut] = []
     images: list[ImageOut] = []
+    attachments: list[AttachmentOut] = []
     tags: TagList = []
 
 
@@ -228,12 +243,23 @@ class SettingsOut(BaseModel):
     ntfy_priority: int = 3
     # True when a token or password is stored; the secret itself is never returned.
     ntfy_auth_configured: bool = False
+    # email (SMTP)
+    smtp_enabled: bool = True
+    smtp_configured: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_security: str = "starttls"
+    smtp_username: str = ""
+    smtp_from: str = ""
+    smtp_to: str = ""
+    smtp_auth_configured: bool = False
     fingerbank_configured: bool = False
     dhcp_fingerprints: int = 0
     # alerts
     alert_policy: dict[str, dict] = {}
     quiet_hours_start: str = ""
     quiet_hours_end: str = ""
+    agent_offline_after_seconds: int = 600
     dhcp_allowlist: str = ""
     risky_ports_ignore: str = ""
     alert_kinds: list[dict] = []
@@ -263,6 +289,12 @@ class SettingsOut(BaseModel):
     weekly_summary_enabled: bool = False
     weekly_summary_weekday: int = 0
     weekly_summary_hour: int = 9
+    onboarding_dismissed: bool = False
+    # web push
+    webpush_enabled: bool = True
+    webpush_ready: bool = False
+    vapid_subject: str = ""
+    webpush_subscriptions: int = 0
 
 
 class SettingsIn(BaseModel):
@@ -282,10 +314,19 @@ class SettingsIn(BaseModel):
     ntfy_username: str | None = None
     ntfy_password: str | None = None
     ntfy_priority: int | None = None
+    smtp_enabled: bool | None = None
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    smtp_security: str | None = None
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_to: str | None = None
     fingerbank_api_key: str | None = None
     alert_policy: dict[str, dict] | None = None
     quiet_hours_start: str | None = None
     quiet_hours_end: str | None = None
+    agent_offline_after_seconds: int | None = None
     public_base_url: str | None = None
     dhcp_allowlist: str | None = None
     risky_ports_ignore: str | None = None
@@ -307,6 +348,9 @@ class SettingsIn(BaseModel):
     weekly_summary_enabled: bool | None = None
     weekly_summary_weekday: int | None = None
     weekly_summary_hour: int | None = None
+    onboarding_dismissed: bool | None = None
+    webpush_enabled: bool | None = None
+    vapid_subject: str | None = None
 
 
 class AccountOut(ORMModel):

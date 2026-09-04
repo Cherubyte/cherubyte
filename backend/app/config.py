@@ -13,6 +13,11 @@ DATA_DIR.mkdir(exist_ok=True)
 # this bare in code that serves or packs files.
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+# Device file attachments (manuals, invoices, warranties). Deliberately *not*
+# under UPLOAD_DIR: those are served by a public static mount, these only by an
+# authenticated download route.
+ATTACHMENT_DIR = DATA_DIR / "attachments"
+ATTACHMENT_DIR.mkdir(exist_ok=True)
 
 
 def _read_app_version() -> str:
@@ -180,6 +185,9 @@ class Settings(BaseSettings):
     # most installs would just see an empty page cluttering the nav.
     topology_enabled: bool = False
     fingerbank_api_key: str = ""
+    # Set once the first-run onboarding wizard has been completed or skipped —
+    # a single flag, not per-account, since Cherubyte is one shared panel.
+    onboarding_dismissed: bool = False
 
     # Telegram notifications
     telegram_enabled: bool = True
@@ -201,6 +209,10 @@ class Settings(BaseSettings):
     alert_policy: str = ""
     quiet_hours_start: str = ""
     quiet_hours_end: str = ""
+    # An enabled agent that has not reported for this long raises an
+    # `agent_offline` alert (and `agent_online` when it comes back). 0 disables
+    # the check. The floor is 120s so a single missed sweep never trips it.
+    agent_offline_after_seconds: int = 600
 
     # Base URL this service is reachable at from a phone, e.g. http://192.168.1.9:1001.
     # Needed for the action buttons on ntfy notifications; empty disables them.
@@ -231,6 +243,17 @@ class Settings(BaseSettings):
     weekly_summary_weekday: int = 0
     weekly_summary_hour: int = 9
 
+    # Email (SMTP) notifications. security: starttls (587) | ssl (465) | none.
+    # `smtp_to` is comma-separated. `smtp_from` defaults to the auth username.
+    smtp_enabled: bool = True
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_security: str = "starttls"
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_to: str = ""
+
     # ntfy notifications
     ntfy_enabled: bool = True
     ntfy_server: str = "https://ntfy.sh"
@@ -240,6 +263,13 @@ class Settings(BaseSettings):
     ntfy_username: str = ""
     ntfy_password: str = ""
     ntfy_priority: int = 3
+
+    # Web Push (browser notifications, no third party). The VAPID keypair is
+    # generated on first use and stored in the database, not here. `vapid_subject`
+    # is the contact the push service sees — a mailto: or an https: URL; empty
+    # falls back to public_base_url.
+    webpush_enabled: bool = True
+    vapid_subject: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -300,19 +330,39 @@ def upload_dir(create: bool = False) -> Path:
     and a backup packed *every* file in it into whichever tenant asked for
     one. Unguessable file names were the only thing separating one customer's
     pictures from another's, and a backup download did not even need to guess.
+    """
+    return _tenant_dir(UPLOAD_DIR, "upload_dir", create)
+
+
+def attachment_dir(create: bool = False) -> Path:
+    """Where this tenant's uploaded attachments live.
+
+    Split per tenant for the same reason `upload_dir` is, and with more at
+    stake: an attachment is a manual, an invoice or a warranty PDF, so it
+    carries the home address and serial number a photograph only implies. A
+    single shared directory would put them in every tenant's backup and let
+    one tenant's restore rotate away everybody else's files.
+    """
+    return _tenant_dir(ATTACHMENT_DIR, "attachment_dir", create)
+
+
+def _tenant_dir(base: Path, who: str, create: bool) -> Path:
+    """`base` self-hosted; a subdirectory of it per tenant when hosted.
 
     Raises with no tenant in scope rather than falling back to the shared
     parent, which is the fallback that caused the problem.
     """
     if not settings.multi_tenant:
-        return UPLOAD_DIR
+        if create:
+            base.mkdir(parents=True, exist_ok=True)
+        return base
 
     from .tenancy import current_tenant, validate_tenant_id
 
     tenant = current_tenant.get()
     if tenant is None:
-        raise RuntimeError("upload_dir() outside a tenant")
-    path = UPLOAD_DIR / validate_tenant_id(tenant)
+        raise RuntimeError(f"{who}() outside a tenant")
+    path = base / validate_tenant_id(tenant)
     if create:
         path.mkdir(parents=True, exist_ok=True)
     return path

@@ -22,7 +22,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .config import settings
 from .database import known_tenants, scoped_to
+from .tenancy import PerTenant
 from .models import utcnow
+from .services.agent_health import check_agents
 from .services.digest import run_weekly
 from .services.hoststat import record_panel_temp
 from .services.retention import run_purge
@@ -35,19 +37,17 @@ _PURGE_JOB_ID = "history-purge"
 _DIGEST_JOB_ID = "weekly-digest"
 _UPDATE_JOB_ID = "update-check"
 _HOST_TEMP_JOB_ID = "host-temp-sample"
+_AGENT_HEALTH_JOB_ID = "agent-health-check"
 
-# Per tenant, because "when did an agent last report" is one customer's answer.
-# Keyed by tenant id, and by None for the single-tenant panel. Held here rather
-# than in the database because it is a fact about this process's uptime: after
-# a restart nobody has reported yet, and that is the truthful answer.
-_state: dict[str | None, dict] = {}
+# "When did an agent last report" is one customer's answer, so it is per tenant
+# (see `PerTenant`). Held here rather than in the database because it is a fact
+# about this process's uptime: after a restart nobody has reported yet, and
+# that is the truthful answer.
+_state: PerTenant[dict] = PerTenant(lambda: {"last_scan": None, "running": False})
 
 
 def _scan_state() -> dict:
-    from .tenancy import current_tenant
-
-    key = current_tenant.get() if settings.multi_tenant else None
-    return _state.setdefault(key, {"last_scan": None, "running": False})
+    return _state.get()
 
 
 def note_report() -> None:
@@ -64,8 +64,8 @@ def is_running() -> bool:
 
 
 def forget_tenant_state(tenant_id: str) -> None:
-    """Drop a tenant's scan state — for offboarding, and for tests."""
-    _state.pop(tenant_id, None)
+    """Drop a tenant's scan state — offboarding, and tests."""
+    _state.forget(tenant_id)
 
 
 # ── running a job for everyone ─────────────────────────────────────────────
@@ -88,6 +88,11 @@ async def _for_each_tenant(name: str, job) -> None:
 
 async def _purge_every_tenant() -> None:
     await _for_each_tenant("history-purge", run_purge)
+
+
+async def _agent_health_every_tenant() -> None:
+    # Each tenant's own agents, and its own agent_offline_after_seconds.
+    await _for_each_tenant("agent-health-check", check_agents)
 
 
 async def _digest_every_tenant() -> None:
@@ -132,6 +137,18 @@ def start() -> None:
         coalesce=True,
         misfire_grace_time=45,
     )
+    # Watch for an agent that has stopped reporting. Cheap (one indexed query),
+    # so it can run often; the threshold that actually decides "silent" is
+    # settings.agent_offline_after_seconds.
+    scheduler.add_job(
+        check_agents,
+        "interval",
+        seconds=120,
+        id=_AGENT_HEALTH_JOB_ID,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=60,
+    )
     scheduler.start()
     logger.info("Scheduler started (retention=%sd)", settings.retention_days)
 
@@ -154,6 +171,18 @@ def _start_hosted() -> None:
         id=_DIGEST_JOB_ID,
         max_instances=1,
         coalesce=True,
+    )
+    # Watch for silent agents for every tenant. Unlike the update check and the
+    # panel temperature below, "has my agent stopped reporting" is a question
+    # about one customer's network, so it does go per tenant.
+    scheduler.add_job(
+        _agent_health_every_tenant,
+        "interval",
+        seconds=120,
+        id=_AGENT_HEALTH_JOB_ID,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=60,
     )
     # No update check and no panel temperature: both are about this machine,
     # and neither belongs in a customer's inventory.

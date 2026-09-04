@@ -8,6 +8,7 @@ Run from the `backend/` directory with its venv:
     .venv/bin/python manage.py backup [path.tar.gz]
     .venv/bin/python manage.py restore <path.tar.gz>
     .venv/bin/python manage.py reencrypt <tenant-id> [--from-plaintext|--to-plaintext]
+    .venv/bin/python manage.py create-agent-token [label]
 
 `create-admin` reads the password from $CHERUBYTE_ADMIN_PASSWORD when set (so the
 setup script can run unattended), otherwise it prompts. It also promotes an
@@ -19,6 +20,13 @@ tool if you lock yourself out.
 `--to-plaintext` decrypts one, for handing somebody their data back on the way
 out; neither rotates the key in place. The tenant must not be serving traffic
 while it runs.
+
+`create-agent-token` mints a fresh agent enrolment token — the same one-time-
+use, 24h-lived token `Settings ▸ Agents ▸ New token` issues over HTTP — without
+needing a browser session first. Same trust level as the rest of this CLI
+(direct database access), so a whole install can be scripted end to end:
+create the admin, mint a token, feed it to the agent's own installer, all from
+a terminal.
 """
 
 from __future__ import annotations
@@ -32,9 +40,18 @@ from sqlalchemy import select
 
 from app.database import SessionLocal, init_db
 from app.models import Account, AccountRole
+from app.services import agents as agent_service
 from app.services import auth
 
 _MIN_PASSWORD = 8
+
+
+async def _create_agent_token(label: str | None) -> str:
+    await init_db()
+    async with SessionLocal() as session:
+        token = await agent_service.issue_token(session, label)
+        await session.commit()
+    return token
 
 
 async def _create_admin(username: str, password: str) -> str:
@@ -161,6 +178,12 @@ def main() -> None:
         for where, count in sorted(rewritten.items()):
             print(f"  {where}: {count}")
         print(f"Rewrote {total} value(s) and {files} file(s) for {tenant}.")
+        return
+
+    if cmd == "create-agent-token":
+        label = args[1] if len(args) > 1 else None
+        token = asyncio.run(_create_agent_token(label))
+        print(token)
         return
 
     if cmd == "create-admin":

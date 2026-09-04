@@ -52,6 +52,7 @@ class DeviceType(str, enum.Enum):
     pc = "pc"
     laptop = "laptop"
     server = "server"
+    vm = "vm"
 
     # phones, tablets, things you carry
     phone = "phone"
@@ -92,6 +93,22 @@ class EventLevel(str, enum.Enum):
     success = "success"
     warning = "warning"
     alert = "alert"
+
+
+class ActionKind(str, enum.Enum):
+    """An on-demand, per-device probe — see `DeviceAction`."""
+
+    ping = "ping"
+    port_scan_quick = "port_scan_quick"
+    port_scan_full = "port_scan_full"
+    traceroute = "traceroute"
+
+
+class ActionStatus(str, enum.Enum):
+    pending = "pending"
+    done = "done"
+    failed = "failed"
+    expired = "expired"
 
 
 class AccountRole(str, enum.Enum):
@@ -253,6 +270,9 @@ class Device(Base):
         back_populates="device", cascade="all, delete-orphan"
     )
     images: Mapped[list[DeviceImage]] = relationship(
+        back_populates="device", cascade="all, delete-orphan"
+    )
+    attachments: Mapped[list[DeviceAttachment]] = relationship(
         back_populates="device", cascade="all, delete-orphan"
     )
     open_ports: Mapped[list[OpenPort]] = relationship(
@@ -517,6 +537,32 @@ class DeviceImage(Base):
     device: Mapped[Device] = relationship(back_populates="images")
 
 
+class DeviceAttachment(Base):
+    """A file a user attached to a device — a manual, an invoice, a warranty PDF.
+
+    Distinct from ``DeviceImage`` (a photo shown inline): an attachment keeps its
+    original filename, is any of a small allow-list of types, and is downloaded
+    rather than rendered. The bytes live under ``uploads/attachments/`` so a
+    backup picks them up with everything else.
+    """
+
+    __tablename__ = "device_attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(
+        ForeignKey("devices.id", ondelete="CASCADE"), index=True
+    )
+    # The name on disk (uuid-based); never what the user typed.
+    filename: Mapped[str] = mapped_column(String(255))
+    # The name the user uploaded, shown in the UI and sent on download.
+    original_name: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(120), default="application/octet-stream")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    device: Mapped[Device] = relationship(back_populates="attachments")
+
+
 class ConnectionHistory(Base):
     """Append-only log of join/leave transitions per device."""
 
@@ -631,6 +677,10 @@ class Agent(Base):
     last_hosts: Mapped[int] = mapped_column(Integer, default=0)
     last_fingerprints: Mapped[int] = mapped_column(Integer, default=0)
     last_healthy: Mapped[bool] = mapped_column(Boolean, default=True)
+    # True once the panel has alerted that this agent went silent; cleared when
+    # it reports again. Keeps the "agent offline" notice to one per outage even
+    # across a panel restart.
+    offline_alerted: Mapped[bool] = mapped_column(Boolean, default=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -760,8 +810,51 @@ class PendingWake(Base):
     )
 
 
+class DeviceAction(Base):
+    """An on-demand probe against one device — ping, a port scan, or a
+    traceroute — requested from the device page. Delivered to the agents the
+    same way as a `PendingWake`: any agent reporting in soon after the request
+    is handed it and tries it on its own segment. Whichever one can actually
+    reach the device posts the result back; later results for an already-done
+    row are ignored, so an off-segment agent's failure never overwrites it."""
+
+    __tablename__ = "device_actions"
+    __table_args__ = (Index("ix_device_actions_device_ts", "device_id", "requested_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"))
+    kind: Mapped[ActionKind] = mapped_column(Enum(ActionKind))
+    ip: Mapped[str] = mapped_column(String(64))
+    status: Mapped[ActionStatus] = mapped_column(Enum(ActionStatus), default=ActionStatus.pending, index=True)
+    # JSON-encoded DeviceActionResult fields (open_ports / hops / latency_ms /
+    # packet_loss / error) once an agent reports back.
+    result: Mapped[str | None] = mapped_column(Text, default=None)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
 class Setting(Base):
     __tablename__ = "settings"
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
+
+
+class PushSubscription(Base):
+    """A browser that has opted in to Web Push notifications.
+
+    One row per browser per device — the `endpoint` is the push service's
+    per-subscription URL and is unique. `p256dh` and `auth` are the keys the
+    payload is encrypted to. A row is deleted when the push service reports the
+    subscription gone (404/410) or the user turns notifications off.
+    """
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(255))
+    auth: Mapped[str] = mapped_column(String(255))
+    user_agent: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

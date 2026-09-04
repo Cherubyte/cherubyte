@@ -30,6 +30,8 @@ const UI = {
   CaretDown: "caret-down",
   CornerDown: "arrow-elbow-down-right",
   Bell: "bell",
+  Paperclip: "paperclip",
+  Envelope: "envelope-simple",
   // log categories
   Radar: "broadcast",
   Plug: "plug",
@@ -53,6 +55,7 @@ const DEVICES = {
   hub: "share-network",
   pc: "desktop",
   laptop: "laptop",
+  vm: "cube",
   phone: "device-mobile",
   voip: "phone-call",
   tablet: "device-tablet",

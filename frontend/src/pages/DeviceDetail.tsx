@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, type DevicePatch } from "../api/client";
+import type { ActionKind, DeviceAction } from "../api/types";
 import type { DeviceType } from "../api/types";
 import { TypeCode, useBrandLogos, useOsLogos } from "../components/TypeCode";
 import { TagInput } from "../components/TagInput";
@@ -20,7 +21,7 @@ import {
   StatusPill,
   Toggle,
 } from "../components/ui";
-import { ArrowLeft, ArrowUpRight, Check, Close, Image, Merge, Plus, Power, Trash } from "../components/Glyph";
+import { ArrowLeft, ArrowUpRight, Check, Close, DownloadIcon, Globe, Image, Merge, Paperclip, Plus, Power, Radar, Trash, Wave } from "../components/Glyph";
 import { useToast } from "../components/Toaster";
 import { deviceTypeLabel, dateTime, timeAgo } from "../lib/format";
 import { useT } from "../i18n";
@@ -29,6 +30,12 @@ const OS_OPTIONS = [
   "Windows", "macOS", "iOS", "iPadOS", "Android", "Linux", "ChromeOS",
   "tvOS", "watchOS", "Tizen", "webOS", "Roku OS", "PlayStation OS",
 ];
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function DeviceDetail() {
   const { id } = useParams();
@@ -41,6 +48,7 @@ export function DeviceDetail() {
   const logos = useBrandLogos();
   const osLogos = useOsLogos();
   const fileRef = useRef<HTMLInputElement>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
   useNow();
 
   const device = useQuery({
@@ -81,12 +89,29 @@ export function DeviceDetail() {
     onSuccess: () => toast({ tone: "success", title: "wake.sent" }),
     onError: (e) => toast({ tone: "error", title: "wake.failed", desc: String(e).slice(0, 100) }),
   });
+  const actions = useQuery({
+    queryKey: ["device", deviceId, "actions"],
+    queryFn: () => api.deviceActions(deviceId),
+    // keep polling while anything is still out with an agent, stop once it settles
+    refetchInterval: (q) => (q.state.data?.some((a) => a.status === "pending") ? 2000 : false),
+  });
+  const queueAction = useMutation({
+    mutationFn: (kind: ActionKind) => api.queueDeviceAction(deviceId, kind),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["device", deviceId, "actions"] }),
+    onError: (e) => toast({ tone: "error", title: "device.action.queueFailed", desc: String(e).slice(0, 100) }),
+  });
   const remove = useMutation({
     mutationFn: () => api.deleteDevice(deviceId),
     onSuccess: () => { invalidate(); toast({ tone: "success", title: "device.deleted" }); nav("/"); },
   });
   const upload = useMutation({ mutationFn: (f: File) => api.uploadImage(deviceId, f), onSuccess: invalidate });
   const delImage = useMutation({ mutationFn: (i: number) => api.deleteImage(deviceId, i), onSuccess: invalidate });
+  const uploadFile = useMutation({
+    mutationFn: (f: File) => api.uploadAttachment(deviceId, f),
+    onSuccess: invalidate,
+    onError: (e) => toast({ tone: "error", title: "attachment.failed", desc: String(e).slice(0, 120) }),
+  });
+  const delFile = useMutation({ mutationFn: (i: number) => api.deleteAttachment(deviceId, i), onSuccess: invalidate });
   const absorbMac = useMutation({
     mutationFn: (a: string) => api.absorbMac(deviceId, a),
     onSuccess: () => { setNewMac(""); invalidate(); toast({ tone: "success", title: "mac.attached" }); },
@@ -356,6 +381,53 @@ export function DeviceDetail() {
     </section>
   );
 
+  const latestByKind = new Map<ActionKind, DeviceAction>();
+  for (const a of actions.data ?? []) if (!latestByKind.has(a.kind)) latestByKind.set(a.kind, a);
+
+  const actionsCard = (
+    <section className="panel p-5">
+      <SectionHeader title={t("device.section.actions")} />
+      <div className="space-y-1">
+        <ActionRow
+          icon={<Power size={13} />}
+          label={t("device.wake")}
+          hint={!canWake ? t("device.action.wakeHint") : undefined}
+          running={wake.isPending}
+          disabled={!canWake}
+          onRun={() => wake.mutate()}
+        />
+        <ActionRow
+          icon={<Wave size={13} />}
+          label={t("device.action.ping")}
+          latest={latestByKind.get("ping")}
+          running={queueAction.isPending && queueAction.variables === "ping"}
+          onRun={() => queueAction.mutate("ping")}
+        />
+        <ActionRow
+          icon={<Radar size={13} />}
+          label={t("device.action.portScanQuick")}
+          latest={latestByKind.get("port_scan_quick")}
+          running={queueAction.isPending && queueAction.variables === "port_scan_quick"}
+          onRun={() => queueAction.mutate("port_scan_quick")}
+        />
+        <ActionRow
+          icon={<Radar size={13} />}
+          label={t("device.action.portScanFull")}
+          latest={latestByKind.get("port_scan_full")}
+          running={queueAction.isPending && queueAction.variables === "port_scan_full"}
+          onRun={() => queueAction.mutate("port_scan_full")}
+        />
+        <ActionRow
+          icon={<Globe size={13} />}
+          label={t("device.action.traceroute")}
+          latest={latestByKind.get("traceroute")}
+          running={queueAction.isPending && queueAction.variables === "traceroute"}
+          onRun={() => queueAction.mutate("traceroute")}
+        />
+      </div>
+    </section>
+  );
+
   const photos = (
     <section className="panel p-5">
       <SectionHeader
@@ -394,6 +466,66 @@ export function DeviceDetail() {
             </div>
           ))}
         </div>
+      )}
+    </section>
+  );
+
+  const attachments = (
+    <section className="panel p-5">
+      <SectionHeader
+        title={t("device.section.files")}
+        sub={String(d.attachments.length)}
+        actions={
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Paperclip size={12} />}
+            loading={uploadFile.isPending}
+            onClick={() => attachRef.current?.click()}
+          >
+            {t("common.add")}
+          </Button>
+        }
+      />
+      <input
+        ref={attachRef}
+        type="file"
+        accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,.log,application/pdf,image/*,text/plain"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) uploadFile.mutate(f);
+          e.target.value = "";
+        }}
+      />
+      {d.attachments.length === 0 ? (
+        <EmptyState title={t("device.files.empty.title")} description={t("device.files.empty.desc")} />
+      ) : (
+        <ul className="divide-y divide-edge">
+          {d.attachments.map((a) => (
+            <li key={a.id} className="flex items-center gap-3 py-2">
+              <Paperclip size={14} className="shrink-0 text-fg-3" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] text-fg">{a.original_name}</div>
+                <div className="mono text-[11px] text-fg-3">{fmtBytes(a.size)}</div>
+              </div>
+              <a
+                href={a.url}
+                className="grid h-7 w-7 place-items-center rounded-md text-fg-3 hover:bg-surface-2 hover:text-fg"
+                title={t("common.open")}
+              >
+                <DownloadIcon size={13} />
+              </a>
+              <button
+                onClick={() => delFile.mutate(a.id)}
+                className="grid h-7 w-7 place-items-center rounded-md text-fg-3 hover:bg-surface-2 hover:text-alert"
+                title={t("common.delete")}
+              >
+                <Trash size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -487,7 +619,9 @@ export function DeviceDetail() {
         <>
           {identity}
           {network}
+          {actionsCard}
           {photos}
+          {attachments}
           {historyCard}
         </>
       ) : (
@@ -495,9 +629,11 @@ export function DeviceDetail() {
           <div className="space-y-3">
             {identity}
             {photos}
+            {attachments}
           </div>
           <div className="space-y-3">
             {network}
+            {actionsCard}
             {historyCard}
           </div>
         </div>
@@ -522,4 +658,95 @@ export function DeviceDetail() {
       )}
     </div>
   );
+}
+
+/** One row in the device-actions section: an on-demand probe (or Wake-on-LAN)
+ * with a Run button and, once an agent has answered, its outcome inline. */
+function ActionRow({
+  icon,
+  label,
+  hint,
+  latest,
+  running,
+  disabled,
+  onRun,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  latest?: DeviceAction;
+  running?: boolean;
+  disabled?: boolean;
+  onRun: () => void;
+}) {
+  const t = useT();
+  const busy = running || latest?.status === "pending";
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg px-1 py-2">
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span className="mt-0.5 shrink-0 text-fg-3">{icon}</span>
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-medium text-fg">{label}</p>
+          {hint && <p className="mt-0.5 text-[11px] text-fg-3">{hint}</p>}
+          {!hint && latest && <ActionResultLine action={latest} />}
+        </div>
+      </div>
+      <Button variant="secondary" size="sm" loading={busy} disabled={disabled} onClick={onRun} className="shrink-0">
+        {t("device.action.run")}
+      </Button>
+    </div>
+  );
+}
+
+function ActionResultLine({ action }: { action: DeviceAction }) {
+  const t = useT();
+  if (action.status === "pending")
+    return <p className="mt-0.5 text-[11px] text-fg-3">{t("device.action.pending")}</p>;
+  if (action.status === "expired")
+    return <p className="mt-0.5 text-[11px] text-fg-3">{t("device.action.expired")}</p>;
+  const r = action.result;
+  if (action.status === "failed" || !r)
+    return <p className="mt-0.5 text-[11px] text-alert">{r?.error || t("device.action.failed")}</p>;
+
+  if (action.kind === "ping")
+    return (
+      <p className="mt-0.5 text-[11px] text-fg-2">
+        {r.latency_ms != null ? `${r.latency_ms.toFixed(1)} ms` : "—"}
+        {!!r.packet_loss && <span className="ml-1.5 text-fg-3">{t("device.action.loss", { pct: Math.round(r.packet_loss * 100) })}</span>}
+      </p>
+    );
+
+  if (action.kind === "port_scan_quick" || action.kind === "port_scan_full") {
+    const ports = Object.entries(r.open_ports);
+    if (ports.length === 0)
+      return <p className="mt-0.5 text-[11px] text-fg-3">{t("device.action.noOpenPorts")}</p>;
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        {ports.map(([port, service]) => (
+          <span key={port} className="tag tag-neutral">
+            {port}
+            {service && <span className="text-fg-3">/{service}</span>}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (action.kind === "traceroute")
+    return (
+      <div className="mono mt-0.5 space-y-0.5 text-[11px] text-fg-2">
+        {r.hops.length === 0 ? (
+          <p className="text-fg-3">{t("device.action.noHops")}</p>
+        ) : (
+          r.hops.map((h) => (
+            <p key={h.ttl}>
+              {h.ttl}. {h.ip ?? "*"}
+              {h.rtt_ms != null && <span className="ml-1.5 text-fg-3">{h.rtt_ms.toFixed(1)} ms</span>}
+            </p>
+          ))
+        )}
+      </div>
+    );
+
+  return null;
 }

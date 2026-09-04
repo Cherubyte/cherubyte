@@ -28,7 +28,7 @@ from ..database import get_session
 from ..models import Agent, HostTempSample, WanSample, iso_utc, utcnow
 from ..services import agent_release
 from ..services import agents as agent_service
-from ..services import wan, wol
+from ..services import device_actions, wan, wol
 from ..scheduler import note_report
 from ..services.monitor import ingest_report
 from .deps import current_account, enforce_access
@@ -326,6 +326,11 @@ async def receive_report(
     # Wake-on-LAN: hand every agent reporting in the pickup window the queued
     # MACs; the one on the target's segment reaches its NIC.
     wake_macs = await wol.take_pending(session)
+    # Any ping / port-scan / traceroute this agent ran since its last report —
+    # record whichever ones are still pending (an off-segment agent's own
+    # attempt may have already failed or timed out first, which is fine).
+    await device_actions.record_results(session, report.action_results)
+    pending_actions = await device_actions.take_pending(session)
     await session.commit()
 
     # The ack carries the configuration the agent should be running, so an
@@ -337,6 +342,7 @@ async def receive_report(
         config=agent_service.desired_config(),
         scan_now=wants_sweep,
         wake=wake_macs,
+        actions=pending_actions,
     )
 
 

@@ -15,7 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database import open_session
-from ..models import Agent, ConnectionHistory, Event, HostTempSample, WanSample, utcnow
+from ..models import (
+    Agent,
+    ConnectionHistory,
+    Event,
+    HostTempSample,
+    PushSubscription,
+    WanSample,
+    utcnow,
+)
 
 logger = logging.getLogger("cherubyte.retention")
 
@@ -51,6 +59,9 @@ async def counts(session: AsyncSession) -> dict[str, int]:
         # DHCP fingerprinting is passive and happens at the agent; the panel
         # only ever sees the count each one reports.
         "fingerprints": await session.scalar(select(func.sum(Agent.last_fingerprints))) or 0,
+        "push_subscriptions": await session.scalar(
+            select(func.count(PushSubscription.id))
+        ) or 0,
     }
 
 

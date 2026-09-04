@@ -5,6 +5,7 @@ export type DeviceType =
   | "pc"
   | "laptop"
   | "server"
+  | "vm"
   | "phone"
   | "voip"
   | "tablet"
@@ -123,6 +124,16 @@ export interface DeviceImage {
   url: string;
 }
 
+export interface DeviceAttachment {
+  id: number;
+  device_id: number;
+  original_name: string;
+  content_type: string;
+  size: number;
+  created_at: string;
+  url: string;
+}
+
 export interface UserRef {
   id: number;
   name: string;
@@ -156,6 +167,7 @@ export interface Device {
   ips: Ip[];
   open_ports: Port[];
   images: DeviceImage[];
+  attachments: DeviceAttachment[];
   tags: string[];
 }
 
@@ -175,6 +187,32 @@ export interface Connection {
   ip: string | null;
   mac: string | null;
   timestamp: string;
+}
+
+export type ActionKind = "ping" | "port_scan_quick" | "port_scan_full" | "traceroute";
+export type ActionStatus = "pending" | "done" | "failed" | "expired";
+
+export interface TracerouteHop {
+  ttl: number;
+  ip: string | null;
+  rtt_ms: number | null;
+}
+
+export interface DeviceActionResultData {
+  error: string | null;
+  latency_ms: number | null;
+  packet_loss: number | null;
+  open_ports: Record<string, string>;
+  hops: TracerouteHop[];
+}
+
+export interface DeviceAction {
+  id: number;
+  kind: ActionKind;
+  status: ActionStatus;
+  result: DeviceActionResultData | null;
+  requested_at: string;
+  completed_at: string | null;
 }
 
 export interface User {
@@ -284,12 +322,22 @@ export interface AppSettings {
   ntfy_priority: number;
   /** True when a token or password is stored; the secret itself is never returned. */
   ntfy_auth_configured: boolean;
+  smtp_enabled: boolean;
+  smtp_configured: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_security: string;
+  smtp_username: string;
+  smtp_from: string;
+  smtp_to: string;
+  smtp_auth_configured: boolean;
   fingerbank_configured: boolean;
   dhcp_fingerprints: number;
   alert_policy: Record<string, AlertRule>;
   alert_kinds: AlertKind[];
   quiet_hours_start: string;
   quiet_hours_end: string;
+  agent_offline_after_seconds: number;
   public_base_url: string;
   dhcp_allowlist: string;
   risky_ports_ignore: string;
@@ -314,6 +362,11 @@ export interface AppSettings {
   weekly_summary_enabled: boolean;
   weekly_summary_weekday: number;
   weekly_summary_hour: number;
+  onboarding_dismissed: boolean;
+  webpush_enabled: boolean;
+  webpush_ready: boolean;
+  vapid_subject: string;
+  webpush_subscriptions: number;
 }
 
 export interface AlertRule {

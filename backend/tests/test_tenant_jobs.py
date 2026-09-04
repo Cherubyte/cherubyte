@@ -14,7 +14,7 @@ import pytest_asyncio
 from sqlalchemy import select
 
 from app import database, scheduler
-from app.config import settings
+from app.config import attachment_dir, settings, upload_dir
 from app.models import Device, Setting
 from app.tenancy import current_tenant
 
@@ -163,8 +163,66 @@ async def test_last_scan_is_per_tenant(two_tenants):
 
 def test_last_scan_is_shared_state_when_self_hosted():
     assert settings.multi_tenant is False
-    scheduler._state.pop(None, None)
+    scheduler._state.clear()
     assert scheduler.last_scan() is None
     scheduler.note_report()
     assert scheduler.last_scan() is not None
-    scheduler._state.pop(None, None)
+    scheduler._state.clear()
+
+
+# ── files and per-service caches stay the tenant's ─────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_each_tenant_gets_its_own_attachment_directory(two_tenants):
+    """Attachments carry what a photograph only implies — an invoice has an
+    address on it — so they get the split `upload_dir` already had. A single
+    shared tree would put them in every tenant's backup."""
+    async with database.scoped_to("alpha"):
+        alpha = attachment_dir()
+    async with database.scoped_to("beta"):
+        beta = attachment_dir()
+
+    assert alpha != beta
+    assert alpha.name == "alpha" and beta.name == "beta"
+    # and it is not the tree the public /uploads mount serves
+    async with database.scoped_to("alpha"):
+        assert attachment_dir() != upload_dir()
+
+
+def test_attachment_dir_refuses_outside_a_tenant(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "multi_tenant", True)
+    monkeypatch.setattr(settings, "tenants_dir", str(tmp_path / "tenants"))
+    with pytest.raises(RuntimeError, match="attachment_dir"):
+        attachment_dir()
+
+
+@pytest.mark.asyncio
+async def test_smtp_and_vapid_caches_survive_another_tenants_pass(two_tenants):
+    """`settings` is isolated by a ContextVar, so interleaved requests each
+    read their own. The caches `email` and `webpush` keep were plain module
+    dicts, which are not context-local: entering a scope calls `_push_runtime`,
+    so a request for beta arriving mid-flight would overwrite alpha's SMTP
+    recipients and VAPID key, and alpha's alert would go to beta's inbox
+    signed with beta's key. Keyed per tenant, beta's pass cannot touch them.
+    """
+    from app.services import email, webpush
+
+    async with database.scoped_to("alpha"):
+        email.configure(host="smtp.alpha.example", to_addrs="ops@alpha.example")
+        webpush.configure(public_key="alpha-key")
+
+        # beta's request arrives while alpha's is still in flight
+        async with database.scoped_to("beta"):
+            assert email.host() == ""
+            assert email.recipients() == []
+            assert webpush.public_key() != "alpha-key"
+
+        # alpha resumes where it left off
+        assert email.host() == "smtp.alpha.example"
+        assert email.recipients() == ["ops@alpha.example"]
+        assert webpush.public_key() == "alpha-key"
+
+    for tid in ("alpha", "beta"):
+        email.forget_tenant_config(tid)
+        webpush.forget_tenant_keys(tid)

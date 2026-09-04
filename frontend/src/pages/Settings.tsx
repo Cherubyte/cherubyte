@@ -7,6 +7,7 @@ import { AUTH_KEY, useAuth, useCanWrite, useIsAdmin } from "../auth/AuthProvider
 import { Badge, Button, Field, Redacted, SectionHeader, Toggle } from "../components/ui";
 import {
   Bell,
+  Envelope,
   Close,
   Globe,
   Image,
@@ -28,6 +29,7 @@ import { useToast } from "../components/Toaster";
 import { useTheme, type ThemePref } from "../hooks/useTheme";
 import { copyText } from "../lib/ports";
 import { timeAgo } from "../lib/format";
+import { currentPushState, disablePush, enablePush, type PushState } from "../lib/push";
 import { useT, useLocale, type MessageKey } from "../i18n";
 import { intlLocale, LOCALES, type Locale } from "../i18n/locale";
 
@@ -387,6 +389,7 @@ export function Settings() {
     risky_ports_ignore: "",
     quiet_hours_start: "",
     quiet_hours_end: "",
+    agent_offline_after_seconds: 600,
     mqtt_enabled: false,
     mqtt_host: "",
     mqtt_port: 1883,
@@ -414,6 +417,16 @@ export function Settings() {
     ntfy_username: "",
     ntfy_password: "",
     ntfy_priority: 3,
+    smtp_enabled: false,
+    smtp_host: "",
+    smtp_port: 587,
+    smtp_security: "starttls",
+    smtp_username: "",
+    smtp_password: "",
+    smtp_from: "",
+    smtp_to: "",
+    webpush_enabled: false,
+    vapid_subject: "",
     fingerbank_api_key: "",
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
@@ -444,6 +457,7 @@ export function Settings() {
         risky_ports_ignore: settings.data.risky_ports_ignore,
         quiet_hours_start: settings.data.quiet_hours_start,
         quiet_hours_end: settings.data.quiet_hours_end,
+        agent_offline_after_seconds: settings.data.agent_offline_after_seconds,
         mqtt_enabled: settings.data.mqtt_enabled,
         mqtt_host: settings.data.mqtt_host,
         mqtt_port: settings.data.mqtt_port,
@@ -466,6 +480,15 @@ export function Settings() {
         ntfy_topic: settings.data.ntfy_topic,
         ntfy_username: settings.data.ntfy_username,
         ntfy_priority: settings.data.ntfy_priority,
+        smtp_enabled: settings.data.smtp_enabled,
+        smtp_host: settings.data.smtp_host,
+        smtp_port: settings.data.smtp_port,
+        smtp_security: settings.data.smtp_security,
+        smtp_username: settings.data.smtp_username,
+        smtp_from: settings.data.smtp_from,
+        smtp_to: settings.data.smtp_to,
+        webpush_enabled: settings.data.webpush_enabled,
+        vapid_subject: settings.data.vapid_subject,
       }));
   }, [settings.data]);
 
@@ -485,6 +508,7 @@ export function Settings() {
         alert_policy: policy,
         quiet_hours_start: form.quiet_hours_start,
         quiet_hours_end: form.quiet_hours_end,
+        agent_offline_after_seconds: form.agent_offline_after_seconds,
         public_base_url: form.public_base_url,
         dhcp_allowlist: form.dhcp_allowlist,
         risky_ports_ignore: form.risky_ports_ignore,
@@ -515,6 +539,16 @@ export function Settings() {
         ntfy_priority: form.ntfy_priority,
         ...(form.ntfy_token ? { ntfy_token: form.ntfy_token } : {}),
         ...(form.ntfy_password ? { ntfy_password: form.ntfy_password } : {}),
+        smtp_enabled: form.smtp_enabled,
+        smtp_host: form.smtp_host,
+        smtp_port: form.smtp_port,
+        smtp_security: form.smtp_security,
+        smtp_username: form.smtp_username,
+        smtp_from: form.smtp_from,
+        smtp_to: form.smtp_to,
+        ...(form.smtp_password ? { smtp_password: form.smtp_password } : {}),
+        webpush_enabled: form.webpush_enabled,
+        vapid_subject: form.vapid_subject,
         ...(form.fingerbank_api_key ? { fingerbank_api_key: form.fingerbank_api_key } : {}),
       }),
     onSuccess: () => {
@@ -556,8 +590,26 @@ export function Settings() {
           : { tone: "error", title: "ntfy.failed", desc: "toast.ntfyFailedDesc" },
       ),
   });
+  const testEmail = useMutation({
+    mutationFn: api.testEmail,
+    onSuccess: (r) =>
+      toast(
+        r.ok
+          ? { tone: "success", title: "email.sent" }
+          : { tone: "error", title: "email.failed", desc: "toast.emailFailedDesc" },
+      ),
+  });
   const testFb = useMutation({
-    mutationFn: api.testFingerbank,
+    mutationFn: async () => {
+      // Testing an unsaved key the user just typed used to silently test
+      // whatever was already on disk instead — save it first so Test always
+      // checks what's on screen.
+      if (form.fingerbank_api_key) {
+        await api.updateSettings({ fingerbank_api_key: form.fingerbank_api_key });
+        qc.invalidateQueries({ queryKey: ["settings"] });
+      }
+      return api.testFingerbank();
+    },
     onSuccess: (r) => {
       if (r.status === "ok") {
         toast({
@@ -851,6 +903,100 @@ export function Settings() {
               {t("settings.testMessage")}
             </Button>
           </Channel>
+
+          <Channel
+            icon={<Envelope size={14} />}
+            name={t("settings.email.name")}
+            enabled={form.smtp_enabled}
+            configured={!!d?.smtp_configured}
+            onToggle={(v) => set("smtp_enabled", v)}
+          >
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+              <Field label={t("settings.email.host")} hint={t("settings.email.hostHint")}>
+                <input
+                  className="input mono"
+                  placeholder="smtp.gmail.com"
+                  value={form.smtp_host}
+                  onChange={(e) => set("smtp_host", e.target.value)}
+                />
+              </Field>
+              <Field label={t("settings.email.port")}>
+                <input
+                  type="number"
+                  min={1}
+                  max={65535}
+                  className="input mono"
+                  value={form.smtp_port}
+                  onChange={(e) => set("smtp_port", +e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label={t("settings.email.security")}>
+              <select
+                className="input mono"
+                value={form.smtp_security}
+                onChange={(e) => set("smtp_security", e.target.value)}
+              >
+                <option value="starttls">STARTTLS (587)</option>
+                <option value="ssl">SSL/TLS (465)</option>
+                <option value="none">{t("settings.email.securityNone")}</option>
+              </select>
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("settings.email.username")} hint={t("settings.email.usernameHint")}>
+                <input
+                  className="input mono"
+                  autoComplete="off"
+                  value={form.smtp_username}
+                  onChange={(e) => set("smtp_username", e.target.value)}
+                />
+              </Field>
+              <Field label={t("settings.email.password")}>
+                <input
+                  className="input mono"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={d?.smtp_auth_configured ? t("settings.telegram.saved") : ""}
+                  value={form.smtp_password}
+                  onChange={(e) => set("smtp_password", e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label={t("settings.email.from")} hint={t("settings.email.fromHint")}>
+              <input
+                className="input mono"
+                placeholder="cherubyte@example.com"
+                value={form.smtp_from}
+                onChange={(e) => set("smtp_from", e.target.value)}
+              />
+            </Field>
+            <Field label={t("settings.email.to")} hint={t("settings.email.toHint")}>
+              <input
+                className="input mono"
+                placeholder="me@example.com, you@example.com"
+                value={form.smtp_to}
+                onChange={(e) => set("smtp_to", e.target.value)}
+              />
+            </Field>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Send size={12} />}
+              disabled={!d?.smtp_configured}
+              loading={testEmail.isPending}
+              onClick={() => testEmail.mutate()}
+            >
+              {t("settings.testMessage")}
+            </Button>
+          </Channel>
+
+          <PushCard
+            enabled={form.webpush_enabled}
+            subscriptions={d?.webpush_subscriptions ?? 0}
+            subject={form.vapid_subject}
+            onToggleEnabled={(v) => set("webpush_enabled", v)}
+            onSubject={(v) => set("vapid_subject", v)}
+          />
         </div>
       </section>
 
@@ -866,6 +1012,8 @@ export function Settings() {
                   <th className="pb-2 font-normal">{t("settings.alerts.col.on")}</th>
                   <th className="pb-2 font-normal">Telegram</th>
                   <th className="pb-2 font-normal">ntfy</th>
+                  <th className="pb-2 font-normal">{t("settings.email.name")}</th>
+                  <th className="pb-2 font-normal">{t("settings.push.short")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -897,7 +1045,7 @@ export function Settings() {
                           onChange={(v) => setRule({ enabled: v })}
                         />
                       </td>
-                      {["telegram", "ntfy"].map((name) => (
+                      {["telegram", "ntfy", "email", "webpush"].map((name) => (
                         <td key={name} className="py-2 pr-3">
                           <input
                             type="checkbox"
@@ -937,6 +1085,20 @@ export function Settings() {
                 placeholder="http://192.168.1.9:1001"
                 value={form.public_base_url}
                 onChange={(e) => set("public_base_url", e.target.value)}
+              />
+            </Field>
+            <Field
+              label={t("settings.alerts.agentSilent")}
+              hint={t("settings.alerts.agentSilentHint")}
+              className="sm:col-span-3"
+            >
+              <input
+                type="number"
+                min={0}
+                step={60}
+                className="input mono w-40"
+                value={form.agent_offline_after_seconds}
+                onChange={(e) => set("agent_offline_after_seconds", +e.target.value)}
               />
             </Field>
             <Field
@@ -1490,6 +1652,126 @@ function Channel({
       </div>
       {enabled && (
         <div className="space-y-4 bg-surface px-4 py-4 shadow-[inset_0_1px_0_rgba(0,0,0,0.04)]">{children}</div>
+      )}
+    </div>
+  );
+}
+
+/** Web Push. Two switches: `webpush_enabled` is a panel setting (does this
+ *  install use push at all), and the per-browser subscription is local to
+ *  whatever device is looking at the page right now. */
+function PushCard({
+  enabled,
+  subscriptions,
+  subject,
+  onToggleEnabled,
+  onSubject,
+}: {
+  enabled: boolean;
+  subscriptions: number;
+  subject: string;
+  onToggleEnabled: (v: boolean) => void;
+  onSubject: (v: string) => void;
+}) {
+  const t = useT();
+  const toast = useToast();
+  const [state, setState] = useState<PushState>("off");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    currentPushState().then(setState);
+  }, []);
+
+  const run = async (fn: () => Promise<PushState>, okKey: MessageKey) => {
+    setBusy(true);
+    try {
+      setState(await fn());
+      toast({ tone: "success", title: okKey });
+    } catch (e) {
+      toast({ tone: "error", title: "settings.push.failed", desc: String(e).slice(0, 120) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const status = !enabled
+    ? { tone: "neutral" as const, label: t("settings.channel.off") }
+    : state === "on"
+      ? { tone: "signal" as const, label: t("settings.push.state.on") }
+      : { tone: "neutral" as const, label: t("settings.push.state.off") };
+
+  return (
+    <div className="overflow-hidden rounded-xl bg-surface-2">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <span className="text-fg-2"><Bell size={14} /></span>
+        <span className="font-display text-[14px] text-fg">{t("settings.push.name")}</span>
+        <Badge tone={status.tone}>{status.label}</Badge>
+        <span className="ml-auto">
+          <Toggle checked={enabled} onChange={onToggleEnabled} label={t("settings.push.name")} />
+        </span>
+      </div>
+      {enabled && (
+        <div className="space-y-4 bg-surface px-4 py-4 shadow-[inset_0_1px_0_rgba(0,0,0,0.04)]">
+          <p className="text-[12.5px] leading-relaxed text-fg-2">{t("settings.push.blurb")}</p>
+
+          {state === "unsupported" ? (
+            <p className="mono text-[11px] text-fg-3">{t("settings.push.unsupported")}</p>
+          ) : state === "denied" ? (
+            <p className="mono text-[11px] text-alert">{t("settings.push.denied")}</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {state === "on" ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={busy}
+                    onClick={() => run(disablePush, "settings.push.turnedOff")}
+                  >
+                    {t("settings.push.turnOff")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Send size={12} />}
+                    onClick={async () => {
+                      const r = await api.testPush();
+                      toast(
+                        r.ok
+                          ? { tone: "success", title: "settings.push.testSent" }
+                          : { tone: "error", title: "settings.push.testFailed" },
+                      );
+                    }}
+                  >
+                    {t("settings.testMessage")}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Bell size={12} />}
+                  loading={busy}
+                  onClick={() => run(enablePush, "settings.push.turnedOn")}
+                >
+                  {t("settings.push.turnOn")}
+                </Button>
+              )}
+              <span className="mono text-[11px] text-fg-3">
+                {t("settings.push.count", { n: subscriptions })}
+              </span>
+            </div>
+          )}
+
+          <Field label={t("settings.push.subject")} hint={t("settings.push.subjectHint")}>
+            <input
+              className="input mono"
+              placeholder="mailto:you@example.com"
+              value={subject}
+              onChange={(e) => onSubject(e.target.value)}
+            />
+          </Field>
+        </div>
       )}
     </div>
   );

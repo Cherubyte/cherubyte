@@ -11,6 +11,8 @@ import { useTheme } from "../hooks/useTheme";
 import { useToast } from "./Toaster";
 import { RollingValue } from "./ui";
 import { CommandPalette } from "./CommandPalette";
+import { Onboarding } from "./Onboarding";
+import { ProgressiveBlur } from "./ProgressiveBlur";
 import { hms } from "../lib/format";
 import { AppMark, Moon, Search, Sun } from "./Glyph";
 import { motion, useReducedMotion, snappy, fade } from "../lib/motion";
@@ -203,6 +205,7 @@ export function Shell() {
     <>
       {isMobile ? <MobileShell /> : <DesktopShell />}
       <CommandPalette />
+      <Onboarding />
     </>
   );
 }
@@ -342,9 +345,14 @@ function DesktopShell() {
         </div>
       </aside>
 
-      {/* content */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-10 flex h-[60px] shrink-0 items-center gap-4 bg-bg/70 px-8 backdrop-blur-xl">
+      {/* content — the header floats over it, so the page scrolls up under a
+          transparent, heavily-blurred bar rather than stopping at an opaque one */}
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <header className="absolute inset-x-0 top-0 z-20 flex h-[60px] items-center gap-4 px-8">
+          <div className="pointer-events-none absolute -bottom-16 inset-x-0 top-0 -z-10">
+            <ProgressiveBlur strength={28} className="absolute inset-0" />
+            <div className="absolute inset-0 bg-gradient-to-b from-bg/65 to-transparent" />
+          </div>
           <h1 className="font-display text-[15px] text-fg">{t(titleKeyOf(pathname))}</h1>
           <CmdKButton />
           <div className="ml-auto flex items-center gap-5 text-[12px] text-fg-3">
@@ -361,7 +369,7 @@ function DesktopShell() {
           {running && <div className="scan-bar" />}
         </header>
 
-        <main className="relative min-h-0 flex-1 overflow-y-auto">
+        <main className="relative min-h-0 flex-1 overflow-y-auto pt-[60px]">
           <PageBody pathname={pathname} className="mx-auto w-full max-w-[1240px] px-8 py-8">
             <Outlet />
           </PageBody>
@@ -419,7 +427,11 @@ function MobileShell() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-40 shrink-0 bg-bg/80 shadow-[0_1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+      <header className="sticky top-0 z-40 shrink-0 shadow-[0_1px_12px_-4px_rgba(0,0,0,0.12)]">
+        <div className="pointer-events-none absolute -bottom-16 inset-x-0 top-0 -z-10">
+          <ProgressiveBlur strength={28} className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-b from-bg/65 to-transparent" />
+        </div>
         <div className="flex h-[52px] items-center gap-2.5 px-4">
           <Wordmark compact />
           <span className="mono ml-1 text-[13px] tnum text-fg">
