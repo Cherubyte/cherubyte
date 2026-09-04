@@ -8,6 +8,9 @@ and one on the way back.
 
 The "already alerted" state lives on the row (`Agent.offline_alerted`), not in
 memory, so a panel restart during an outage does not re-notify.
+
+Hosted, the scheduler runs this once per tenant inside `scoped_to`, so both
+the session and `agent_offline_after_seconds` are that tenant's own.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ from datetime import timedelta
 from sqlalchemy import select
 
 from ..config import settings
-from ..database import SessionLocal
+from ..database import open_session
 from ..models import Agent, EventLevel, as_utc, utcnow
 
 logger = logging.getLogger("cherubyte.agent_health")
@@ -43,7 +46,7 @@ async def check_agents() -> dict[str, list[str]]:
     went_offline: list[str] = []
     came_back: list[str] = []
     try:
-        async with SessionLocal() as session:
+        async with open_session() as session:
             agents = list(
                 (
                     await session.execute(select(Agent).where(Agent.enabled.is_(True)))

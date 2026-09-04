@@ -13,7 +13,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..config import ATTACHMENT_DIR, UPLOAD_DIR, settings
+from ..config import attachment_dir, settings, upload_dir
+from ..crypto import blind_index
 from ..database import get_session
 from ..models import (
     ActionKind,
@@ -43,8 +44,9 @@ from ..schemas import (
 )
 
 # Attachments (invoices, warranties) are downloaded through an authenticated
-# route, never the public /uploads mount — so they live outside UPLOAD_DIR.
-_ATTACHMENT_DIR = ATTACHMENT_DIR
+# route, never the public /uploads mount — so they live outside the upload
+# tree. Resolved per request rather than bound at import, because which
+# directory that is depends on the tenant in scope.
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -289,7 +291,8 @@ async def ignore_device(device_id: int, session: AsyncSession = Depends(get_sess
 @router.delete("/{device_id}", status_code=204)
 async def delete_device(device_id: int, session: AsyncSession = Depends(get_session)):
     device = await _get(session, device_id)
-    stored_files = [_ATTACHMENT_DIR / a.filename for a in device.attachments]
+    att_dir = attachment_dir()
+    stored_files = [att_dir / a.filename for a in device.attachments]
     await session.delete(device)
     await session.commit()
     for path in stored_files:
@@ -496,8 +499,12 @@ async def absorb_mac(
     await _get(session, device_id)
     addr = payload.address.strip().lower()
 
+    # By blind index: `address` is ciphertext and a fresh nonce every time,
+    # so comparing it would never match anything.
     mac = (
-        await session.execute(select(MacAddress).where(MacAddress.address == addr))
+        await session.execute(
+            select(MacAddress).where(MacAddress.address_bi == blind_index(addr))
+        )
     ).scalars().first()
 
     if mac is None:
@@ -550,7 +557,7 @@ async def upload_image(
     if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
         raise HTTPException(400, "Unsupported image type")
     fname = f"dev{device_id}-{uuid.uuid4().hex[:12]}{ext}"
-    dest = UPLOAD_DIR / fname
+    dest = upload_dir(create=True) / fname
     await save_image_upload(file, dest, max_bytes=settings.max_upload_bytes)
     device.images.append(DeviceImage(filename=fname, is_primary=not device.images))
     await session.commit()
@@ -565,7 +572,7 @@ async def delete_image(
     img = next((i for i in device.images if i.id == image_id), None)
     if img is None:
         raise HTTPException(404, "Image not found")
-    (UPLOAD_DIR / img.filename).unlink(missing_ok=True)
+    (upload_dir() / img.filename).unlink(missing_ok=True)
     await session.delete(img)
     await session.commit()
     return await _get(session, device_id)
@@ -595,11 +602,11 @@ async def upload_attachment(
     if len(device.attachments) >= 25:
         raise HTTPException(400, "This device already has the maximum of 25 attachments")
 
-    _ATTACHMENT_DIR.mkdir(parents=True, exist_ok=True)
+    att_dir = attachment_dir(create=True)
     original = _sanitise_download_name(file.filename or "attachment")
     ext = Path(original).suffix.lower()
     fname = f"dev{device_id}-{uuid.uuid4().hex[:16]}{ext}"
-    dest = _ATTACHMENT_DIR / fname
+    dest = att_dir / fname
 
     media_type, size = await save_attachment_upload(
         file, dest, max_bytes=settings.max_upload_bytes
@@ -624,7 +631,7 @@ async def download_attachment(
     att = next((a for a in device.attachments if a.id == attachment_id), None)
     if att is None:
         raise HTTPException(404, "Attachment not found")
-    path = _ATTACHMENT_DIR / att.filename
+    path = attachment_dir() / att.filename
     if not path.is_file():
         raise HTTPException(410, "The stored file is missing")
     return FileResponse(
@@ -643,7 +650,7 @@ async def delete_attachment(
     att = next((a for a in device.attachments if a.id == attachment_id), None)
     if att is None:
         raise HTTPException(404, "Attachment not found")
-    (_ATTACHMENT_DIR / att.filename).unlink(missing_ok=True)
+    (attachment_dir() / att.filename).unlink(missing_ok=True)
     await session.delete(att)
     await session.commit()
     return await _get(session, device_id)

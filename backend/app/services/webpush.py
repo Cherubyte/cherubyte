@@ -21,7 +21,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..database import SessionLocal
+from ..tenancy import PerTenant
+from ..database import open_session
 from ..models import PushSubscription, utcnow
 
 logger = logging.getLogger("cherubyte.webpush")
@@ -29,7 +30,15 @@ logger = logging.getLogger("cherubyte.webpush")
 _KEY_PRIVATE = "vapid_private_pem"
 _KEY_PUBLIC = "vapid_public_key"
 
-_runtime: dict[str, object] = {}
+# Each tenant's `settings` table holds its own VAPID keypair, so this cache is
+# per tenant too — otherwise a push is signed with another tenant's key, and a
+# browser is handed a server key that does not match the panel pushing to it.
+_runtime: PerTenant[dict[str, object]] = PerTenant(dict)
+
+
+def forget_tenant_keys(tenant_id: str) -> None:
+    """Drop a tenant's cached VAPID state — offboarding, and tests."""
+    _runtime.forget(tenant_id)
 
 
 def configure(
@@ -39,6 +48,7 @@ def configure(
     subject: str | None = None,
     enabled: bool | None = None,
 ) -> None:
+    runtime = _runtime.get()
     for key, value in (
         ("private_pem", private_pem),
         ("public_key", public_key),
@@ -46,11 +56,11 @@ def configure(
         ("enabled", enabled),
     ):
         if value is not None:
-            _runtime[key] = value
+            runtime[key] = value
 
 
 def _get(key: str, fallback: object = None) -> object:
-    value = _runtime.get(key)
+    value = _runtime.get().get(key)
     return fallback if value is None else value
 
 
@@ -156,7 +166,7 @@ async def _send_one(sub: PushSubscription, payload: str) -> str:
 
 
 async def send_test() -> dict:
-    async with SessionLocal() as session:
+    async with open_session() as session:
         return await _broadcast(
             session,
             "Cherubyte",
@@ -169,7 +179,7 @@ async def broadcast(title: str, body: str, *, url: str | None = None) -> dict:
     """Push one notice to every subscribed browser. Prunes dead subscriptions."""
     if not is_enabled() or not has_keys():
         return {}
-    async with SessionLocal() as session:
+    async with open_session() as session:
         return await _broadcast(session, title, body, url=url or "/")
 
 

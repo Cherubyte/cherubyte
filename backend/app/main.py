@@ -4,18 +4,21 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .api import api_router
 from .api.settings import _load_from_db
-from .config import APP_VERSION, UPLOAD_DIR, settings
-from .database import SessionLocal, init_db
+from . import crypto
+from .api._uploads import UPLOAD_AAD
+from .config import APP_VERSION, UPLOAD_DIR, settings, upload_dir
+from .database import SessionLocal, dispose_tenants, init_db
 from .scheduler import scheduler, start as start_scheduler
 from .services import mqtt, oui, update
 from .services.retention import run_purge
+from .tenancy import TenantMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +29,20 @@ logger = logging.getLogger("cherubyte")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.multi_tenant:
+        # No default database to initialise and no one set of settings to
+        # load: each tenant brings both, inside `scoped_to`. The scheduler
+        # runs the per-tenant jobs. MQTT stays off — its queue, worker and
+        # announced-set are process-global, so on a shared process it would
+        # publish one tenant's devices under another's discovery topics; it
+        # moves to the agent, which is on the LAN the broker is on anyway.
+        start_scheduler()
+        logger.info("Cherubyte up on :%s — hosted", settings.port)
+        yield
+        scheduler.shutdown(wait=False)
+        await dispose_tenants()
+        return
+
     await init_db()
     async with SessionLocal() as session:
         await _load_from_db(session)
@@ -50,6 +67,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Cherubyte", version=APP_VERSION, lifespan=lifespan)
 
+# Outermost, so the tenant is known before anything else looks at the request.
+# Only in multi-tenant mode: a self-hosted panel never reads the header, so a
+# stray one cannot mean anything there.
+if settings.multi_tenant:
+    app.add_middleware(TenantMiddleware)
+
 # The SPA is served from this same origin in production, and in development the
 # Vite server proxies /api and /uploads server-side — neither makes a
 # cross-origin request. So CORS stays off unless explicitly configured;
@@ -67,7 +90,57 @@ if _cors_origins:
     logger.info("CORS enabled for %s", ", ".join(_cors_origins))
 
 app.include_router(api_router)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+
+# Uploads are served by a route rather than a static mount, in both modes.
+# Guessed from the extension, which `save_image_upload` has already checked
+# against the file's actual leading bytes. Encrypted files are served from
+# memory, so there is no path for FileResponse to sniff.
+_MEDIA_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+}
+
+
+# A mount is bound to one directory at import time, and hosted there is no
+# one directory: these are photographs of somebody's home and each tenant has
+# its own. One code path, resolved per request, so the mode cannot be wrong.
+@app.get("/uploads/{name:path}", include_in_schema=False)
+async def serve_upload(name: str):
+    try:
+        root = upload_dir().resolve()
+    except (RuntimeError, ValueError):
+        # Hosted with no tenant in scope. There is nothing to serve and no
+        # shared directory to fall back to, which is the whole point.
+        raise HTTPException(401, "No tenant") from None
+    try:
+        candidate = (root / name).resolve()
+    except (OSError, ValueError, RuntimeError):
+        raise HTTPException(404, "Not Found") from None
+    # The name is attacker-controlled and arrives percent-decoded, so resolve
+    # first and then require the result to still be inside — the same rule the
+    # SPA fallback follows, and for the same reason.
+    if not candidate.is_relative_to(root) or not candidate.is_file():
+        raise HTTPException(404, "Not Found")
+
+    blob = candidate.read_bytes()
+    if not blob.startswith(crypto.FILE_MAGIC):
+        # Never encrypted: self-hosted, or written before this existed.
+        # Serving from the path keeps the range and caching headers.
+        return FileResponse(candidate)
+    try:
+        body = crypto.decrypt_bytes(blob, UPLOAD_AAD)
+    except crypto.CryptoError:
+        # The file is here and unreadable. 404 rather than 500: to the person
+        # looking at the page it is a missing picture either way, and a 500 on
+        # an <img> tag says more about the server than it needs to.
+        logger.exception("Could not decrypt %s", candidate.name)
+        raise HTTPException(404, "Not Found") from None
+    return Response(body, media_type=_MEDIA_TYPES.get(candidate.suffix.lower(), "image/jpeg"))
 
 # Uploads are user-supplied and served from our own origin. An SVG logo is a
 # document, not just a picture: opened directly it could run script here. Deny
@@ -87,6 +160,15 @@ async def _harden_uploads(request, call_next):
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "version": app.version}
+
+
+# The approval page an agent's enrolment link points at. Registered before the
+# SPA fallback, which matches every path — and server-rendered, because this
+# link is typed into a browser from a terminal and has to work as a plain page
+# load with no client-side router.
+from .api.approve import router as approve_router  # noqa: E402
+
+app.include_router(approve_router)
 
 
 # --- Serve the built frontend (SPA) -----------------------------------------

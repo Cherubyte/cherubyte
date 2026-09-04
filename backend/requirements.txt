@@ -2,6 +2,7 @@ aiomqtt==2.3.0
 aiosqlite==0.22.1
 alembic==1.19.1
 APScheduler==3.11.3
+cryptography==50.0.1
 fastapi==0.141.1
 httpx==0.28.1
 mac-vendor-lookup==0.1.15

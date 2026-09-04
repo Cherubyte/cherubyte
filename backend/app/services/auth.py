@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Account, AuthSession, utcnow
+from ..tenancy import current_tenant
 
 COOKIE_NAME = "cherubyte_session"
 SESSION_TTL = timedelta(days=30)
@@ -73,11 +74,25 @@ async def count_accounts(session: AsyncSession) -> int:
     return int((await session.execute(select(func.count(Account.id)))).scalar_one())
 
 
+def new_session_token() -> str:
+    """A session token, carrying its tenant when there is one.
+
+    Hosted, the panel answers the internet directly and has to know whose
+    request this is before it can look the token up — and the token is the
+    only thing a browser sends. So it names its tenant, the same way an agent
+    key does. The prefix is not secret and adds nothing to the entropy; the
+    32 random bytes after it are the session.
+    """
+    random = secrets.token_hex(32)
+    tenant = current_tenant.get()
+    return f"t.{tenant}.{random}" if tenant else random
+
+
 async def create_session(
     session: AsyncSession, account: Account, user_agent: str | None
 ) -> AuthSession:
     row = AuthSession(
-        token=secrets.token_hex(32),
+        token=new_session_token(),
         account_id=account.id,
         expires_at=utcnow() + SESSION_TTL,
         user_agent=(user_agent or "")[:255] or None,

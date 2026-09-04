@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app import main
 from app.api import devices as devices_api
 from app.database import SessionLocal
+from app.config import attachment_dir
 from app.models import Device, DeviceType
 from app.services import auth
 
@@ -16,7 +17,8 @@ from app.services import auth
 @pytest.fixture
 def client(session, tmp_path, monkeypatch):
     auth._failures.clear()
-    monkeypatch.setattr(devices_api, "_ATTACHMENT_DIR", tmp_path / "attachments")
+    # attachment_dir() reads this at call time in single-tenant mode
+    monkeypatch.setattr("app.config.ATTACHMENT_DIR", tmp_path / "attachments")
     c = TestClient(main.app)
     assert c.post(
         "/api/auth/setup", json={"username": "admin", "password": "hunter2!!"}
@@ -105,7 +107,7 @@ async def test_delete_removes_row_and_file(client):
         files={"file": ("m.pdf", PDF, "application/pdf")},
     ).json()["attachments"][0]
 
-    stored = devices_api._ATTACHMENT_DIR
+    stored = attachment_dir()
     on_disk = next(stored.iterdir())
     assert on_disk.is_file()
 
@@ -122,7 +124,7 @@ async def test_deleting_the_device_takes_its_attachments(client):
         f"/api/devices/{did}/attachments",
         files={"file": ("m.pdf", PDF, "application/pdf")},
     )
-    stored = devices_api._ATTACHMENT_DIR
+    stored = attachment_dir()
     assert list(stored.iterdir())
 
     assert client.delete(f"/api/devices/{did}").status_code == 204
@@ -140,4 +142,4 @@ async def test_oversized_upload_is_refused(client, monkeypatch):
         files={"file": ("big.pdf", PDF, "application/pdf")},
     )
     assert r.status_code == 413
-    assert list(devices_api._ATTACHMENT_DIR.iterdir()) == []
+    assert list(attachment_dir().iterdir()) == []

@@ -10,6 +10,7 @@ from . import (
     hoststats,
     metrics,
     os_logos,
+    provisioning,
     push,
     scan,
     settings,
@@ -31,6 +32,10 @@ api_router.include_router(auth.router)
 api_router.include_router(actions.router)
 api_router.include_router(agents.router)
 api_router.include_router(metrics.router)
+# Provisioning carries its own key and is about a tenant rather than from one;
+# it refuses outright in single-tenant mode, so mounting it always is safe and
+# keeps the hosted configuration testable.
+api_router.include_router(provisioning.router)
 
 # Everything else requires a login; writes require at least an `editor`.
 _protected = APIRouter(dependencies=[Depends(enforce_access)])

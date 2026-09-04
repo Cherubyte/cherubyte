@@ -1,4 +1,6 @@
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -6,6 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
+# The base. Self-hosted this *is* the uploads directory; hosted it is the
+# parent of one directory per tenant — see upload_dir() below, and never use
+# this bare in code that serves or packs files.
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 # Device file attachments (manuals, invoices, warranties). Deliberately *not*
@@ -65,6 +70,73 @@ class Settings(BaseSettings):
 
     # Storage
     database_url: str = f"sqlite+aiosqlite:///{DATA_DIR / 'cherubyte.db'}"
+
+    # Multi-tenant, for the hosted panel. Off by default: a self-hosted panel
+    # is one database and none of this applies. When on there is no default
+    # database at all — every request has to name a tenant, and one that does
+    # not is refused rather than served from somewhere shared, because in
+    # multi-tenant mode a shared database is exactly the thing that must not
+    # exist.
+    multi_tenant: bool = False
+    # One SQLite file per tenant lives here, named `<tenant_id>.db`. The id is
+    # a path segment, which is why tenancy.validate_tenant_id() is strict.
+    tenants_dir: str = str(DATA_DIR / "tenants")
+    # The header the edge sets once it has resolved the tenant. Honoured only
+    # in multi-tenant mode, and only because the origin is reachable through
+    # the tunnel alone: on a panel anyone can reach, a header is not evidence.
+    tenant_header: str = "X-Cherubyte-Tenant"
+    # Engines to keep open. Each holds a connection and SQLite's page cache,
+    # and that — not CPU — is what decides how many tenants fit in a small
+    # box. Past the cap the least recently used is disposed and reopened on
+    # its next request, a few milliseconds later.
+    tenant_engine_cache: int = 32
+    # Provisioning, multi-tenant only. The control plane creates a tenant
+    # through POST /api/tenants carrying this key in `provision_header`. Empty
+    # admits nobody — forgetting to set it must lock provisioning, not open
+    # it, which is the same rule the edge applies to its own secrets.
+    provision_key: str = ""
+    provision_header: str = "X-Cherubyte-Provision-Key"
+    # Where a browser with no session is sent. Served by the login window,
+    # which shares this hostname — the tunnel routes this path to it.
+    login_path: str = "/login"
+
+    # Encryption at rest, hosted only. The key for a tenant is fetched from
+    # this service rather than kept beside the data, so a stolen disk yields
+    # ciphertext and every use of a key is a line in an audit log the operator
+    # cannot quietly erase. Unset means self-hosted: no key, no encryption,
+    # and the same build either way.
+    #
+    # Configured-but-unreachable is a hard failure, never a fall back to plain
+    # text. Writing unencrypted rows into an encrypted database would mix the
+    # two irreversibly, because nothing afterwards can tell which is which.
+    key_service_url: str = ""
+    key_service_token: str = ""
+    # How long a fetched key is held in memory. Short enough that revoking a
+    # tenant's key takes effect without a restart; long enough that a busy
+    # panel is not one audit line per request.
+    key_cache_ttl: int = 300
+
+    # This process's name in a blue/green pair, e.g. "blue" or "green". The
+    # router in front puts the name it *meant* to reach in `upstream_header`,
+    # and a mismatch is refused rather than served.
+    #
+    # That refusal is the backstop for the one thing that must never happen:
+    # two panel versions writing one tenant's SQLite file. The router is what
+    # prevents it; this is what catches the router being wrong, because the
+    # symptom otherwise is a corrupted database rather than an error.
+    #
+    # Empty means not participating, which is every single-process install.
+    upstream_name: str = ""
+    upstream_header: str = "X-Cherubyte-Upstream"
+
+    # The address a person would type to reach this panel. Used to build the
+    # link an agent prints when it asks to be approved, which has to be the
+    # public name and not the loopback address the request arrived on.
+    #
+    # Empty falls back to the request's own base URL, which is right for a
+    # self-hosted panel reached directly and wrong behind a proxy that does
+    # not rewrite Host — hence the setting.
+    public_url: str = ""
 
     # Scanning
     # Leave empty to auto-detect the primary interface's subnet (CIDR).
@@ -208,4 +280,103 @@ class Settings(BaseSettings):
         return BASE_DIR.parent / "frontend" / "dist"
 
 
-settings = Settings()
+_base = Settings()
+
+# ── settings, per tenant ───────────────────────────────────────────────────
+# Most of these are overridden from the database at runtime: retention, quiet
+# hours, the Telegram chat, the ntfy topic, the Fingerbank key. Single-tenant
+# that database is the only one, so `_load_from_db` writing onto one shared
+# object is right. Hosted it is emphatically not: the first tenant to load
+# would hand every other tenant its notification targets and its API keys,
+# and every job would run on its retention.
+#
+# So a read goes through the overlay for the tenant currently in scope, and
+# falls through to the process-wide object when there is none. Every
+# `settings.foo` in the codebase becomes tenant-correct without a single call
+# site changing — the same trick as get_session(), for the same reason.
+
+_overlay: ContextVar[dict[str, object] | None] = ContextVar("settings_overlay", default=None)
+
+
+class _Settings:
+    """Reads and writes the tenant's overlay when there is one, else the base."""
+
+    def __getattr__(self, name: str):
+        overlay = _overlay.get()
+        if overlay is not None and name in overlay:
+            return overlay[name]
+        return getattr(_base, name)
+
+    def __setattr__(self, name: str, value) -> None:
+        overlay = _overlay.get()
+        if overlay is None:
+            setattr(_base, name, value)  # pydantic validates, as before
+        else:
+            # Values reaching here come from `_load_from_db`, which has already
+            # cast by key. Writing into the overlay rather than the base is
+            # what keeps one tenant's settings out of every other's.
+            overlay[name] = value
+
+
+settings = _Settings()
+
+
+def upload_dir(create: bool = False) -> Path:
+    """Where this tenant's uploaded images live.
+
+    Self-hosted, the one directory it always was. Hosted, a directory per
+    tenant — because these are device photographs of somebody's home, the
+    files were served from a single shared directory with no authentication,
+    and a backup packed *every* file in it into whichever tenant asked for
+    one. Unguessable file names were the only thing separating one customer's
+    pictures from another's, and a backup download did not even need to guess.
+    """
+    return _tenant_dir(UPLOAD_DIR, "upload_dir", create)
+
+
+def attachment_dir(create: bool = False) -> Path:
+    """Where this tenant's uploaded attachments live.
+
+    Split per tenant for the same reason `upload_dir` is, and with more at
+    stake: an attachment is a manual, an invoice or a warranty PDF, so it
+    carries the home address and serial number a photograph only implies. A
+    single shared directory would put them in every tenant's backup and let
+    one tenant's restore rotate away everybody else's files.
+    """
+    return _tenant_dir(ATTACHMENT_DIR, "attachment_dir", create)
+
+
+def _tenant_dir(base: Path, who: str, create: bool) -> Path:
+    """`base` self-hosted; a subdirectory of it per tenant when hosted.
+
+    Raises with no tenant in scope rather than falling back to the shared
+    parent, which is the fallback that caused the problem.
+    """
+    if not settings.multi_tenant:
+        if create:
+            base.mkdir(parents=True, exist_ok=True)
+        return base
+
+    from .tenancy import current_tenant, validate_tenant_id
+
+    tenant = current_tenant.get()
+    if tenant is None:
+        raise RuntimeError(f"{who}() outside a tenant")
+    path = base / validate_tenant_id(tenant)
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@contextmanager
+def tenant_settings(overlay: dict[str, object]):
+    """Run with `overlay` as the settings of the tenant in scope.
+
+    The dict is mutated by `_load_from_db`, so pass the one being filled and
+    it stays the tenant's own.
+    """
+    token = _overlay.set(overlay)
+    try:
+        yield overlay
+    finally:
+        _overlay.reset(token)

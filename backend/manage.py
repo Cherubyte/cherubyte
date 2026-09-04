@@ -7,12 +7,19 @@ Run from the `backend/` directory with its venv:
     .venv/bin/python manage.py init-db
     .venv/bin/python manage.py backup [path.tar.gz]
     .venv/bin/python manage.py restore <path.tar.gz>
+    .venv/bin/python manage.py reencrypt <tenant-id> [--from-plaintext|--to-plaintext]
     .venv/bin/python manage.py create-agent-token [label]
 
 `create-admin` reads the password from $CHERUBYTE_ADMIN_PASSWORD when set (so the
 setup script can run unattended), otherwise it prompts. It also promotes an
 existing account to admin and resets its password, so it doubles as a recovery
 tool if you lock yourself out.
+
+`reencrypt` is hosted-only and rewrites one tenant's data under a different key.
+`--from-plaintext` turns encryption on for a database that predates it;
+`--to-plaintext` decrypts one, for handing somebody their data back on the way
+out; neither rotates the key in place. The tenant must not be serving traffic
+while it runs.
 
 `create-agent-token` mints a fresh agent enrolment token — the same one-time-
 use, 24h-lived token `Settings ▸ Agents ▸ New token` issues over HTTP — without
@@ -135,6 +142,42 @@ def main() -> None:
             "The previous data is kept alongside as *.pre-restore. "
             "Restart the panel."
         )
+        return
+
+    if cmd == "reencrypt":
+        # Turning encryption on for a tenant that predates it, and rotating a
+        # key later. Both are the same pass: read under one key, write under
+        # the next. The tenant must not be serving traffic while it runs.
+        from app.keyring import key_for
+        from app.services.reencrypt import reencrypt, reencrypt_uploads
+
+        if len(args) < 2:
+            sys.exit("Usage: manage.py reencrypt <tenant-id> [--from-plaintext|--to-plaintext]")
+        tenant = args[1]
+        flags = set(args[2:])
+
+        async def _run() -> tuple[dict[str, int], int]:
+            # --from-plaintext: the rows are readable now and should not be.
+            # --to-plaintext: the reverse, for handing a tenant their data
+            # back on the way out. Neither given means a rotation, which needs
+            # the old key and is not something the service can guess.
+            fetched = await key_for(tenant)
+            old = None if "--from-plaintext" in flags else fetched
+            new = None if "--to-plaintext" in flags else fetched
+            if old is new and "--from-plaintext" not in flags:
+                sys.exit(
+                    "Nothing to do: pass --from-plaintext to encrypt a database that is "
+                    "currently readable, or --to-plaintext to decrypt one."
+                )
+            rows = await reencrypt(tenant, old_key=old, new_key=new)
+            files = reencrypt_uploads(tenant, old_key=old, new_key=new)
+            return rows, files
+
+        rewritten, files = asyncio.run(_run())
+        total = sum(rewritten.values())
+        for where, count in sorted(rewritten.items()):
+            print(f"  {where}: {count}")
+        print(f"Rewrote {total} value(s) and {files} file(s) for {tenant}.")
         return
 
     if cmd == "create-agent-token":

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..database import get_session
 from ..models import Account, AccountRole
 from ..schemas import (
@@ -84,6 +85,13 @@ async def setup(
     response: Response,
     session: AsyncSession = Depends(get_session),
 ):
+    if settings.multi_tenant:
+        # "Whoever arrives first creates the admin" is right for a box in a
+        # cupboard and catastrophic for a database that just became reachable
+        # from the internet. Hosted tenants are seeded with their account at
+        # provisioning, so this door does not exist for them — and it answers
+        # the way a door that never existed would.
+        raise HTTPException(404, "Not Found")
     if await auth.count_accounts(session) > 0:
         raise HTTPException(409, "Initial setup is already done")
     account = Account(

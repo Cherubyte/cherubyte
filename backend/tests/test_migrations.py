@@ -18,13 +18,20 @@ def _db_path() -> str:
     return engine.url.database
 
 
-def _alembic_head() -> str:
-    """The single head revision Alembic upgrades a fresh database to."""
+def _head() -> list[str]:
+    """The revision Alembic considers current, read rather than hardcoded.
+
+    These tests are about *stamping and upgrading*, not about which migration
+    happens to be last, so naming one here would break them every time a
+    migration is added — which is exactly what happened. `get_heads()` is
+    plural on purpose: two migrations that both descend from the same parent
+    leave Alembic with two heads and no error until runtime, so a merge that
+    forgets to re-chain one fails here instead.
+    """
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
-    script = ScriptDirectory.from_config(Config(str(BASE_DIR / "alembic.ini")))
-    return script.get_current_head()
+    return list(ScriptDirectory.from_config(Config(str(BASE_DIR / "alembic.ini"))).get_heads())
 
 
 async def _reset_empty() -> None:
@@ -58,17 +65,16 @@ def _columns(table: str) -> set[str]:
         con.close()
 
 
-async def test_a_brand_new_database_is_stamped_at_baseline():
+async def test_a_brand_new_database_is_stamped_then_brought_to_head():
     await init_db()
-    assert _alembic_version() == [_alembic_head()]
+    assert _alembic_version() == _head()
     assert "counts_for_presence" in _columns("devices")
 
 
 async def test_running_init_db_twice_is_a_harmless_no_op():
     await init_db()
     await init_db()
-    assert _alembic_version() == [_alembic_head()]
-
+    assert _alembic_version() == _head()
 
 async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss():
     """A database create_all built (or an old release built by hand) with no
@@ -96,7 +102,7 @@ async def test_a_pre_alembic_database_is_patched_then_stamped_without_data_loss(
 
     await init_db()
 
-    assert _alembic_version() == [_alembic_head()]
+    assert _alembic_version() == _head()
     cols = _columns("devices")
     for missing in ("counts_for_presence", "model", "os_guess", "notify_policy", "tags"):
         assert missing in cols, f"{missing} was not patched in"

@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..database import SessionLocal
+from ..database import open_session
 from ..models import (
     ApprovalStatus,
     ConnectionHistory,
@@ -63,7 +63,9 @@ async def collect(session: AsyncSession, days: int = 7) -> dict:
             Device.counts_for_presence.is_(True),
             User.is_guest.is_(False),
         )
-        .group_by(User.name)
+        # By id, not by name: the name is encrypted with a fresh nonce per
+        # row, so grouping on it would put every join in its own group.
+        .group_by(User.id)
         .order_by(func.count(ConnectionHistory.id).desc())
         .limit(5)
     )
@@ -114,7 +116,7 @@ async def run_weekly() -> dict | None:
     if not settings.weekly_summary_enabled:
         return None
     try:
-        async with SessionLocal() as session:
+        async with open_session() as session:
             data = await collect(session)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Weekly digest failed: %s", exc)

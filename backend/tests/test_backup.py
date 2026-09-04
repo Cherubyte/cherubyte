@@ -19,8 +19,11 @@ def uploads(tmp_path, monkeypatch):
     up.mkdir()
     att = tmp_path / "attachments"
     att.mkdir()
-    monkeypatch.setattr(backup, "UPLOAD_DIR", up)
-    monkeypatch.setattr(backup, "ATTACHMENT_DIR", att)
+    # Both trees now come from config.upload_dir() / config.attachment_dir(),
+    # which read these constants at call time in single-tenant mode; patching
+    # them on the module that defines them still redirects both.
+    monkeypatch.setattr("app.config.UPLOAD_DIR", up)
+    monkeypatch.setattr("app.config.ATTACHMENT_DIR", att)
     return up
 
 
@@ -64,7 +67,9 @@ async def test_round_trip_restores_rows_and_files(session, uploads, tmp_path):
 
 @pytest.mark.asyncio
 async def test_round_trip_carries_device_attachments(session, uploads, tmp_path):
-    att_dir = backup.ATTACHMENT_DIR
+    from app.config import attachment_dir
+
+    att_dir = attachment_dir()
     (att_dir / "dev1-abc.pdf").write_bytes(b"%PDF-1.4 fake")
 
     archive = tmp_path / "b.tar.gz"

@@ -16,12 +16,21 @@ from email.message import EmailMessage
 from email.utils import formataddr, parseaddr
 
 from ..config import settings
+from ..tenancy import PerTenant
 
 logger = logging.getLogger("cherubyte.email")
 
 SECURITY_MODES = ("starttls", "ssl", "none")
 
-_runtime: dict[str, object] = {}
+# `_get` falls back to `settings`, which is the tenant's own under `scoped_to`.
+# The overrides in front of that fallback need the same isolation, or one
+# tenant's alert goes to another tenant's recipients — see `PerTenant`.
+_runtime: PerTenant[dict[str, object]] = PerTenant(dict)
+
+
+def forget_tenant_config(tenant_id: str) -> None:
+    """Drop a tenant's cached SMTP overrides — offboarding, and tests."""
+    _runtime.forget(tenant_id)
 
 
 def configure(
@@ -35,6 +44,7 @@ def configure(
     to_addrs: str | None = None,
     enabled: bool | None = None,
 ) -> None:
+    runtime = _runtime.get()
     for key, value in (
         ("host", host),
         ("port", port),
@@ -46,11 +56,11 @@ def configure(
         ("enabled", enabled),
     ):
         if value is not None:
-            _runtime[key] = value
+            runtime[key] = value
 
 
 def _get(key: str, fallback: object) -> object:
-    value = _runtime.get(key)
+    value = _runtime.get().get(key)
     return fallback if value is None else value
 
 

@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..database import SessionLocal
 from ..models import Agent, EventLevel, WanSample, utcnow
 
 logger = logging.getLogger("cherubyte.wan")

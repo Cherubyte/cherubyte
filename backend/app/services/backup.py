@@ -25,7 +25,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..config import ATTACHMENT_DIR, DATA_DIR, UPLOAD_DIR, settings
+from ..config import DATA_DIR, attachment_dir, settings, upload_dir
 
 logger = logging.getLogger("cherubyte.backup")
 
@@ -42,11 +42,14 @@ def _trees() -> tuple[tuple[str, Path], ...]:
     """(archive prefix, on-disk directory) for each file tree a backup carries.
 
     Read at call time, not import time, so a test can redirect UPLOAD_DIR /
-    ATTACHMENT_DIR with monkeypatch.
+    ATTACHMENT_DIR with monkeypatch — and so both resolve against the tenant
+    in scope. Holding the global constants here instead would put every
+    tenant's files in whichever tenant asked for a backup, and let one
+    tenant's restore rotate away another's.
     """
     return (
-        (_UPLOADS_PREFIX, UPLOAD_DIR),
-        (_ATTACHMENTS_PREFIX, ATTACHMENT_DIR),
+        (_UPLOADS_PREFIX, upload_dir()),
+        (_ATTACHMENTS_PREFIX, attachment_dir()),
     )
 
 
@@ -60,7 +63,19 @@ def _archived_db_member(members: set[str]) -> str:
 
 
 def db_path() -> Path | None:
-    """The on-disk SQLite file, or None for an in-memory / non-sqlite URL."""
+    """The on-disk SQLite file for whoever is in scope, or None.
+
+    Hosted, `settings.database_url` names a database that does not exist —
+    there is no default one — so the tenant currently in scope decides, and a
+    caller with no tenant gets None rather than somebody else's file.
+    """
+    if settings.multi_tenant:
+        from ..database import tenant_db_path
+        from ..tenancy import current_tenant
+
+        tenant = current_tenant.get()
+        return tenant_db_path(tenant) if tenant else None
+
     url = settings.database_url
     for prefix in ("sqlite+aiosqlite:///", "sqlite:///"):
         if url.startswith(prefix):
